@@ -18,6 +18,10 @@ export const colors = {
   textSecondary: '#6B7280',
   /** Borders and dividers. */
   border: '#E5E7EB',
+  /** Rating star accent. */
+  star: '#F59E0B',
+  /** Foreground content on top of primary-colored surfaces. */
+  onPrimary: '#FFFFFF',
 } as const;
 
 export const spacing = {
@@ -26,4 +30,12 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+} as const;
+
+/** Corner radii shared by cards, inputs, chips and buttons. */
+export const radii = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  pill: 999,
 } as const;

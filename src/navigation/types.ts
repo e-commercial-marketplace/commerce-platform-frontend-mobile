@@ -28,12 +28,14 @@ export type MainTabParamList = {
  *
  * Future stack routes (not implemented yet — add both the type entry and the
  * matching <Stack.Screen> in AppNavigator.tsx at the same time):
- * - ProductList, ProductDetail, Filter, Feedback,
+ * - ProductList, Filter, Feedback,
  * - Checkout, Payment, Authentication.
  */
 export type RootStackParamList = {
   /** Nested navigator that renders the bottom tabs. */
   Main: NavigatorScreenParams<MainTabParamList>;
+  /** Product detail opened from the catalog; carries only the product id. */
+  ProductDetail: { productId: string };
 };
 
 /** Props for screens rendered directly by the root stack. */
