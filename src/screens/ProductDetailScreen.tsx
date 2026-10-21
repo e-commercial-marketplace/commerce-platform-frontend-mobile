@@ -1,29 +1,31 @@
 /**
- * Product detail screen (mock stage): resolves the product by id from the
- * mock catalog. "Add to Cart" writes into the shared local cart state
- * (CartContext) and briefly confirms it in the button; cart persistence and
- * checkout arrive with later milestones.
+ * Product detail screen - now powered by real backend API.
+ * Fetches product details using TanStack Query, displays real data,
+ * and allows adding to cart (local CartContext).
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import PriceDisplay from '../components/PriceDisplay';
 import ProductImage from '../components/ProductImage';
 import Rating from '../components/Rating';
 import { colors, radii, spacing } from '../constants/theme';
-import { MOCK_PRODUCTS } from '../data/mockProducts';
 import { useCart } from '../hooks/useCart';
+import { useProductDetail } from '../hooks/useProducts';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 
 /** How long the button keeps showing the "Added" confirmation. */
 const FEEDBACK_MS = 1500;
 
-export default function ProductDetailScreen({ route }: AppNavigatorScreenProps<'ProductDetail'>) {
+export default function ProductDetailScreen({ route, navigation }: AppNavigatorScreenProps<'ProductDetail'>) {
   const { addItem } = useCart();
   const [addedFeedback, setAddedFeedback] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { productId } = route.params;
+  const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
 
   // Drops any pending feedback timer on unmount so setState never fires
   // after the user has navigated away.
@@ -36,7 +38,58 @@ export default function ProductDetailScreen({ route }: AppNavigatorScreenProps<'
     [],
   );
 
-  const product = MOCK_PRODUCTS.find((candidate) => candidate.id === route.params.productId);
+  // Nothing received yet: show a loading state, never a "not found" screen.
+  if (isPending && product === undefined) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.centerText}>Loading product…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // A 404 means the product does not exist (or is no longer active) - that is
+  // a different outcome from a transport/server failure and gets its own
+  // screen instead of a retryable error.
+  const isNotFound = isError && (error as { status?: number | null })?.status === 404;
+
+  if (isNotFound) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundIcon}>😕</Text>
+          <Text style={styles.notFoundTitle}>Product not found</Text>
+          <Text style={styles.notFoundText}>
+            This product doesn&apos;t exist or is no longer available.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to load product. Please try again.';
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.centerState}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Couldn&apos;t load this product</Text>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <Pressable
+            onPress={() => refetch()}
+            style={styles.retryButton}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading product"
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!product) {
     return (
@@ -44,7 +97,9 @@ export default function ProductDetailScreen({ route }: AppNavigatorScreenProps<'
         <View style={styles.notFound}>
           <Text style={styles.notFoundIcon}>😕</Text>
           <Text style={styles.notFoundTitle}>Product not found</Text>
-          <Text style={styles.notFoundText}>This product doesn&apos;t exist or is no longer available.</Text>
+          <Text style={styles.notFoundText}>
+            This product doesn&apos;t exist or is no longer available.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -108,11 +163,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.md,
   },
-  // Square image frame: the plain View owns the sizing (width +
-  // aspectRatio) while the Image is taken out of the layout flow and only
-  // fills the frame — cropping with "cover". Same proven pattern as the
-  // catalog grid: the photo stays responsive, rounded and can never
-  // stretch beyond the frame.
   imageFrame: {
     width: '100%',
     aspectRatio: 1,
@@ -174,6 +224,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.onPrimary,
+  },
+  centerState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.lg,
+  },
+  centerText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  errorIcon: {
+    fontSize: 40,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radii.sm,
+  },
+  retryButtonText: {
+    color: colors.onPrimary,
+    fontWeight: '600',
   },
   notFound: {
     flex: 1,
