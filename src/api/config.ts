@@ -19,7 +19,14 @@ export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? FALLBACK_AP
 );
 
 /**
- * Request timeout. Generous on purpose: the deployed backend may need tens of
- * seconds to wake up from a cold start on the hosting platform.
+ * Request timeout. Generous on purpose: the deployed backend runs on a free
+ * hosting tier that spins the instance down when idle, so the FIRST request
+ * after an idle period pays a cold start.
+ *
+ * Measured against the deployed backend: a cold request was still pending
+ * after 60 s and after 110 s, while a warm request answers in 1-3 s. A
+ * timeout shorter than the cold start therefore turns a perfectly valid
+ * request into a hard failure, so the budget covers a cold start plus a
+ * little headroom.
  */
-export const API_TIMEOUT_MS = 30000;
+export const API_TIMEOUT_MS = 120000;
