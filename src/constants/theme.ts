@@ -41,3 +41,23 @@ export const radii = {
   lg: 16,
   pill: 999,
 } as const;
+
+/** Typography scale for consistent text sizing across screens. */
+export const typography = {
+  /** Extra small text (labels, captions). */
+  xs: 11,
+  /** Small text (secondary info, badges). */
+  sm: 12,
+  /** Body text size. */
+  md: 14,
+  /** Default text size (inputs, buttons). */
+  base: 15,
+  /** Section titles, card titles. */
+  lg: 16,
+  /** Screen section headings. */
+  xl: 18,
+  /** Major headings. */
+  xxl: 20,
+  /** Screen titles. */
+  xxxl: 22,
+} as const;

@@ -43,4 +43,6 @@ export type Product = {
    * backend always carry it and it is what opens the shop page.
    */
   sellerId?: string;
+  /** Available stock count when provided by the backend. */
+  stock?: number;
 };

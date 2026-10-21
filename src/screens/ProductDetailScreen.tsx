@@ -8,11 +8,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Button from '../components/Button';
 import PriceDisplay from '../components/PriceDisplay';
 import ProductImage from '../components/ProductImage';
 import Rating from '../components/Rating';
 import ShopAvatar from '../components/ShopAvatar';
-import { colors, radii, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import { useCart } from '../hooks/useCart';
 import { useProductDetail } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
@@ -25,6 +26,7 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   const { addItem } = useCart();
   const [addedFeedback, setAddedFeedback] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [quantity, setQuantity] = useState(1);
 
   const { productId } = route.params;
   const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
@@ -114,8 +116,27 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     );
   }
 
+  const maxQuantity = typeof (product as { stock?: number }).stock === 'number' && (product as { stock?: number }).stock! > 0 ? (product as { stock?: number }).stock : undefined;
+  const canDecrease = quantity > 1;
+  const canIncrease = maxQuantity == null || quantity < maxQuantity;
+
+  const decreaseQuantity = () => {
+    if (!canDecrease) {
+      return;
+    }
+    setQuantity((current) => current - 1);
+  };
+
+  const increaseQuantity = () => {
+    if (!canIncrease) {
+      return;
+    }
+    setQuantity((current) => current + 1);
+  };
+
   const handleAddToCart = () => {
-    addItem(product);
+    const amount = maxQuantity == null ? quantity : Math.min(quantity, maxQuantity);
+    addItem(product, amount);
     // Brief in-button confirmation; the user stays on this screen by design
     // (no automatic navigation to the Cart tab).
     setAddedFeedback(true);
@@ -123,6 +144,12 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
       clearTimeout(feedbackTimer.current);
     }
     feedbackTimer.current = setTimeout(() => setAddedFeedback(false), FEEDBACK_MS);
+  };
+
+  const handleBuyNow = () => {
+    const amount = maxQuantity == null ? quantity : Math.min(quantity, maxQuantity);
+    addItem(product, amount);
+    navigation.navigate('Main', { screen: 'Cart' });
   };
 
   // The owning seller, when the backend provided one.
@@ -170,21 +197,58 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
           </Pressable>
         )}
 
+        <View style={styles.quantitySection}>
+          <Text style={styles.sectionTitle}>Quantity</Text>
+          <View style={styles.quantityRow}>
+            <Pressable
+              onPress={decreaseQuantity}
+              disabled={!canDecrease}
+              style={({ pressed }) => [
+                styles.quantityButton,
+                !canDecrease && styles.quantityButtonDisabled,
+                pressed && canDecrease && styles.quantityButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Decrease quantity"
+              accessibilityState={{ disabled: !canDecrease }}
+            >
+              <Text style={[styles.quantityButtonText, !canDecrease && styles.quantityButtonTextDisabled]}>-</Text>
+            </Pressable>
+            <Text style={styles.quantityValue}>{quantity}</Text>
+            <Pressable
+              onPress={increaseQuantity}
+              disabled={!canIncrease}
+              style={({ pressed }) => [
+                styles.quantityButton,
+                !canIncrease && styles.quantityButtonDisabled,
+                pressed && canIncrease && styles.quantityButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Increase quantity"
+              accessibilityState={{ disabled: !canIncrease }}
+            >
+              <Text style={[styles.quantityButtonText, !canIncrease && styles.quantityButtonTextDisabled]}>+</Text>
+            </Pressable>
+            {maxQuantity != null && (
+              <Text style={styles.stockText}>{maxQuantity} available</Text>
+            )}
+          </View>
+        </View>
+
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.description}>{product.description}</Text>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable
-          onPress={handleAddToCart}
-          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-          accessibilityRole="button"
-          accessibilityLabel={addedFeedback ? 'Added to cart' : 'Add to cart'}
-        >
-          <Text style={styles.addButtonText}>
-            {addedFeedback ? 'Added to Cart ✓' : 'Add to Cart'}
-          </Text>
-        </Pressable>
+        <View style={styles.footerRow}>
+          <Button
+            title={addedFeedback ? 'Added to Cart ✓' : 'Add to Cart'}
+            onPress={handleAddToCart}
+            variant="secondary"
+            style={styles.footerButton}
+          />
+          <Button title="Buy Now" onPress={handleBuyNow} variant="primary" style={styles.footerButton} />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -277,21 +341,56 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
-  addButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radii.md,
-    minHeight: 48,
+  footerRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  footerButton: {
+    flex: 1,
+  },
+  quantitySection: {
+    gap: spacing.sm,
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  quantityButton: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  addButtonPressed: {
-    opacity: 0.8,
+  quantityButtonPressed: {
+    opacity: 0.7,
   },
-  addButtonText: {
-    fontSize: 16,
+  quantityButtonDisabled: {
+    opacity: 0.4,
+  },
+  quantityButtonText: {
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: colors.text,
+  },
+  quantityButtonTextDisabled: {
+    color: colors.textSecondary,
+  },
+  quantityValue: {
+    minWidth: 40,
+    textAlign: 'center',
+    fontSize: typography.base,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  stockText: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
   },
   centerState: {
     flex: 1,
