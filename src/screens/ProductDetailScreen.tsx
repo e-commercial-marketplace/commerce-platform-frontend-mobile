@@ -1,9 +1,11 @@
 /**
  * Product detail screen (mock stage): resolves the product by id from the
- * mock catalog. "Add to Cart" is UI-only — cart state and APIs are out of
- * scope for this milestone.
+ * mock catalog. "Add to Cart" writes into the shared local cart state
+ * (CartContext) and briefly confirms it in the button; cart persistence and
+ * checkout arrive with later milestones.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,9 +14,28 @@ import ProductImage from '../components/ProductImage';
 import Rating from '../components/Rating';
 import { colors, radii, spacing } from '../constants/theme';
 import { MOCK_PRODUCTS } from '../data/mockProducts';
+import { useCart } from '../hooks/useCart';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 
+/** How long the button keeps showing the "Added" confirmation. */
+const FEEDBACK_MS = 1500;
+
 export default function ProductDetailScreen({ route }: AppNavigatorScreenProps<'ProductDetail'>) {
+  const { addItem } = useCart();
+  const [addedFeedback, setAddedFeedback] = useState(false);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Drops any pending feedback timer on unmount so setState never fires
+  // after the user has navigated away.
+  useEffect(
+    () => () => {
+      if (feedbackTimer.current != null) {
+        clearTimeout(feedbackTimer.current);
+      }
+    },
+    [],
+  );
+
   const product = MOCK_PRODUCTS.find((candidate) => candidate.id === route.params.productId);
 
   if (!product) {
@@ -30,15 +51,22 @@ export default function ProductDetailScreen({ route }: AppNavigatorScreenProps<'
   }
 
   const handleAddToCart = () => {
-    // Placeholder: cart state, quantity and backend integration are handled
-    // in a later milestone. No navigation happens here by design.
-    console.log('Add to Cart pressed (UI only):', product.id);
+    addItem(product);
+    // Brief in-button confirmation; the user stays on this screen by design
+    // (no automatic navigation to the Cart tab).
+    setAddedFeedback(true);
+    if (feedbackTimer.current != null) {
+      clearTimeout(feedbackTimer.current);
+    }
+    feedbackTimer.current = setTimeout(() => setAddedFeedback(false), FEEDBACK_MS);
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ProductImage source={product.image} style={styles.image} />
+        <View style={styles.imageFrame}>
+          <ProductImage source={product.image} style={styles.imageFill} />
+        </View>
 
         <View style={styles.categoryChip}>
           <Text style={styles.categoryText}>{product.category}</Text>
@@ -59,9 +87,11 @@ export default function ProductDetailScreen({ route }: AppNavigatorScreenProps<'
           onPress={handleAddToCart}
           style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
           accessibilityRole="button"
-          accessibilityLabel="Add to cart"
+          accessibilityLabel={addedFeedback ? 'Added to cart' : 'Add to cart'}
         >
-          <Text style={styles.addButtonText}>Add to Cart</Text>
+          <Text style={styles.addButtonText}>
+            {addedFeedback ? 'Added to Cart ✓' : 'Add to Cart'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -78,10 +108,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.md,
   },
-  image: {
+  // Square image frame: the plain View owns the sizing (width +
+  // aspectRatio) while the Image is taken out of the layout flow and only
+  // fills the frame — cropping with "cover". Same proven pattern as the
+  // catalog grid: the photo stays responsive, rounded and can never
+  // stretch beyond the frame.
+  imageFrame: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: radii.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  imageFill: {
+    ...StyleSheet.absoluteFill,
   },
   categoryChip: {
     alignSelf: 'flex-start',

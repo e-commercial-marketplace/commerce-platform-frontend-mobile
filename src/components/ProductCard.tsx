@@ -70,6 +70,11 @@ const styles = StyleSheet.create({
   // Grid layout
   gridCard: {
     flex: 1,
+    // Caps the card at half the row: with an odd item count the last row
+    // holds a single card, which would otherwise grow (flex: 1) to the full
+    // row width. The cap keeps every card at 2-column width; paired cards
+    // still split the row evenly (they shrink below the cap by the row gap).
+    maxWidth: '50%',
     backgroundColor: colors.background,
     borderRadius: radii.md,
     borderWidth: 1,
