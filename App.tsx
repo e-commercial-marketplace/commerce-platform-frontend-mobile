@@ -1,7 +1,9 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { queryClient } from './src/api/queryClient';
 import { colors } from './src/constants/theme';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
@@ -22,17 +24,21 @@ const appTheme = {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      {/* Auth and Cart providers sit above the navigator so tabs, stack
-          screens and the tab badge all read the same runtime state. */}
-      <CartProvider>
-        <AuthProvider>
-          <NavigationContainer theme={appTheme}>
-            <StatusBar style="dark" />
-            <AppNavigator />
-          </NavigationContainer>
-        </AuthProvider>
-      </CartProvider>
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        {/* Auth and Cart providers sit above the navigator so tabs, stack
+            screens and the tab badge all read the same runtime state. The
+            server-state client wraps everything so any feature query shares
+            one cache. */}
+        <CartProvider>
+          <AuthProvider>
+            <NavigationContainer theme={appTheme}>
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </NavigationContainer>
+          </AuthProvider>
+        </CartProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
