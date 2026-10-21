@@ -37,4 +37,10 @@ export type Product = {
   category: string;
   /** Long description shown on the product detail screen. */
   description: string;
+  /**
+   * Id of the seller that owns the product (UUID). Optional because the
+   * local mock catalog has no seller concept; products mapped from the
+   * backend always carry it and it is what opens the shop page.
+   */
+  sellerId?: string;
 };

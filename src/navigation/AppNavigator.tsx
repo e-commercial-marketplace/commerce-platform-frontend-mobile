@@ -15,6 +15,7 @@ import { colors } from '../constants/theme';
 import LoginScreen from '../screens/LoginScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import SellerShopScreen from '../screens/SellerShopScreen';
 import MainTabs from './MainTabs';
 import type { RootStackParamList } from './types';
 
@@ -30,6 +31,18 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Product Detail',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="SellerShop"
+        component={SellerShopScreen}
+        options={{
+          headerShown: true,
+          title: 'Shop',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

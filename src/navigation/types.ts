@@ -36,6 +36,8 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   /** Product detail opened from the catalog; carries only the product id. */
   ProductDetail: { productId: string };
+  /** Public seller shop opened from a product detail; carries only the seller id. */
+  SellerShop: { sellerId: string };
   /** Local mock sign-in form; opened from the guest Profile tab. */
   Login: undefined;
   /** Local mock registration form; opened from the guest Profile tab. */
