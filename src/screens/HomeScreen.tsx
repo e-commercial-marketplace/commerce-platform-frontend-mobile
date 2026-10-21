@@ -18,18 +18,21 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type ListRenderItemInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Button from '../components/Button';
 import ProductCard, { type ProductViewMode } from '../components/ProductCard';
 import SearchBar from '../components/SearchBar';
-import { colors, radii, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useCategories, useProductList } from '../hooks/useProducts';
 import type { MainTabScreenProps } from '../navigation/types';
@@ -49,6 +52,14 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ProductViewMode>('grid');
   const [page, setPage] = useState(0);
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minRating, setMinRating] = useState('');
+  const [appliedMinPrice, setAppliedMinPrice] = useState<number | undefined>(undefined);
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState<number | undefined>(undefined);
+  const [appliedMinRating, setAppliedMinRating] = useState<number | undefined>(undefined);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   // The text field is instant; the server query follows the debounced value.
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -68,6 +79,9 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
       categoryId?: string;
       page: number;
       size: number;
+      minPrice?: number;
+      maxPrice?: number;
+      minRating?: number;
     } = { page, size: PAGE_SIZE };
 
     const q = debouncedQuery.trim();
@@ -77,8 +91,17 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
     if (selectedCategoryId !== ALL_CATEGORY.id) {
       next.categoryId = selectedCategoryId;
     }
+    if (appliedMinPrice !== undefined) {
+      next.minPrice = appliedMinPrice;
+    }
+    if (appliedMaxPrice !== undefined) {
+      next.maxPrice = appliedMaxPrice;
+    }
+    if (appliedMinRating !== undefined) {
+      next.minRating = appliedMinRating;
+    }
     return next;
-  }, [debouncedQuery, selectedCategoryId, page]);
+  }, [debouncedQuery, selectedCategoryId, page, appliedMinPrice, appliedMaxPrice, appliedMinRating]);
 
   const { data, isPending, isError, error, refetch, isFetching } = useProductList(filters);
 
@@ -115,6 +138,65 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
       setPage((current) => current + 1);
     }
   }
+
+  function openFilters() {
+    setMinPrice(appliedMinPrice !== undefined ? String(appliedMinPrice) : '');
+    setMaxPrice(appliedMaxPrice !== undefined ? String(appliedMaxPrice) : '');
+    setMinRating(appliedMinRating !== undefined ? String(appliedMinRating) : '');
+    setFilterError(null);
+    setFilterVisible(true);
+  }
+
+  function applyFilters() {
+    setFilterError(null);
+    const minPriceNum = minPrice.trim() === '' ? undefined : Number(minPrice.trim());
+    const maxPriceNum = maxPrice.trim() === '' ? undefined : Number(maxPrice.trim());
+    const minRatingNum = minRating.trim() === '' ? undefined : Number(minRating.trim());
+
+    if (minPrice.trim() !== '' && (Number.isNaN(minPriceNum) || (minPriceNum as number) < 0)) {
+      setFilterError('Minimum price must be 0 or more.');
+      return;
+    }
+    if (maxPrice.trim() !== '' && (Number.isNaN(maxPriceNum) || (maxPriceNum as number) < 0)) {
+      setFilterError('Maximum price must be 0 or more.');
+      return;
+    }
+    if (
+      minPriceNum !== undefined &&
+      maxPriceNum !== undefined &&
+      (maxPriceNum as number) < (minPriceNum as number)
+    ) {
+      setFilterError('Maximum price must not be less than minimum price.');
+      return;
+    }
+    if (minRating.trim() !== '') {
+      if (Number.isNaN(minRatingNum) || (minRatingNum as number) < 0 || (minRatingNum as number) > 5) {
+        setFilterError('Minimum rating must be between 0 and 5.');
+        return;
+      }
+    }
+
+    setAppliedMinPrice(minPriceNum);
+    setAppliedMaxPrice(maxPriceNum);
+    setAppliedMinRating(minRatingNum);
+    setPage(0);
+    setFilterVisible(false);
+  }
+
+  function clearFilters() {
+    setMinPrice('');
+    setMaxPrice('');
+    setMinRating('');
+    setFilterError(null);
+    setAppliedMinPrice(undefined);
+    setAppliedMaxPrice(undefined);
+    setAppliedMinRating(undefined);
+    setPage(0);
+    setFilterVisible(false);
+  }
+
+  const hasActiveFilters =
+    appliedMinPrice !== undefined || appliedMaxPrice !== undefined || appliedMinRating !== undefined;
 
   function renderProduct({ item }: ListRenderItemInfo<Product>) {
     return <ProductCard product={item} viewMode={viewMode} onPress={handleProductPress} />;
@@ -190,27 +272,39 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
               ) : (
                 <Text style={styles.resultCount}>Products unavailable</Text>
               )}
-              <View style={styles.viewToggle}>
+              <View style={styles.toolbarActions}>
                 <Pressable
-                  onPress={() => setViewMode('grid')}
-                  style={[styles.toggleButton, viewMode === 'grid' && styles.toggleButtonActive]}
+                  onPress={openFilters}
+                  style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: viewMode === 'grid' }}
+                  accessibilityLabel="Open filters"
                 >
-                  <Text style={[styles.toggleText, viewMode === 'grid' && styles.toggleTextActive]}>
-                    Grid
+                  <Text style={[styles.filterButtonText, hasActiveFilters && styles.filterButtonTextActive]}>
+                    Filter{hasActiveFilters ? ' •' : ''}
                   </Text>
                 </Pressable>
-                <Pressable
-                  onPress={() => setViewMode('list')}
-                  style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: viewMode === 'list' }}
-                >
-                  <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-                    List
-                  </Text>
-                </Pressable>
+                <View style={styles.viewToggle}>
+                  <Pressable
+                    onPress={() => setViewMode('grid')}
+                    style={[styles.toggleButton, viewMode === 'grid' && styles.toggleButtonActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: viewMode === 'grid' }}
+                  >
+                    <Text style={[styles.toggleText, viewMode === 'grid' && styles.toggleTextActive]}>
+                      Grid
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setViewMode('list')}
+                    style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: viewMode === 'list' }}
+                  >
+                    <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+                      List
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
@@ -282,6 +376,47 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
           ) : null
         }
       />
+      <Modal
+        visible={filterVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFilterVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Filters</Text>
+            <Text style={styles.modalLabel}>Minimum price</Text>
+            <TextInput
+              value={minPrice}
+              onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
+              placeholder="e.g. 0"
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <Text style={styles.modalLabel}>Maximum price</Text>
+            <TextInput
+              value={maxPrice}
+              onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
+              placeholder="e.g. 1000000"
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <Text style={styles.modalLabel}>Minimum rating</Text>
+            <TextInput
+              value={minRating}
+              onChangeText={(text) => setMinRating(text.replace(/[^0-9.]/g, ''))}
+              placeholder="e.g. 4"
+              keyboardType="decimal-pad"
+              style={styles.modalInput}
+            />
+            {filterError ? <Text style={styles.modalError}>{filterError}</Text> : null}
+            <View style={styles.modalActions}>
+              <Button title="Clear" onPress={clearFilters} variant="secondary" style={styles.modalButton} />
+              <Button title="Apply" onPress={applyFilters} variant="primary" style={styles.modalButton} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -350,10 +485,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  toolbarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   resultCount: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  filterButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  filterButtonTextActive: {
+    color: colors.onPrimary,
+    fontWeight: '600',
   },
   viewToggle: {
     flexDirection: 'row',
@@ -443,5 +605,53 @@ const styles = StyleSheet.create({
   pageInfo: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.background,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  modalTitle: {
+    fontSize: typography.xl,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  modalLabel: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: spacing.xs,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.base,
+    color: colors.text,
+  },
+  modalError: {
+    fontSize: typography.sm,
+    color: colors.danger,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
   },
 });

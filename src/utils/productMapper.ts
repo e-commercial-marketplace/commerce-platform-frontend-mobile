@@ -33,6 +33,7 @@ export function mapProductSummaryToProduct(dto: ProductSummaryDto): Product {
     category: dto.category.name,
     description: dto.description,
     sellerId: dto.sellerId,
+    stock: typeof (dto as { stock?: number }).stock === 'number' ? (dto as { stock?: number }).stock : undefined,
   };
 }
 
@@ -51,5 +52,6 @@ export function mapProductDetailToProduct(dto: ProductDetailDto): Product {
     category: dto.category.name,
     description: dto.description,
     sellerId: dto.sellerId,
+    stock: typeof (dto as { stock?: number }).stock === 'number' ? (dto as { stock?: number }).stock : undefined,
   };
 }

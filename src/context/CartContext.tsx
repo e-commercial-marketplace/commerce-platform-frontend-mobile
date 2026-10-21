@@ -25,8 +25,8 @@ export type CartContextValue = {
   totalItems: number;
   /** SUM(product.price * quantity), integer VND. */
   subtotal: number;
-  /** Adds one unit; inserts the product with quantity 1 when not yet in the cart. */
-  addItem: (product: Product) => void;
+  /** Adds the given quantity (default 1); inserts with quantity when not yet in the cart. */
+  addItem: (product: Product, quantity?: number) => void;
   /** Removes the whole line regardless of its quantity. Unknown ids are ignored. */
   removeItem: (productId: string) => void;
   /** Increases the line quantity by 1. Unknown ids are ignored. */
@@ -57,14 +57,15 @@ export function CartProvider({ children }: CartProviderProps) {
       items,
       totalItems,
       subtotal,
-      addItem: (product) => {
+      addItem: (product, quantity = 1) => {
+        const amount = Math.max(1, Math.floor(quantity));
         setItems((previous) => {
           const existing = previous.find((item) => item.product.id === product.id);
           if (existing == null) {
-            return [...previous, { product, quantity: 1 }];
+            return [...previous, { product, quantity: amount }];
           }
           return previous.map((item) =>
-            item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+            item.product.id === product.id ? { ...item, quantity: item.quantity + amount } : item,
           );
         });
       },
