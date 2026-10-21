@@ -22,6 +22,8 @@ export const colors = {
   star: '#F59E0B',
   /** Foreground content on top of primary-colored surfaces. */
   onPrimary: '#FFFFFF',
+  /** Destructive actions (remove from cart, clear cart). */
+  danger: '#EF4444',
 } as const;
 
 export const spacing = {
