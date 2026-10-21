@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { colors } from './src/constants/theme';
+import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
@@ -22,13 +23,15 @@ const appTheme = {
 export default function App() {
   return (
     <SafeAreaProvider>
-      {/* CartProvider sits above the navigator so tabs, stack screens and
-          the tab badge all read the same runtime cart state. */}
+      {/* Auth and Cart providers sit above the navigator so tabs, stack
+          screens and the tab badge all read the same runtime state. */}
       <CartProvider>
-        <NavigationContainer theme={appTheme}>
-          <StatusBar style="dark" />
-          <AppNavigator />
-        </NavigationContainer>
+        <AuthProvider>
+          <NavigationContainer theme={appTheme}>
+            <StatusBar style="dark" />
+            <AppNavigator />
+          </NavigationContainer>
+        </AuthProvider>
       </CartProvider>
     </SafeAreaProvider>
   );
