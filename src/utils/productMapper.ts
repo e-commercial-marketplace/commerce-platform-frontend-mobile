@@ -32,6 +32,7 @@ export function mapProductSummaryToProduct(dto: ProductSummaryDto): Product {
     reviewCount: dto.reviewCount,
     category: dto.category.name,
     description: dto.description,
+    sellerId: dto.sellerId,
   };
 }
 
@@ -49,5 +50,6 @@ export function mapProductDetailToProduct(dto: ProductDetailDto): Product {
     reviewCount: dto.reviewCount,
     category: dto.category.name,
     description: dto.description,
+    sellerId: dto.sellerId,
   };
 }

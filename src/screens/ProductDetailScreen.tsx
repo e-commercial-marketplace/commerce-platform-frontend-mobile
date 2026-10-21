@@ -11,9 +11,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import PriceDisplay from '../components/PriceDisplay';
 import ProductImage from '../components/ProductImage';
 import Rating from '../components/Rating';
+import ShopAvatar from '../components/ShopAvatar';
 import { colors, radii, spacing } from '../constants/theme';
 import { useCart } from '../hooks/useCart';
 import { useProductDetail } from '../hooks/useProducts';
+import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 
 /** How long the button keeps showing the "Added" confirmation. */
@@ -26,6 +28,13 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
 
   const { productId } = route.params;
   const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
+
+  // The product DTO carries the id of the seller that owns it. The shop is
+  // looked up under the same query key the shop page uses, so the name is
+  // fetched once and the shop page then opens instantly. The lookup stays
+  // disabled until a product with a seller has been loaded, and a failure
+  // only removes the name - it never breaks the product screen.
+  const { data: shop } = useSellerShop(product?.sellerId ?? '');
 
   // Drops any pending feedback timer on unmount so setState never fires
   // after the user has navigated away.
@@ -116,6 +125,16 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     feedbackTimer.current = setTimeout(() => setAddedFeedback(false), FEEDBACK_MS);
   };
 
+  // The owning seller, when the backend provided one.
+  const sellerId = product.sellerId;
+
+  function handleOpenShop() {
+    if (sellerId == null) {
+      return;
+    }
+    navigation.navigate('SellerShop', { sellerId });
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -132,6 +151,24 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
         <Rating rating={product.rating} reviewCount={product.reviewCount} size={16} />
 
         <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="lg" />
+
+        {sellerId != null && (
+          <Pressable
+            onPress={handleOpenShop}
+            style={({ pressed }) => [styles.sellerRow, pressed && styles.sellerRowPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={shop != null ? `View shop ${shop.name}` : 'View shop'}
+          >
+            <ShopAvatar name={shop?.name} size={44} />
+            <View style={styles.sellerInfo}>
+              <Text style={styles.sellerLabel}>Sold by</Text>
+              <Text style={styles.sellerName} numberOfLines={1}>
+                {shop?.name ?? 'View shop'}
+              </Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        )}
 
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.description}>{product.description}</Text>
@@ -201,6 +238,37 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 15,
     lineHeight: 23,
+    color: colors.textSecondary,
+  },
+  sellerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  sellerRowPressed: {
+    opacity: 0.75,
+  },
+  sellerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  sellerLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  sellerName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  chevron: {
+    fontSize: 24,
+    lineHeight: 26,
     color: colors.textSecondary,
   },
   footer: {
