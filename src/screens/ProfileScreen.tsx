@@ -6,12 +6,15 @@
  * later features.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { colors, radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { queryKeys } from '../api/queryKeys';
 import type { MainTabScreenProps } from '../navigation/types';
 import type { Role } from '../types/auth';
 
@@ -32,7 +35,17 @@ function getInitials(name: string): string {
 
 export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profile'>) {
   const { user, isAuthenticated, isRestoring, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: profile, isLoading: profileLoading, isError: profileError, refetch } = useCurrentUser(
+    isAuthenticated && !isRestoring,
+  );
   const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      queryClient.removeQueries({ queryKey: queryKeys.user.me() });
+    }
+  }, [isAuthenticated, queryClient]);
 
   const handleLogout = async () => {
     if (loggingOut) {
@@ -91,14 +104,39 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
     );
   }
 
+  const displayUser = profile ?? user;
+  const displayName = displayUser.name;
+  const displayEmail = displayUser.email;
+  const displayRole = displayUser.role;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarInitials}>{getInitials(user.name)}</Text>
+          <Text style={styles.avatarInitials}>{getInitials(displayName)}</Text>
         </View>
-        <Text style={styles.title}>{user.name}</Text>
-        <Text style={styles.subtitle}>{user.email}</Text>
+        <Text style={styles.title}>{displayName}</Text>
+        <Text style={styles.subtitle}>{displayEmail}</Text>
+        {profileLoading && !profile ? (
+          <View style={styles.inlineLoading}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.inlineLoadingText}>Loading profile…</Text>
+          </View>
+        ) : null}
+        {profileError ? (
+          <View style={styles.errorBlock}>
+            <Text style={styles.errorText}>Couldn't load latest profile.</Text>
+            <Pressable
+              onPress={() => {
+                void refetch();
+              }}
+              style={styles.retrySmallButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.retrySmallButtonText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <View style={styles.cardRow}>
@@ -108,7 +146,7 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
           <View style={styles.cardDivider} />
           <View style={styles.cardRow}>
             <Text style={styles.cardLabel}>Role</Text>
-            <Text style={styles.cardValue}>{ROLE_LABELS[user.role]}</Text>
+            <Text style={styles.cardValue}>{ROLE_LABELS[displayRole]}</Text>
           </View>
         </View>
 
@@ -284,5 +322,37 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     opacity: 0.8,
+  },
+  inlineLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  inlineLoadingText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  errorBlock: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  errorText: {
+    fontSize: 13,
+    color: colors.danger,
+  },
+  retrySmallButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  retrySmallButtonText: {
+    fontSize: 13,
+    color: colors.text,
+    fontWeight: '600',
   },
 });

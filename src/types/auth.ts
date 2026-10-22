@@ -26,12 +26,13 @@ export type LoginRequest = {
 
 /**
  * Registration input collected by the app. Confirm-password is a UI-only
- * check and is never sent; the customer role is added by the service layer.
+ * check and is never sent; role defaults to CUSTOMER if not specified.
  */
 export type RegisterInput = {
   name: string;
   email: string;
   password: string;
+  role?: Role;
 };
 
 /** Body of POST /auth/register (role is always CUSTOMER for this app). */
