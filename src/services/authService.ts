@@ -17,8 +17,8 @@ import type {
   User,
 } from '../types/auth';
 
-/** Public self-registration is limited to customers in this app. */
-const CUSTOMER_ROLE: Role = 'CUSTOMER';
+/** Default role for public registration. */
+const DEFAULT_ROLE: Role = 'CUSTOMER';
 
 /** POST /auth/login — the backend validates the credentials. */
 export async function login(credentials: LoginRequest): Promise<AuthResponse> {
@@ -26,13 +26,13 @@ export async function login(credentials: LoginRequest): Promise<AuthResponse> {
   return unwrapData(response);
 }
 
-/** POST /auth/register — always sends the CUSTOMER role (backend rejects ADMIN). */
+/** POST /auth/register — sends the selected role (defaults to CUSTOMER; backend rejects ADMIN). */
 export async function register(input: RegisterInput): Promise<AuthResponse> {
   const body: RegisterRequest = {
     email: input.email,
     password: input.password,
     name: input.name,
-    role: CUSTOMER_ROLE,
+    role: input.role ?? DEFAULT_ROLE,
   };
   const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', body);
   return unwrapData(response);

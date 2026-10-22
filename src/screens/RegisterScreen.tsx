@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +25,7 @@ import FormField from '../components/FormField';
 import { colors, radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import type { Role } from '../types/auth';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Backend @Size(min = 8, max = 72) on the registration password. */
@@ -43,6 +45,7 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<Role>('CUSTOMER');
   const [errors, setErrors] = useState<RegisterFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -90,7 +93,13 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
 
     setSubmitting(true);
     try {
-      await register({ name: trimmedFullName, email: trimmedEmail, password });
+      await register({ name: trimmedFullName, email: trimmedEmail, password, role });
+      if (role === 'SELLER') {
+        Alert.alert(
+          'Seller account created',
+          'Seller account created. Your seller access is pending admin approval.',
+        );
+      }
       navigation.goBack(); // back to the Profile tab, now authenticated
     } catch (error) {
       const apiError = toApiError(error);
@@ -119,6 +128,34 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.intro}>Create an account to get started.</Text>
+
+          <View style={styles.roleSection}>
+            <Text style={styles.roleLabel}>Account type</Text>
+            <View style={styles.roleRow}>
+              <Pressable
+                onPress={() => setRole('CUSTOMER')}
+                disabled={submitting}
+                style={[styles.roleOption, role === 'CUSTOMER' && styles.roleOptionSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: role === 'CUSTOMER', disabled: submitting }}
+              >
+                <Text style={[styles.roleOptionText, role === 'CUSTOMER' && styles.roleOptionTextSelected]}>
+                  Customer
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setRole('SELLER')}
+                disabled={submitting}
+                style={[styles.roleOption, role === 'SELLER' && styles.roleOptionSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: role === 'SELLER', disabled: submitting }}
+              >
+                <Text style={[styles.roleOptionText, role === 'SELLER' && styles.roleOptionTextSelected]}>
+                  Seller
+                </Text>
+              </Pressable>
+            </View>
+          </View>
 
           <FormField
             label="Full Name"
@@ -237,6 +274,40 @@ const styles = StyleSheet.create({
   intro: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  roleSection: {
+    gap: spacing.sm,
+  },
+  roleLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  roleOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  roleOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  roleOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  roleOptionTextSelected: {
+    color: colors.onPrimary,
   },
   formError: {
     fontSize: 13,

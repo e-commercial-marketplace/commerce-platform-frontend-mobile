@@ -41,6 +41,17 @@ export type ProductListFilters = {
 
 export const queryKeys = {
   /**
+   * Current authenticated user (`GET /api/v1/users/me`).
+   * Only used when the user is authenticated; cached per session.
+   */
+  user: {
+    /** Prefix that matches current-user queries. */
+    all: ['user'] as const,
+    /** Current authenticated user profile. */
+    me: () => ['user', 'me'] as const,
+  },
+
+  /**
    * Public catalog (`GET /api/v1/products`, `GET /api/v1/products/{id}`).
    * The filters object is part of the key so each filter combination has its
    * own cache entry and pagination is invalidated as a whole.
