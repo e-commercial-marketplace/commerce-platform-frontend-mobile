@@ -1,8 +1,9 @@
 /**
  * Bottom tab navigator: Home, Cart, Profile.
  * Hosted inside the "Main" route of the root stack (AppNavigator).
- * The Cart tab shows a badge with the live totalItems from the shared
- * cart state; no badge is rendered while the cart is empty.
+ * The Cart tab shows a badge with the live totalItems from the server cart
+ * query (customer-only); no badge is rendered while the cart is empty or when
+ * the signed-in account is not a customer.
  */
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
