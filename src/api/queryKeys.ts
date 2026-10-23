@@ -11,8 +11,8 @@
  * Keys are built here instead of inline in features so invalidation cannot
  * drift out of sync with the keys a query registered. Only resources that the
  * milestone depends on are declared; entries for resources whose backend API
- * does not exist yet (cart, orders, ...) are declared as conventions only and
- * are NOT used to fetch anything in this task.
+ * does not exist yet (orders, reviews, shipments) are declared as conventions
+ * only and are NOT used to fetch anything.
  *
  * Note: this file intentionally declares no queries — it only names keys.
  */
@@ -78,9 +78,9 @@ export const queryKeys = {
   },
 
   /**
-   * Customer cart. The backend cart API is not implemented yet, so no feature
-   * may fetch this key in the current milestone; it is declared so the key used
-   * when that feature lands is already agreed and invalidation stays stable.
+   * Customer cart (`GET /api/v1/cart` and its item mutations). Only enabled
+   * for an authenticated CUSTOMER; the cache is purged whenever the account
+   * identity changes.
    */
   cart: {
     all: ['cart'] as const,

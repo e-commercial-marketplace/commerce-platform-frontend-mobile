@@ -9,13 +9,17 @@
  * the signed-in user.
  *
  * No mock login/register remains: authentication succeeds only when the
- * backend returns tokens. The cart is intentionally left untouched.
+ * backend returns tokens. The cart cache is purged whenever the identity
+ * changes (login, logout, switch account, expired session) so one customer's
+ * cart can never leak into another session.
  */
 
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { setSessionExpiredHandler } from '../api/client';
 import { toApiError } from '../api/errors';
+import { queryClient } from '../api/queryClient';
+import { queryKeys } from '../api/queryKeys';
 import * as authService from '../services/authService';
 import { clearTokens, getRefreshToken, loadTokens, saveTokens } from '../services/tokenStorage';
 import type { LoginRequest, RegisterInput, User } from '../types/auth';
@@ -42,13 +46,25 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
+/**
+ * Drops every cached cart entry. Called before the identity changes in either
+ * direction so a request for the next account can never render the previous
+ * account's rows while its own fetch is in flight.
+ */
+function clearCartCache(): void {
+  queryClient.removeQueries({ queryKey: queryKeys.cart.all });
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
 
   useEffect(() => {
     // The API client calls this when the refresh token can no longer be used.
-    setSessionExpiredHandler(() => setUser(null));
+    setSessionExpiredHandler(() => {
+      clearCartCache();
+      setUser(null);
+    });
     return () => setSessionExpiredHandler(null);
   }, []);
 
@@ -95,12 +111,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Persist before exposing the user so every authenticated request that
     // follows immediately carries the new access token.
     await saveTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
+    // Never show a cart cached from a previous account.
+    clearCartCache();
     setUser(auth.user);
   }, []);
 
   const register = useCallback(async (input: RegisterInput) => {
     const auth = await authService.register(input);
     await saveTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
+    clearCartCache();
     setUser(auth.user);
   }, []);
 
@@ -115,6 +134,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // leave the user stuck signed in on the device.
     } finally {
       await clearTokens();
+      clearCartCache();
       setUser(null);
     }
   }, []);

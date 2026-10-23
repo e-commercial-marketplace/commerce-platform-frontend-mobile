@@ -6,7 +6,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from './src/api/queryClient';
 import { colors } from './src/constants/theme';
 import { AuthProvider } from './src/context/AuthContext';
-import { CartProvider } from './src/context/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 /** Navigation theme aligned with the app design tokens. */
@@ -26,18 +25,15 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        {/* Auth and Cart providers sit above the navigator so tabs, stack
-            screens and the tab badge all read the same runtime state. The
-            server-state client wraps everything so any feature query shares
-            one cache. */}
-        <CartProvider>
-          <AuthProvider>
-            <NavigationContainer theme={appTheme}>
-              <StatusBar style="dark" />
-              <AppNavigator />
-            </NavigationContainer>
-          </AuthProvider>
-        </CartProvider>
+        {/* Auth wraps the navigator so tabs, stack screens and the cart hook
+            all read the same signed-in identity. The server-state client wraps
+            everything so any feature query shares one cache. */}
+        <AuthProvider>
+          <NavigationContainer theme={appTheme}>
+            <StatusBar style="dark" />
+            <AppNavigator />
+          </NavigationContainer>
+        </AuthProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

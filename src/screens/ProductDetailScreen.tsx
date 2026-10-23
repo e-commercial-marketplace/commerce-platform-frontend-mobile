@@ -1,19 +1,22 @@
 /**
- * Product detail screen - now powered by real backend API.
- * Fetches product details using TanStack Query, displays real data,
- * and allows adding to cart (local CartContext).
+ * Product detail screen - powered by the real backend API.
+ * Fetches product details using TanStack Query, displays real data, and
+ * adds to the server-backed cart (Cart API) for authenticated customers.
+ * Guests are sent to Login; seller/admin accounts cannot use the cart.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { toApiError } from '../api/errors';
 import Button from '../components/Button';
 import PriceDisplay from '../components/PriceDisplay';
 import ProductImage from '../components/ProductImage';
 import Rating from '../components/Rating';
 import ShopAvatar from '../components/ShopAvatar';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { useProductDetail } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
@@ -22,11 +25,17 @@ import type { AppNavigatorScreenProps } from '../navigation/types';
 /** How long the button keeps showing the "Added" confirmation. */
 const FEEDBACK_MS = 1500;
 
+/** Which footer action is currently talking to the backend. */
+type PendingAction = 'add' | 'buy' | null;
+
 export default function ProductDetailScreen({ route, navigation }: AppNavigatorScreenProps<'ProductDetail'>) {
+  const { user, isAuthenticated } = useAuth();
   const { addItem } = useCart();
   const [addedFeedback, setAddedFeedback] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { productId } = route.params;
   const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
@@ -134,11 +143,11 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     setQuantity((current) => current + 1);
   };
 
-  const handleAddToCart = () => {
-    const amount = maxQuantity == null ? quantity : Math.min(quantity, maxQuantity);
-    addItem(product, amount);
-    // Brief in-button confirmation; the user stays on this screen by design
-    // (no automatic navigation to the Cart tab).
+  const cartDisabled = isAuthenticated && user?.role !== 'CUSTOMER';
+  const busy = pendingAction != null;
+
+  /** Shows the brief in-button confirmation and clears any previous one. */
+  const showAddedFeedback = () => {
     setAddedFeedback(true);
     if (feedbackTimer.current != null) {
       clearTimeout(feedbackTimer.current);
@@ -146,10 +155,62 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     feedbackTimer.current = setTimeout(() => setAddedFeedback(false), FEEDBACK_MS);
   };
 
-  const handleBuyNow = () => {
+  /**
+   * Shared entry point for both footer actions.
+   *
+   * Guests never get a local/guest cart: they are sent to Login. Sellers and
+   * admins must not call the customer-only Cart API. The POST quantity is a
+   * DELTA, so a 409 can still happen even when the product stock check passed.
+   */
+  const addSelectionToCart = async (): Promise<boolean> => {
+    if (busy) {
+      return false;
+    }
+    if (!isAuthenticated || user == null) {
+      navigation.navigate('Login');
+      return false;
+    }
+    if (user.role !== 'CUSTOMER') {
+      return false;
+    }
+
     const amount = maxQuantity == null ? quantity : Math.min(quantity, maxQuantity);
-    addItem(product, amount);
-    navigation.navigate('Main', { screen: 'Cart' });
+    setActionError(null);
+    try {
+      await addItem(product.id, amount);
+      return true;
+    } catch (error) {
+      // Use the normalized backend message (e.g. insufficient stock) instead
+      // of re-deriving the rule in the frontend.
+      setActionError(toApiError(error).message);
+      return false;
+    }
+  };
+
+  const handleAddToCart = async () => {
+    setPendingAction('add');
+    try {
+      const added = await addSelectionToCart();
+      if (added) {
+        showAddedFeedback();
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    setPendingAction('buy');
+    try {
+      const added = await addSelectionToCart();
+      if (added) {
+        // Checkout belongs to a later feature: Buy Now just stages the line
+        // in the server cart and opens it.
+        navigation.navigate('Main', { screen: 'Cart' });
+      }
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   // The owning seller, when the backend provided one.
@@ -240,14 +301,31 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
       </ScrollView>
 
       <View style={styles.footer}>
+        {isAuthenticated && cartDisabled && (
+          <Text style={styles.cartNotice}>Cart is available for customer accounts only.</Text>
+        )}
+        {actionError != null && <Text style={styles.actionError}>{actionError}</Text>}
         <View style={styles.footerRow}>
           <Button
             title={addedFeedback ? 'Added to Cart ✓' : 'Add to Cart'}
-            onPress={handleAddToCart}
+            onPress={() => {
+              void handleAddToCart();
+            }}
             variant="secondary"
             style={styles.footerButton}
+            disabled={busy || cartDisabled}
+            loading={pendingAction === 'add'}
           />
-          <Button title="Buy Now" onPress={handleBuyNow} variant="primary" style={styles.footerButton} />
+          <Button
+            title="Buy Now"
+            onPress={() => {
+              void handleBuyNow();
+            }}
+            variant="primary"
+            style={styles.footerButton}
+            disabled={busy || cartDisabled}
+            loading={pendingAction === 'buy'}
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -344,6 +422,16 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  cartNotice: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  actionError: {
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: 'center',
   },
   footerButton: {
     flex: 1,

@@ -1,76 +1,117 @@
 /**
- * One line in the cart list: product image, name, unit price, quantity
- * stepper and remove action. Pure presentation — the screen wires the
- * callbacks to the shared cart state, matching ProductCard's callback
- * pattern. The decrease button is disabled while quantity is 1 so a line
- * can never be driven below 1 by accident (removal is an explicit action).
+ * One line in the server-backed cart: image, name, unit price, quantity
+ * stepper, availability status and remove action.
+ *
+ * Identity is the cart-item id (`item.id`), never `productId`: PATCH, DELETE
+ * and checkout all address the line by that id. The component stays purely
+ * presentational — the screen wires callbacks to the `useCart` mutations.
+ *
+ * A line may be unavailable (`!active`) or over stock
+ * (`quantity > availableStock`). Such lines stay visible and removable but
+ * cannot be increased; decrement is only blocked while the product itself is
+ * inactive or the quantity is already 1 (the backend refuses PATCH to 0).
  */
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing } from '../constants/theme';
-import type { CartItem } from '../types/cart';
+import type { CartLine } from '../types/cart';
 import { formatVND } from '../utils/format';
 import PriceDisplay from './PriceDisplay';
 import ProductImage from './ProductImage';
 
 type CartItemRowProps = {
-  item: CartItem;
+  item: CartLine;
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
+  /** Disables every control (another cart mutation is in flight). */
+  disabled?: boolean;
+  /** This specific row is the one being updated/removed. */
+  pending?: boolean;
 };
 
-export default function CartItemRow({ item, onIncrease, onDecrease, onRemove }: CartItemRowProps) {
-  const { product, quantity } = item;
-  const canDecrease = quantity > 1;
+export default function CartItemRow({
+  item,
+  onIncrease,
+  onDecrease,
+  onRemove,
+  disabled = false,
+  pending = false,
+}: CartItemRowProps) {
+  const { quantity, active, availableStock } = item;
+
+  const canDecrease = active && quantity > 1 && !disabled;
+  const canIncrease = active && quantity < availableStock && !disabled;
+  const canRemove = !disabled;
+  const showControls = active;
+
+  const status = getStatusLabel(item);
 
   return (
     <View style={styles.card}>
       <View style={styles.top}>
-        <ProductImage source={product.image} style={styles.thumb} />
+        <ProductImage source={item.image} style={styles.thumb} />
 
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={2}>
-            {product.name}
+            {item.name}
           </Text>
 
-          <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="sm" />
+          <PriceDisplay price={item.unitPrice} size="sm" />
+
+          <Text style={[styles.status, !item.available && styles.statusUnavailable]}>{status}</Text>
 
           <View style={styles.actions}>
-            <View style={styles.stepper}>
-              <Pressable
-                onPress={onDecrease}
-                disabled={!canDecrease}
-                style={({ pressed }) => [
-                  styles.stepButton,
-                  !canDecrease && styles.stepButtonDisabled,
-                  pressed && canDecrease && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Decrease quantity of ${product.name}`}
-                accessibilityState={{ disabled: !canDecrease }}
-              >
-                <Text style={styles.stepSymbol}>−</Text>
-              </Pressable>
+            {showControls && (
+              <View style={styles.stepper}>
+                <Pressable
+                  onPress={onDecrease}
+                  disabled={!canDecrease}
+                  style={({ pressed }) => [
+                    styles.stepButton,
+                    !canDecrease && styles.stepButtonDisabled,
+                    pressed && canDecrease && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Decrease quantity of ${item.name}`}
+                  accessibilityState={{ disabled: !canDecrease }}
+                >
+                  <Text style={styles.stepSymbol}>−</Text>
+                </Pressable>
 
-              <Text style={styles.quantity}>{quantity}</Text>
+                <Text style={styles.quantity}>{quantity}</Text>
 
-              <Pressable
-                onPress={onIncrease}
-                style={({ pressed }) => [styles.stepButton, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityLabel={`Increase quantity of ${product.name}`}
-              >
-                <Text style={styles.stepSymbol}>+</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  onPress={onIncrease}
+                  disabled={!canIncrease}
+                  style={({ pressed }) => [
+                    styles.stepButton,
+                    !canIncrease && styles.stepButtonDisabled,
+                    pressed && canIncrease && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Increase quantity of ${item.name}`}
+                  accessibilityState={{ disabled: !canIncrease }}
+                >
+                  <Text style={styles.stepSymbol}>+</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {pending && <ActivityIndicator size="small" color={colors.primary} />}
 
             <Pressable
               onPress={onRemove}
-              style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}
+              disabled={!canRemove}
+              style={({ pressed }) => [
+                styles.removeButton,
+                pressed && canRemove && styles.pressed,
+                !canRemove && styles.removeButtonDisabled,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel={`Remove ${product.name} from cart`}
+              accessibilityLabel={`Remove ${item.name} from cart`}
+              accessibilityState={{ disabled: !canRemove }}
             >
               <Text style={styles.removeText}>Remove</Text>
             </Pressable>
@@ -79,10 +120,27 @@ export default function CartItemRow({ item, onIncrease, onDecrease, onRemove }: 
       </View>
 
       <Text style={styles.lineTotal}>
-        {quantity} × {formatVND(product.price)}
+        {quantity} × {formatVND(item.unitPrice)}
       </Text>
     </View>
   );
+}
+
+/**
+ * Human-readable availability. Mirrors the backend rules: a line is
+ * purchasable only when the product is active and quantity <= availableStock.
+ */
+function getStatusLabel(item: CartLine): string {
+  if (!item.active) {
+    return 'Unavailable';
+  }
+  if (item.availableStock === 0) {
+    return 'Out of stock';
+  }
+  if (item.quantity > item.availableStock) {
+    return `Only ${item.availableStock} left in stock`;
+  }
+  return `${item.availableStock} available`;
 }
 
 const styles = StyleSheet.create({
@@ -112,11 +170,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
+  status: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  statusUnavailable: {
+    color: colors.danger,
+    fontWeight: '600',
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: spacing.xs,
+    gap: spacing.sm,
   },
   stepper: {
     flexDirection: 'row',
@@ -149,8 +216,12 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   removeButton: {
+    marginLeft: 'auto',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+  },
+  removeButtonDisabled: {
+    opacity: 0.4,
   },
   removeText: {
     fontSize: 13,
