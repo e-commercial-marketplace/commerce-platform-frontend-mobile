@@ -2,16 +2,17 @@
  * Root native stack navigator.
  *
  * Wraps the bottom tabs ("Main" route) so top-level screens can be stacked
- * on top of them. Currently registers the tabs, the product detail screen and
- * the authentication screens (Login/Register, opened from the guest Profile
- * tab); further flows (Product List, Filter, Feedback, Checkout, Payment) are
- * added here when they are implemented — remember to add the matching entry
- * to RootStackParamList in types.ts at the same time.
+ * on top of them. Currently registers the tabs, product detail, the COD
+ * checkout screen and the authentication screens (Login/Register, opened from
+ * the guest Profile tab); further flows (Product List, Filter, Feedback,
+ * Payment) are added here when they are implemented — remember to add the
+ * matching entry to RootStackParamList in types.ts at the same time.
  */
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { colors } from '../constants/theme';
+import CheckoutScreen from '../screens/CheckoutScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -31,6 +32,18 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Product Detail',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="Checkout"
+        component={CheckoutScreen}
+        options={{
+          headerShown: true,
+          title: 'Checkout',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

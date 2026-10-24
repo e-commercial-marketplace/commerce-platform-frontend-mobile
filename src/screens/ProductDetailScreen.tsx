@@ -21,6 +21,8 @@ import { useCart } from '../hooks/useCart';
 import { useProductDetail } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import type { Cart } from '../types/cart';
+import { findCartLineByProductId } from '../utils/cartSelection';
 
 /** How long the button keeps showing the "Added" confirmation. */
 const FEEDBACK_MS = 1500;
@@ -162,36 +164,37 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
    * admins must not call the customer-only Cart API. The POST quantity is a
    * DELTA, so a 409 can still happen even when the product stock check passed.
    */
-  const addSelectionToCart = async (): Promise<boolean> => {
+  const addSelectionToCart = async (): Promise<Cart | null> => {
     if (busy) {
-      return false;
+      return null;
     }
     if (!isAuthenticated || user == null) {
       navigation.navigate('Login');
-      return false;
+      return null;
     }
     if (user.role !== 'CUSTOMER') {
-      return false;
+      return null;
     }
 
     const amount = maxQuantity == null ? quantity : Math.min(quantity, maxQuantity);
     setActionError(null);
     try {
-      await addItem(product.id, amount);
-      return true;
+      // The Cart POST returns the full authoritative cart. Buy Now resolves
+      // the resulting cart-item id from that response (never items[0]).
+      return await addItem(product.id, amount);
     } catch (error) {
       // Use the normalized backend message (e.g. insufficient stock) instead
       // of re-deriving the rule in the frontend.
       setActionError(toApiError(error).message);
-      return false;
+      return null;
     }
   };
 
   const handleAddToCart = async () => {
     setPendingAction('add');
     try {
-      const added = await addSelectionToCart();
-      if (added) {
+      const updatedCart = await addSelectionToCart();
+      if (updatedCart != null) {
         showAddedFeedback();
       }
     } finally {
@@ -202,12 +205,18 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   const handleBuyNow = async () => {
     setPendingAction('buy');
     try {
-      const added = await addSelectionToCart();
-      if (added) {
-        // Checkout belongs to a later feature: Buy Now just stages the line
-        // in the server cart and opens it.
-        navigation.navigate('Main', { screen: 'Cart' });
+      const updatedCart = await addSelectionToCart();
+      if (updatedCart == null) {
+        return;
       }
+
+      const line = findCartLineByProductId(updatedCart.items, product.id);
+      if (line == null) {
+        setActionError('The product could not be found in your cart. Please try again.');
+        return;
+      }
+
+      navigation.navigate('Checkout', { cartItemIds: [line.id] });
     } finally {
       setPendingAction(null);
     }

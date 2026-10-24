@@ -5,15 +5,28 @@
  * - loading      -> spinner;
  * - error        -> backend/normalized message + Retry;
  * - empty        -> empty state whose "Continue Shopping" returns to Home;
- * - items        -> server cart lines + backend subtotal + item count.
+ * - items        -> server cart lines + selection + preview subtotal.
  *
  * Guests get a sign-in prompt (no guest server cart exists); sellers/admins
  * are told the cart is customer-only and no cart request is made for them.
  *
- * Checkout stays a UI-only placeholder: it belongs to a later feature.
+ * Checkout selection is local UI state keyed by cart-item id. All purchasable
+ * lines are selected after the first authoritative cart load; unavailable
+ * lines stay visible but can never be selected. The footer shows a preview
+ * subtotal for the selection, not the backend cart subtotal (which covers
+ * every purchasable line).
  */
 
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
@@ -22,6 +35,12 @@ import { colors, radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import type { MainTabScreenProps } from '../navigation/types';
+import {
+  createDefaultSelection,
+  getSelectedCartItemIds,
+  getSelectedSubtotal,
+  reconcileCartSelection,
+} from '../utils/cartSelection';
 import { formatVND } from '../utils/format';
 
 export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
@@ -29,7 +48,6 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
   const {
     items,
     totalItems,
-    subtotal,
     isLoading,
     isError,
     error,
@@ -44,12 +62,48 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
     clearCart,
   } = useCart();
 
+  // `null` means "no authoritative cart loaded yet". Once loaded, the default
+  // is every purchasable line; later data changes only prune the selection.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectionInitialized = useRef(false);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    setSelectedIds((previous) => {
+      if (!selectionInitialized.current) {
+        selectionInitialized.current = true;
+        return createDefaultSelection(items);
+      }
+      return reconcileCartSelection(previous, items);
+    });
+  }, [items, isLoading]);
+
+  const selectedItemIds = getSelectedCartItemIds(items, selectedIds);
+  const selectedSubtotal = getSelectedSubtotal(items, selectedIds);
+  const hasSelection = selectedItemIds.length > 0;
+
   const handleContinueShopping = () => navigation.navigate('Home');
   const handleLogin = () => navigation.navigate('Login');
 
   const handleCheckout = () => {
-    // UI-only placeholder: checkout is implemented in a later milestone.
-    Alert.alert('Checkout', 'Checkout will be implemented in a later feature.');
+    if (!hasSelection) {
+      return;
+    }
+    navigation.navigate('Checkout', { cartItemIds: selectedItemIds });
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   /** Runs a cart action and surfaces the normalized backend message. */
@@ -213,6 +267,8 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
         renderItem={({ item }) => (
           <CartItemRow
             item={item}
+            selected={selectedIds.has(item.id)}
+            onToggleSelected={() => toggleSelected(item.id)}
             disabled={isMutating}
             pending={pendingItemId === item.id}
             onIncrease={() => {
@@ -231,20 +287,26 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 
       <View style={styles.summary}>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Subtotal</Text>
-          <Text style={styles.summaryValue}>{formatVND(subtotal)}</Text>
+          <Text style={styles.summaryLabel}>Selected subtotal</Text>
+          <Text style={styles.summaryValue}>{formatVND(selectedSubtotal)}</Text>
         </View>
         <Text style={styles.summaryCaption}>
-          {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
+          {selectedItemIds.length} of {totalItems} {totalItems === 1 ? 'item' : 'items'} selected
         </Text>
         {hasUnavailable && (
           <Text style={styles.summaryCaption}>Excludes unavailable items.</Text>
         )}
         <Pressable
           onPress={handleCheckout}
-          style={({ pressed }) => [styles.checkoutButton, pressed && styles.buttonPressed]}
+          disabled={!hasSelection || isMutating}
+          style={({ pressed }) => [
+            styles.checkoutButton,
+            (!hasSelection || isMutating) && styles.checkoutButtonDisabled,
+            pressed && hasSelection && !isMutating && styles.buttonPressed,
+          ]}
           accessibilityRole="button"
           accessibilityLabel="Proceed to checkout"
+          accessibilityState={{ disabled: !hasSelection || isMutating }}
         >
           <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
         </Pressable>
@@ -327,6 +389,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+  },
+  checkoutButtonDisabled: {
+    opacity: 0.5,
   },
   checkoutButtonText: {
     fontSize: 16,

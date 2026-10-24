@@ -87,7 +87,7 @@ export const queryKeys = {
     current: () => ['cart', 'current'] as const,
   },
 
-  /** Customer orders (backend order API not implemented yet). */
+  /** Customer orders (checkout creates one; list/detail screens are later). */
   orders: {
     all: ['orders'] as const,
     list: (page: number) => ['orders', 'list', page] as const,
