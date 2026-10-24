@@ -110,13 +110,13 @@ export function useCart() {
   // both pass the check.
   const inFlightRef = useRef(false);
 
-  const runOnce = async (action: () => Promise<unknown>): Promise<void> => {
+  const runOnce = async <T,>(action: () => Promise<T>): Promise<T | null> => {
     if (inFlightRef.current) {
-      return;
+      return null;
     }
     inFlightRef.current = true;
     try {
-      await action();
+      return await action();
     } finally {
       inFlightRef.current = false;
     }
@@ -134,8 +134,19 @@ export function useCart() {
   // cache is being purged on logout.
   const cart = isCustomer ? (cartQuery.data ?? EMPTY_CART) : EMPTY_CART;
 
-  async function addItem(productId: string, quantity = 1): Promise<void> {
-    await runOnce(() => addMutation.mutateAsync({ productId, quantity }));
+  /**
+   * Adds a delta and returns the authoritative mapped cart from the response.
+   * Buy Now uses the returned cart to resolve the resulting cart-item id.
+   */
+  async function addItem(productId: string, quantity = 1): Promise<Cart> {
+    const updated = await runOnce(() => addMutation.mutateAsync({ productId, quantity }));
+    if (updated == null) {
+      // A duplicate call was ignored. Return the best authoritative snapshot
+      // available without issuing a second Cart request.
+      const cached = queryClient.getQueryData<CartDto>(queryKeys.cart.current());
+      return cached != null ? mapCartDtoToCart(cached) : EMPTY_CART;
+    }
+    return mapCartDtoToCart(updated);
   }
 
   async function updateQuantity(id: string, quantity: number): Promise<void> {
@@ -174,6 +185,8 @@ export function useCart() {
     subtotal: cart.subtotal,
     /** True only while a customer's first cart fetch is in flight. */
     isLoading: isCustomer && cartQuery.isPending,
+    /** Any cart request in flight, including a background revalidation. */
+    isFetching: isCustomer && cartQuery.isFetching,
     isError: cartQuery.isError,
     error: cartQuery.error,
     refetch: cartQuery.refetch,

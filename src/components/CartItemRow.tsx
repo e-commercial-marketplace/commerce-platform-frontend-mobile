@@ -1,10 +1,11 @@
 /**
- * One line in the server-backed cart: image, name, unit price, quantity
- * stepper, availability status and remove action.
+ * One line in the server-backed cart: checkout selection, image, name, unit
+ * price, quantity stepper, availability status and remove action.
  *
  * Identity is the cart-item id (`item.id`), never `productId`: PATCH, DELETE
  * and checkout all address the line by that id. The component stays purely
- * presentational — the screen wires callbacks to the `useCart` mutations.
+ * presentational — the screen wires callbacks to the `useCart` mutations and
+ * owns the local checkout selection.
  *
  * A line may be unavailable (`!active`) or over stock
  * (`quantity > availableStock`). Such lines stay visible and removable but
@@ -25,6 +26,10 @@ type CartItemRowProps = {
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
+  /** Whether this purchasable line is part of the checkout selection. */
+  selected?: boolean;
+  /** Toggles this line in the local checkout selection. */
+  onToggleSelected?: () => void;
   /** Disables every control (another cart mutation is in flight). */
   disabled?: boolean;
   /** This specific row is the one being updated/removed. */
@@ -36,6 +41,8 @@ export default function CartItemRow({
   onIncrease,
   onDecrease,
   onRemove,
+  selected = false,
+  onToggleSelected,
   disabled = false,
   pending = false,
 }: CartItemRowProps) {
@@ -44,6 +51,7 @@ export default function CartItemRow({
   const canDecrease = active && quantity > 1 && !disabled;
   const canIncrease = active && quantity < availableStock && !disabled;
   const canRemove = !disabled;
+  const canSelect = item.available && !disabled;
   const showControls = active;
 
   const status = getStatusLabel(item);
@@ -51,6 +59,26 @@ export default function CartItemRow({
   return (
     <View style={styles.card}>
       <View style={styles.top}>
+        <Pressable
+          onPress={onToggleSelected}
+          disabled={!canSelect}
+          style={({ pressed }) => [
+            styles.selection,
+            selected && canSelect && styles.selectionChecked,
+            !canSelect && styles.selectionDisabled,
+            pressed && canSelect && styles.pressed,
+          ]}
+          accessibilityRole="checkbox"
+          accessibilityLabel={
+            item.available
+              ? `${selected ? 'Deselect' : 'Select'} ${item.name}`
+              : `${item.name} is unavailable for checkout`
+          }
+          accessibilityState={{ checked: selected, disabled: !canSelect }}
+        >
+          {selected && <Text style={styles.selectionMark}>✓</Text>}
+        </Pressable>
+
         <ProductImage source={item.image} style={styles.thumb} />
 
         <View style={styles.info}>
@@ -155,6 +183,30 @@ const styles = StyleSheet.create({
   top: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  selection: {
+    width: 24,
+    height: 24,
+    marginTop: spacing.xs,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionChecked: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  selectionDisabled: {
+    opacity: 0.35,
+  },
+  selectionMark: {
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: colors.onPrimary,
   },
   thumb: {
     width: 72,

@@ -176,7 +176,7 @@ describe('CartScreen', () => {
     expect(getByText('Case')).toBeTruthy();
     expect(getByText('250.000 ₫')).toBeTruthy();
     expect(getByText('3 items')).toBeTruthy();
-    expect(getByText('3 items in your cart')).toBeTruthy();
+    expect(await findByText('2 of 3 items selected')).toBeTruthy();
   });
 
   it('keeps unavailable lines visible with a status and anchors the action to the cart-item id', async () => {
@@ -200,6 +200,105 @@ describe('CartScreen', () => {
     fireEvent.press(getByLabelText('Remove Gone from cart'));
 
     await waitFor(() => expect(mockedDeleteCartItem).toHaveBeenCalledWith('a'));
+  });
+
+  it('selects all available lines by default and excludes unavailable lines', async () => {
+    mockedGetCart.mockResolvedValue(
+      makeCart([
+        makeLine('a', { name: 'Phone', lineTotal: '100000.00' }),
+        makeLine('gone', { name: 'Gone', active: false, lineTotal: '999000.00' }),
+        makeLine('b', { name: 'Case', lineTotal: '50000.00' }),
+      ]),
+    );
+
+    const { findByLabelText, getByLabelText } = renderScreen(CUSTOMER);
+
+    expect((await findByLabelText('Deselect Phone')).props.accessibilityState).toMatchObject({
+      checked: true,
+    });
+    expect(getByLabelText('Deselect Case').props.accessibilityState).toMatchObject({
+      checked: true,
+    });
+    expect(
+      getByLabelText('Gone is unavailable for checkout').props.accessibilityState,
+    ).toMatchObject({
+      checked: false,
+      disabled: true,
+    });
+  });
+
+  it('updates the selected subtotal when a line is deselected', async () => {
+    mockedGetCart.mockResolvedValue(
+      makeCart([
+        makeLine('a', { name: 'Phone', lineTotal: '100000.00' }),
+        makeLine('b', { name: 'Case', lineTotal: '50000.00' }),
+      ]),
+    );
+
+    const { findByLabelText, getByLabelText, getByText } = renderScreen(CUSTOMER);
+
+    expect(await findByLabelText('Deselect Phone')).toBeTruthy();
+    expect(getByText('150.000 ₫')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Deselect Phone'));
+
+    expect(await findByLabelText('Select Phone')).toBeTruthy();
+    expect(getByText('50.000 ₫')).toBeTruthy();
+  });
+
+  it('disables checkout when no purchasable line is selected', async () => {
+    mockedGetCart.mockResolvedValue(makeCart([makeLine('a', { name: 'Phone' })]));
+
+    const { findByLabelText, getByLabelText, navigation } = renderScreen(CUSTOMER);
+
+    fireEvent.press(await findByLabelText('Deselect Phone'));
+
+    const checkout = getByLabelText('Proceed to checkout');
+    expect(checkout.props.accessibilityState).toMatchObject({ disabled: true });
+
+    fireEvent.press(checkout);
+    expect(navigation.navigate).not.toHaveBeenCalledWith('Checkout', expect.anything());
+  });
+
+  it('navigates to Checkout with selected cart-item ids in cart order', async () => {
+    mockedGetCart.mockResolvedValue(
+      makeCart([
+        makeLine('cart-a', { name: 'Phone' }),
+        makeLine('gone', { name: 'Gone', active: false }),
+        makeLine('cart-b', { name: 'Case' }),
+      ]),
+    );
+
+    const { findByLabelText, getByLabelText, navigation } = renderScreen(CUSTOMER);
+
+    await findByLabelText('Deselect Phone');
+
+    fireEvent.press(getByLabelText('Proceed to checkout'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('Checkout', {
+      cartItemIds: ['cart-a', 'cart-b'],
+    });
+  });
+
+  it('keeps selection when a quantity update leaves the line available', async () => {
+    mockedGetCart.mockResolvedValue(
+      makeCart([makeLine('cart-item-a', { name: 'Phone', quantity: 2 })]),
+    );
+    mockedUpdateCartItem.mockResolvedValue(
+      makeCart([makeLine('cart-item-a', { name: 'Phone', quantity: 3 })]),
+    );
+
+    const { findByLabelText, getByLabelText } = renderScreen(CUSTOMER);
+
+    fireEvent.press(await findByLabelText('Increase quantity of Phone'));
+
+    await waitFor(() =>
+      expect(mockedUpdateCartItem).toHaveBeenCalledWith('cart-item-a', { quantity: 3 }),
+    );
+    expect(await findByLabelText('Deselect Phone')).toBeTruthy();
+    expect(getByLabelText('Proceed to checkout').props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
   });
 
   it('sends an absolute incremented quantity for a row', async () => {

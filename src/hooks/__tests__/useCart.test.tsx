@@ -157,12 +157,17 @@ describe('useCart', () => {
     const { result, client } = renderCart(USER);
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
+    let returned: Awaited<ReturnType<typeof result.current.addItem>> | undefined;
     await act(async () => {
-      await result.current.addItem('p-1', 2);
+      returned = await result.current.addItem('p-1', 2);
     });
 
     expect(mockedAddCartItem.mock.calls[0][0]).toEqual({ productId: 'p-1', quantity: 2 });
     expect(client.getQueryData(queryKeys.cart.current())).toEqual(updated);
+    // Buy Now relies on this mapped authoritative result to resolve line.id.
+    expect(returned?.items[0].id).toBe('cart-item-1');
+    expect(returned?.items[0].lineTotal).toBe(100);
+    expect(returned?.subtotal).toBe(200);
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(result.current.totalItems).toBe(2);
   });

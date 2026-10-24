@@ -29,13 +29,15 @@ export type MainTabParamList = {
  * Future stack routes (not implemented yet — add both the type entry and the
  * matching <Stack.Screen> in AppNavigator.tsx at the same time):
  * - ProductList, Filter, Feedback,
- * - Checkout, Payment.
+ * - Payment.
  */
 export type RootStackParamList = {
   /** Nested navigator that renders the bottom tabs. */
   Main: NavigatorScreenParams<MainTabParamList>;
   /** Product detail opened from the catalog; carries only the product id. */
   ProductDetail: { productId: string };
+  /** COD checkout for the cart lines selected on the Cart screen. */
+  Checkout: { cartItemIds: string[] };
   /** Public seller shop opened from a product detail; carries only the seller id. */
   SellerShop: { sellerId: string };
   /** Local mock sign-in form; opened from the guest Profile tab. */
