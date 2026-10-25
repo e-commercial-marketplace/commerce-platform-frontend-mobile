@@ -150,6 +150,19 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
           </View>
         </View>
 
+        {displayRole === 'CUSTOMER' ? (
+          <Pressable
+            onPress={() => {
+              navigation.navigate('MyOrders');
+            }}
+            style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="My Orders"
+          >
+            <Text style={styles.menuButtonText}>My Orders</Text>
+          </Pressable>
+        ) : null}
+
         <Pressable
           onPress={() => {
             void handleLogout();
@@ -297,6 +310,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.primary,
+  },
+  menuButton: {
+    alignSelf: 'stretch',
+    marginTop: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  menuButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
   logoutButton: {
     alignSelf: 'stretch',

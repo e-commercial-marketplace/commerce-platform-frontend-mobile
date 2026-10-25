@@ -14,6 +14,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../constants/theme';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import LoginScreen from '../screens/LoginScreen';
+import MyOrdersScreen from '../screens/MyOrdersScreen';
+import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import SellerShopScreen from '../screens/SellerShopScreen';
@@ -56,6 +58,30 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Shop',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="MyOrders"
+        component={MyOrdersScreen}
+        options={{
+          headerShown: true,
+          title: 'My Orders',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="OrderDetail"
+        component={OrderDetailScreen}
+        options={{
+          headerShown: true,
+          title: 'Order Detail',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

@@ -239,14 +239,12 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
           <ProductImage source={product.image} style={styles.imageFill} />
         </View>
 
-        <View style={styles.categoryChip}>
-          <Text style={styles.categoryText}>{product.category}</Text>
+        <View style={styles.detailTopRow}>
+          <View style={styles.categoryChip}><Text style={styles.categoryText}>{product.category}</Text></View>
+          <Rating rating={product.rating} reviewCount={product.reviewCount} size={16} />
         </View>
 
         <Text style={styles.name}>{product.name}</Text>
-
-        <Rating rating={product.rating} reviewCount={product.reviewCount} size={16} />
-
         <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="lg" />
 
         {sellerId != null && (
@@ -305,8 +303,15 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
           </View>
         </View>
 
+        <View style={styles.divider} />
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.description}>{product.description}</Text>
+        <View style={styles.featureGrid}>
+          <View style={styles.featureItem}><Text style={styles.featureIcon}>▧</Text><Text style={styles.featureText}>Secure delivery</Text></View>
+          <View style={styles.featureItem}><Text style={styles.featureIcon}>↩</Text><Text style={styles.featureText}>30-day free return</Text></View>
+          <View style={styles.featureItem}><Text style={styles.featureIcon}>☆</Text><Text style={styles.featureText}>Good reviews</Text></View>
+          <View style={styles.featureItem}><Text style={styles.featureIcon}>♙</Text><Text style={styles.featureText}>Authorized shop</Text></View>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -353,7 +358,7 @@ const styles = StyleSheet.create({
   },
   imageFrame: {
     width: '100%',
-    aspectRatio: 1,
+    aspectRatio: 1.22,
     borderRadius: radii.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface,
@@ -377,6 +382,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 22,
+    lineHeight: 29,
     fontWeight: '700',
     color: colors.text,
   },
@@ -399,7 +405,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FFFFFF',
   },
   sellerRowPressed: {
     opacity: 0.75,
@@ -544,4 +550,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+
+  detailTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, paddingVertical: spacing.sm },
+  featureItem: { width: '46%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  featureIcon: { fontSize: 18, color: colors.primary },
+  featureText: { fontSize: 13, color: colors.textSecondary },
 });

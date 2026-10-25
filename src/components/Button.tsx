@@ -73,11 +73,11 @@ export default function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
   },
   row: {
     flexDirection: 'row',
@@ -129,7 +129,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.82,
+    transform: [{ scale: 0.985 }],
   },
   disabled: {
     opacity: 0.5,

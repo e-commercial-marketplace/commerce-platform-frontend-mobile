@@ -65,7 +65,8 @@ export default function ProductCard({ product, viewMode, onPress }: ProductCardP
 
 const styles = StyleSheet.create({
   pressed: {
-    opacity: 0.75,
+    opacity: 0.82,
+    transform: [{ scale: 0.985 }],
   },
   // Grid layout
   gridCard: {
@@ -75,10 +76,8 @@ const styles = StyleSheet.create({
     // row width. The cap keeps every card at 2-column width; paired cards
     // still split the row evenly (they shrink below the cap by the row gap).
     maxWidth: '50%',
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
     padding: spacing.sm,
   },
   // Grid image: a plain View frame owns the square sizing (width from the
@@ -89,9 +88,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     aspectRatio: 1,
     borderRadius: radii.sm,
+    backgroundColor: colors.background,
     marginBottom: spacing.sm,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
   },
   gridImage: {
     ...StyleSheet.absoluteFill,
@@ -106,10 +105,8 @@ const styles = StyleSheet.create({
   listCard: {
     flexDirection: 'row',
     gap: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
     padding: spacing.sm,
   },
   listImage: {

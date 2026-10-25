@@ -87,9 +87,11 @@ export const queryKeys = {
     current: () => ['cart', 'current'] as const,
   },
 
-  /** Customer orders (checkout creates one; list/detail screens are later). */
+  /** Customer orders (list/detail/confirm received). */
   orders: {
     all: ['orders'] as const,
+    /** Prefix matching every order list page (infinite query). */
+    lists: ['orders', 'list'] as const,
     list: (page: number) => ['orders', 'list', page] as const,
     detail: (orderId: string) => ['orders', 'detail', orderId] as const,
   },

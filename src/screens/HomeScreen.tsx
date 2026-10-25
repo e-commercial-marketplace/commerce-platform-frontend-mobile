@@ -31,12 +31,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Button from '../components/Button';
 import ProductCard, { type ProductViewMode } from '../components/ProductCard';
+import ProductImage from '../components/ProductImage';
 import SearchBar from '../components/SearchBar';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useCategories, useProductList } from '../hooks/useProducts';
 import type { MainTabScreenProps } from '../navigation/types';
 import type { Product } from '../types/product';
+import { formatVND } from '../utils/format';
 
 /** Local "no category filter" option; not a backend category. */
 const ALL_CATEGORY = { id: 'all', name: 'All' };
@@ -106,6 +108,13 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
   const { data, isPending, isError, error, refetch, isFetching } = useProductList(filters);
 
   const products = data?.products ?? [];
+  const categoryImageByName = useMemo(() => {
+    const map = new Map<string, Product['image']>();
+    for (const product of products) {
+      if (!map.has(product.category)) map.set(product.category, product.image);
+    }
+    return map;
+  }, [products]);
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
 
@@ -235,11 +244,40 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
         ListHeaderComponent={
           <View>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>E-Commerce Marketplace</Text>
-              <Text style={styles.headerSubtitle}>Discover products you will love</Text>
+              <View>
+                <Text style={styles.headerEyebrow}>MARKETPLACE</Text>
+                <Text style={styles.headerTitle}>All Deals</Text>
+              </View>
+              <View style={styles.headerActions}>
+                <Pressable style={styles.headerIconButton} onPress={() => navigation.navigate('Cart')} accessibilityLabel="Open cart">
+                  <Text style={styles.headerIcon}>🛒</Text>
+                </Pressable>
+                <Pressable style={styles.avatarButton} onPress={() => navigation.navigate('Profile')} accessibilityLabel="Open account">
+                  <Text style={styles.avatarIcon}>👤</Text>
+                </Pressable>
+              </View>
             </View>
 
-            <SearchBar value={searchQuery} onChangeText={handleSearchChange} />
+            <View style={styles.searchRow}>
+              <Pressable style={styles.searchGrow} onPress={() => navigation.navigate('Search')} accessibilityRole="button" accessibilityLabel="Open product search">
+                <View pointerEvents="none"><SearchBar value="" onChangeText={() => undefined} /></View>
+              </Pressable>
+              <Pressable onPress={openFilters} style={[styles.squareFilter, hasActiveFilters && styles.squareFilterActive]} accessibilityLabel="Open filters">
+                <Text style={[styles.squareFilterText, hasActiveFilters && styles.squareFilterTextActive]}>☷</Text>
+              </Pressable>
+            </View>
+
+            {products.length > 0 ? (
+              <Pressable style={styles.heroCard} onPress={() => handleProductPress(products[0])}>
+                <View style={styles.heroCopy}>
+                  <Text style={styles.heroEyebrow}>FEATURED DEAL</Text>
+                  <Text style={styles.heroTitle} numberOfLines={2}>{products[0].name}</Text>
+                  <Text style={styles.heroPrice}>{formatVND(products[0].price)}</Text>
+                  <View style={styles.heroButton}><Text style={styles.heroButtonText}>Shop now  →</Text></View>
+                </View>
+                <ProductImage source={products[0].image} style={styles.heroImage} />
+              </Pressable>
+            ) : null}
 
             <ScrollView
               horizontal
@@ -248,17 +286,19 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
             >
               {categories.map((category) => {
                 const isSelected = category.id === selectedCategoryId;
+                const image = category.id === ALL_CATEGORY.id ? products[0]?.image : categoryImageByName.get(category.name);
                 return (
                   <Pressable
                     key={category.id}
                     onPress={() => handleCategoryPress(category.id)}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    style={styles.categoryItem}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
                   >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                      {category.name}
-                    </Text>
+                    <View style={[styles.categoryVisual, isSelected && styles.categoryVisualSelected]}>
+                      {image ? <ProductImage source={image} style={styles.categoryImage} /> : <Text style={[styles.categoryFallback, isSelected && styles.categoryFallbackSelected]}>{category.name.slice(0, 1).toUpperCase()}</Text>}
+                    </View>
+                    <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelSelected]} numberOfLines={1}>{category.name}</Text>
                   </Pressable>
                 );
               })}
@@ -273,16 +313,6 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
                 <Text style={styles.resultCount}>Products unavailable</Text>
               )}
               <View style={styles.toolbarActions}>
-                <Pressable
-                  onPress={openFilters}
-                  style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open filters"
-                >
-                  <Text style={[styles.filterButtonText, hasActiveFilters && styles.filterButtonTextActive]}>
-                    Filter{hasActiveFilters ? ' •' : ''}
-                  </Text>
-                </Pressable>
                 <View style={styles.viewToggle}>
                   <Pressable
                     onPress={() => setViewMode('grid')}
@@ -379,40 +409,48 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
       <Modal
         visible={filterVisible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setFilterVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Filters</Text>
-            <Text style={styles.modalLabel}>Minimum price</Text>
-            <TextInput
-              value={minPrice}
-              onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
-              placeholder="e.g. 0"
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <Text style={styles.modalLabel}>Maximum price</Text>
-            <TextInput
-              value={maxPrice}
-              onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
-              placeholder="e.g. 1000000"
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <Text style={styles.modalLabel}>Minimum rating</Text>
-            <TextInput
-              value={minRating}
-              onChangeText={(text) => setMinRating(text.replace(/[^0-9.]/g, ''))}
-              placeholder="e.g. 4"
-              keyboardType="decimal-pad"
-              style={styles.modalInput}
-            />
+          <View style={styles.filterSheet}>
+            <View style={styles.filterHeader}>
+              <Text style={styles.modalTitle}>Filter</Text>
+              <Pressable onPress={() => setFilterVisible(false)} style={styles.closeButton}><Text style={styles.closeText}>×</Text></Pressable>
+            </View>
+
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Price range</Text>
+              <View style={styles.priceRow}>
+                <View style={styles.priceField}><Text style={styles.currency}>$</Text><TextInput value={minPrice} onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))} placeholder="10" keyboardType="numeric" style={styles.priceInput} /></View>
+                <View style={styles.rangeLine} />
+                <View style={styles.priceField}><Text style={styles.currency}>$</Text><TextInput value={maxPrice} onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))} placeholder="1000" keyboardType="numeric" style={styles.priceInput} /></View>
+              </View>
+              <View style={styles.sliderTrack}><View style={styles.sliderActive} /><View style={[styles.sliderKnob, { left: '5%' }]} /><View style={[styles.sliderKnob, { left: '42%' }]} /></View>
+            </View>
+
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Average review</Text>
+              <View style={styles.ratingFilterRow}>
+                <Text style={styles.stars}>★ ★ ★ ★</Text><Text style={styles.starOff}>★</Text>
+                <TextInput value={minRating} onChangeText={(text) => setMinRating(text.replace(/[^0-9.]/g, ''))} placeholder="4" keyboardType="decimal-pad" style={styles.ratingInput} />
+                <Text style={styles.andUp}>& Up</Text>
+              </View>
+            </View>
+
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Others</Text>
+              <View style={styles.optionGrid}>
+                <View style={[styles.optionCard, styles.optionCardActive]}><Text style={styles.optionIcon}>↔</Text><Text style={styles.optionTextActive}>30-day Free Return</Text></View>
+                <View style={styles.optionCard}><Text style={styles.optionIconMuted}>▣</Text><Text style={styles.optionText}>Buyer Protection</Text></View>
+                <View style={styles.optionCard}><Text style={styles.optionIconMuted}>◆</Text><Text style={styles.optionText}>Best Deal</Text></View>
+                <View style={styles.optionCard}><Text style={styles.optionIconMuted}>⌖</Text><Text style={styles.optionText}>Ship to store</Text></View>
+              </View>
+            </View>
             {filterError ? <Text style={styles.modalError}>{filterError}</Text> : null}
             <View style={styles.modalActions}>
               <Button title="Clear" onPress={clearFilters} variant="secondary" style={styles.modalButton} />
-              <Button title="Apply" onPress={applyFilters} variant="primary" style={styles.modalButton} />
+              <Button title="Apply filters" onPress={applyFilters} variant="primary" style={styles.modalButton} />
             </View>
           </View>
         </View>
@@ -444,9 +482,12 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '700',
     color: colors.text,
   },
@@ -456,30 +497,40 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   categories: {
-    gap: spacing.sm,
+    gap: 14,
     paddingVertical: spacing.md,
+    paddingRight: spacing.md,
   },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+  categoryItem: { width: 88, alignItems: 'center' },
+  categoryVisual: {
+    width: 76, height: 76, borderRadius: 22, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
+    alignItems: 'center', justifyContent: 'center',
   },
-  chipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  categoryVisualSelected: { borderWidth: 2, borderColor: colors.primary, backgroundColor: '#E8FAFC' },
+  categoryImage: { width: '100%', height: '100%' },
+  categoryFallback: { fontSize: 26, fontWeight: '800', color: colors.textSecondary },
+  categoryFallbackSelected: { color: colors.primary },
+  categoryLabel: { marginTop: 7, width: 88, textAlign: 'center', fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+  categoryLabelSelected: { color: colors.primary, fontWeight: '700' },
+  heroCard: {
+    minHeight: 172,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    borderRadius: 18,
+    backgroundColor: '#F3EEFF',
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
   },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  chipTextSelected: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-  },
+  heroCopy: { flex: 1, zIndex: 2 },
+  heroEyebrow: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1.2, marginBottom: 7 },
+  heroTitle: { fontSize: 22, lineHeight: 27, fontWeight: '800', color: colors.text, maxWidth: 180 },
+  heroPrice: { marginTop: 7, fontSize: 16, fontWeight: '700', color: colors.textSecondary },
+  heroButton: { alignSelf: 'flex-start', marginTop: 13, backgroundColor: '#171A21', borderRadius: 7, paddingHorizontal: 14, paddingVertical: 9 },
+  heroButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  heroImage: { width: 132, height: 132, borderRadius: 16, marginLeft: 8 },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -608,10 +659,8 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
+    backgroundColor: 'rgba(15, 23, 42, 0.22)',
+    justifyContent: 'flex-end',
   },
   modalCard: {
     width: '100%',
@@ -654,4 +703,46 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
   },
+
+  headerEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: colors.primary },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerIconButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  headerIcon: { fontSize: 22, color: colors.text },
+  avatarButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F4E8FF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
+  avatarIcon: {
+    fontSize: 21,
+  },
+  avatarText: { fontSize: 15, fontWeight: '800', color: '#7C3AED' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  searchGrow: { flex: 1 },
+  squareFilter: { width: 44, height: 44, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  squareFilterActive: { backgroundColor: '#E6FAFD', borderWidth: 1, borderColor: colors.primary },
+  squareFilterText: { fontSize: 22, color: colors.textSecondary, transform: [{ rotate: '90deg' }] },
+  squareFilterTextActive: { color: colors.primary },
+  filterSheet: { width: '100%', backgroundColor: colors.background, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: spacing.lg },
+  filterHeader: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
+  closeButton: { position: 'absolute', right: spacing.md, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  closeText: { fontSize: 28, color: colors.textSecondary, fontWeight: '300' },
+  filterSection: { padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.md },
+  filterSectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  priceField: { flex: 1, height: 42, borderWidth: 1, borderColor: '#B8C0CC', borderRadius: 5, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm },
+  currency: { fontSize: 15, color: colors.textSecondary, marginRight: 5 },
+  priceInput: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
+  rangeLine: { width: 18, height: 1, backgroundColor: colors.border },
+  sliderTrack: { height: 4, borderRadius: 2, backgroundColor: '#B9EEF4', position: 'relative', marginVertical: 8 },
+  sliderActive: { position: 'absolute', left: '5%', width: '38%', height: 4, borderRadius: 2, backgroundColor: colors.primary },
+  sliderKnob: { position: 'absolute', top: -8, width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.primary },
+  ratingFilterRow: { flexDirection: 'row', alignItems: 'center' },
+  stars: { color: '#FBBF24', fontSize: 22, letterSpacing: 2 },
+  starOff: { color: '#D5DAE1', fontSize: 22, marginLeft: 3 },
+  ratingInput: { width: 32, marginLeft: spacing.sm, color: colors.text, fontSize: 14, textAlign: 'center' },
+  andUp: { fontSize: 14, color: colors.text },
+  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  optionCard: { width: '47%', minHeight: 78, borderWidth: 1, borderColor: colors.border, borderRadius: 6, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  optionCardActive: { borderColor: colors.primary, backgroundColor: '#F7FEFF' },
+  optionIcon: { fontSize: 23, color: colors.primary },
+  optionIconMuted: { fontSize: 22, color: '#98A2B3' },
+  optionText: { fontSize: 12, color: '#98A2B3' },
+  optionTextActive: { fontSize: 12, color: colors.primary },
 });
