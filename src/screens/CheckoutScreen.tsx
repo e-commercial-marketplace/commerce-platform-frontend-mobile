@@ -220,7 +220,7 @@ export default function CheckoutScreen({
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.successHeader}>
-            <Text style={styles.successIcon}>✓</Text>
+            <View style={styles.successCircle}><Text style={styles.successIcon}>✓</Text></View>
             <Text style={styles.successTitle}>Order placed successfully</Text>
             <Text style={styles.centerText}>
               Cash on delivery orders are paid when the order is delivered.
@@ -319,6 +319,8 @@ export default function CheckoutScreen({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Text style={styles.checkoutKicker}>ORDER REVIEW</Text>
+          <Text style={styles.checkoutTitle}>Checkout</Text>
           <Text style={styles.sectionTitle}>Selected items</Text>
           <View style={styles.card}>
             {resolvedLines.map((line) => (
@@ -337,6 +339,7 @@ export default function CheckoutScreen({
             ))}
           </View>
 
+          <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Shipping address</Text>
           <FormField
             label="Shipping address"
@@ -352,6 +355,7 @@ export default function CheckoutScreen({
             }}
           />
 
+          <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Payment method</Text>
           <View style={styles.card}>
             <View style={styles.row}>
@@ -360,6 +364,7 @@ export default function CheckoutScreen({
             </View>
           </View>
 
+          <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Order summary</Text>
           <View style={styles.card}>
             <View style={styles.row}>
@@ -419,8 +424,8 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
     padding: spacing.md,
     gap: spacing.sm,
   },
@@ -544,4 +549,9 @@ const styles = StyleSheet.create({
   stateButton: {
     marginTop: spacing.md,
   },
+
+  checkoutKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, color: colors.primary },
+  checkoutTitle: { fontSize: 26, lineHeight: 32, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
+  sectionDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  successCircle: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#18B65B', alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
 });

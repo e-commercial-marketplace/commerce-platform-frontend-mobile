@@ -43,6 +43,7 @@ const order: OrderResponse = {
   discountAmount: '0.00',
   totalAmount: '250000.00',
   voucherCode: null,
+  shipments: [],
   items: [
     {
       id: 'order-item-1',

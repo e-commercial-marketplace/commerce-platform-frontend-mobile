@@ -19,7 +19,7 @@ type SearchBarProps = {
 export default function SearchBar({ value, onChangeText, placeholder = 'Search for product' }: SearchBarProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>🔍</Text>
+      <Text style={styles.icon}>⌕</Text>
       <TextInput
         style={styles.input}
         value={value}
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    minHeight: 44,
+    minHeight: 46,
   },
   icon: {
     fontSize: 15,

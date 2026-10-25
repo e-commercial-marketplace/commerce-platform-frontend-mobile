@@ -19,7 +19,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 /** Screens hosted by the bottom tab navigator. */
 export type MainTabParamList = {
   Home: undefined;
+  Search: undefined;
   Cart: undefined;
+  Orders: undefined;
   Profile: undefined;
 };
 
@@ -40,6 +42,10 @@ export type RootStackParamList = {
   Checkout: { cartItemIds: string[] };
   /** Public seller shop opened from a product detail; carries only the seller id. */
   SellerShop: { sellerId: string };
+  /** Customer order history. */
+  MyOrders: undefined;
+  /** Customer order detail. */
+  OrderDetail: { orderId: string };
   /** Local mock sign-in form; opened from the guest Profile tab. */
   Login: undefined;
   /** Local mock registration form; opened from the guest Profile tab. */
