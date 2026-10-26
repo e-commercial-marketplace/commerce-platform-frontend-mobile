@@ -15,6 +15,8 @@ import PriceDisplay from '../components/PriceDisplay';
 import ProductImage from '../components/ProductImage';
 import Rating from '../components/Rating';
 import ShopAvatar from '../components/ShopAvatar';
+import ProductReviews from '../components/ProductReviews';
+import WriteReviewModal from '../components/WriteReviewModal';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
@@ -38,6 +40,17 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   const [quantity, setQuantity] = useState(1);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [writeReviewVisible, setWriteReviewVisible] = useState(false);
+
+  const handleOpenWriteReview = () => {
+    if (!isAuthenticated || user == null) {
+      navigation.navigate('Login');
+      return;
+    }
+    if (user.role === 'CUSTOMER') {
+      setWriteReviewVisible(true);
+    }
+  };
 
   const { productId } = route.params;
   const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
@@ -312,6 +325,16 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
           <View style={styles.featureItem}><Text style={styles.featureIcon}>☆</Text><Text style={styles.featureText}>Good reviews</Text></View>
           <View style={styles.featureItem}><Text style={styles.featureIcon}>♙</Text><Text style={styles.featureText}>Authorized shop</Text></View>
         </View>
+
+        <View style={styles.divider} />
+        <ProductReviews
+          productId={product.id}
+          productName={product.name}
+          averageRating={product.rating}
+          reviewCount={product.reviewCount}
+          onOpenWriteReview={handleOpenWriteReview}
+          canWriteReview={!isAuthenticated || user?.role === 'CUSTOMER'}
+        />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -342,6 +365,12 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
           />
         </View>
       </View>
+      <WriteReviewModal
+        visible={writeReviewVisible}
+        productId={product.id}
+        productName={product.name}
+        onClose={() => setWriteReviewVisible(false)}
+      />
     </SafeAreaView>
   );
 }
