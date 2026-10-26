@@ -6,8 +6,9 @@ import { colors, radii, spacing } from '../constants/theme';
 import { useConfirmReceived, useOrderDetail } from '../hooks/useOrders';
 import { formatVND } from '../utils/format';
 import type { AppNavigatorScreenProps } from '../navigation/types';
-import type { OrderItemResponse, ShipmentResponse } from '../types/orderApi';
+import type { OrderItemResponse } from '../types/orderApi';
 import { ApiError } from '../api/errors';
+import { ShipmentTimeline } from '../components/ShipmentTimeline';
 
 /** Parses a backend decimal money string for display only. */
 function parseMoney(value: string): number {
@@ -42,41 +43,6 @@ function ItemRow({ item }: { item: OrderItemResponse }) {
         </Text>
       </View>
       <Text style={styles.itemTotal}>{formatVND(lineTotal)}</Text>
-    </View>
-  );
-}
-
-function ShipmentCard({ shipment }: { shipment: ShipmentResponse }) {
-  return (
-    <View style={styles.shipmentCard}>
-      <View style={styles.shipmentHeader}>
-        <Text style={styles.shipmentTitle}>Shipment</Text>
-        <Text style={styles.shipmentStatus}>{shipment.status}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Method</Text>
-        <Text style={styles.value}>{shipment.deliveryMethod}</Text>
-      </View>
-      {shipment.carrier ? (
-        <View style={styles.row}>
-          <Text style={styles.label}>Carrier</Text>
-          <Text style={styles.value}>{shipment.carrier.name}</Text>
-        </View>
-      ) : null}
-      {shipment.trackingCode ? (
-        <View style={styles.row}>
-          <Text style={styles.label}>Tracking</Text>
-          <Text style={styles.value}>{shipment.trackingCode}</Text>
-        </View>
-      ) : null}
-      <View style={styles.row}>
-        <Text style={styles.label}>Shipped</Text>
-        <Text style={styles.value}>{formatDate(shipment.shippedAt)}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Delivered</Text>
-        <Text style={styles.value}>{formatDate(shipment.deliveredAt)}</Text>
-      </View>
     </View>
   );
 }
@@ -219,12 +185,22 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
 
         {order.shipments && order.shipments.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shipments</Text>
-            {order.shipments.map((shipment) => (
-              <ShipmentCard key={shipment.id} shipment={shipment} />
+            <Text style={styles.sectionTitle}>Shipment Tracking</Text>
+            {order.shipments.map((shipment, index) => (
+              <ShipmentTimeline
+                key={shipment.id}
+                shipment={shipment}
+                index={index}
+                orderItems={order.items}
+              />
             ))}
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shipment Tracking</Text>
+            <Text style={styles.subtitle}>Shipment information is not available yet.</Text>
+          </View>
+        )}
 
         {showConfirm ? (
           <Pressable
@@ -335,29 +311,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-  },
-  shipmentCard: {
-    backgroundColor: colors.background,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.sm,
-    gap: spacing.xs,
-  },
-  shipmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  shipmentTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  shipmentStatus: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
   },
   confirmButton: {
     backgroundColor: colors.primary,
