@@ -34,6 +34,8 @@ export type CheckoutRequest = {
   shippingAddress: string;
   /** Payment method for this feature is always COD. */
   paymentMethod: PaymentMethod;
+  /** Optional voucher code; case-insensitive, maximum 64 characters. */
+  voucherCode?: string | null;
 };
 
 /** One order line returned by checkout. */
