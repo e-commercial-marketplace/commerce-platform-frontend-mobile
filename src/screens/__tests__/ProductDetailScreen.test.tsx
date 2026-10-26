@@ -24,6 +24,20 @@ jest.mock('../../hooks/useAuth', () => ({ useAuth: jest.fn() }));
 jest.mock('../../hooks/useCart', () => ({ useCart: jest.fn() }));
 jest.mock('../../hooks/useProducts', () => ({ useProductDetail: jest.fn() }));
 jest.mock('../../hooks/useSellers', () => ({ useSellerShop: jest.fn() }));
+const EMPTY_REVIEWS = { content: [], page: 0, size: 5, totalElements: 0, totalPages: 0 };
+jest.mock('../../hooks/useReviews', () => ({
+  useProductReviews: jest.fn(() => ({
+    data: EMPTY_REVIEWS,
+    isPending: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  })),
+  useCreateReview: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
+}));
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockedUseCart = useCart as jest.MockedFunction<typeof useCart>;
@@ -69,7 +83,11 @@ function makeLine(id: string, productId: string, quantity = 1) {
   };
 }
 
-function renderScreen(addItem: jest.Mock, navigation: Navigation = { navigate: jest.fn() } as unknown as Navigation) {
+function renderScreen(
+  addItem: jest.Mock,
+  navigation: Navigation = { navigate: jest.fn() } as unknown as Navigation,
+  authOverride?: Partial<ReturnType<typeof useAuth>>,
+) {
   mockedUseAuth.mockReturnValue({
     user: CUSTOMER,
     isAuthenticated: true,
@@ -77,6 +95,7 @@ function renderScreen(addItem: jest.Mock, navigation: Navigation = { navigate: j
     login: jest.fn(async () => {}),
     register: jest.fn(async () => {}),
     logout: jest.fn(async () => {}),
+    ...authOverride,
   });
   mockedUseCart.mockReturnValue({ addItem } as never);
   mockedUseProductDetail.mockReturnValue({
@@ -145,5 +164,38 @@ describe('ProductDetailScreen Buy Now', () => {
         cartItemIds: ['cart-existing'],
       }),
     );
+  });
+
+  describe('Reviews Integration', () => {
+    it('renders customer reviews section with aggregate summary', () => {
+      const { getByText } = renderScreen(jest.fn());
+      expect(getByText('Customer Reviews')).toBeTruthy();
+      expect(getByText('No reviews yet')).toBeTruthy();
+    });
+
+    it('navigates guest to Login when Write a Review is pressed', () => {
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(jest.fn(), mockNav, {
+        user: null,
+        isAuthenticated: false,
+      });
+
+      fireEvent.press(getByText('Write a Review'));
+      expect(mockNav.navigate).toHaveBeenCalledWith('Login');
+    });
+
+    it('opens WriteReviewModal when customer clicks Write a Review', () => {
+      const { getByText, getByPlaceholderText } = renderScreen(jest.fn());
+      fireEvent.press(getByText('Write a Review'));
+      expect(getByPlaceholderText('What did you think of the product?')).toBeTruthy();
+    });
+
+    it('hides Write a Review button for seller/admin accounts', () => {
+      const { queryByText } = renderScreen(jest.fn(), undefined, {
+        user: { ...CUSTOMER, role: 'SELLER' },
+        isAuthenticated: true,
+      });
+      expect(queryByText('Write a Review')).toBeNull();
+    });
   });
 });

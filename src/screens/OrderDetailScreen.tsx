@@ -9,6 +9,7 @@ import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { OrderItemResponse } from '../types/orderApi';
 import { ApiError } from '../api/errors';
 import { ShipmentTimeline } from '../components/ShipmentTimeline';
+import WriteReviewModal from '../components/WriteReviewModal';
 
 /** Parses a backend decimal money string for display only. */
 function parseMoney(value: string): number {
@@ -28,7 +29,15 @@ function formatDate(iso: string | null): string {
   }
 }
 
-function ItemRow({ item }: { item: OrderItemResponse }) {
+function ItemRow({
+  item,
+  canReview,
+  onReview,
+}: {
+  item: OrderItemResponse;
+  canReview?: boolean;
+  onReview?: () => void;
+}) {
   const unitPrice = parseMoney(item.unitPrice);
   const qty = item.quantity || 0;
   const lineTotal = unitPrice * qty;
@@ -42,7 +51,22 @@ function ItemRow({ item }: { item: OrderItemResponse }) {
           {formatVND(unitPrice)} × {qty}
         </Text>
       </View>
-      <Text style={styles.itemTotal}>{formatVND(lineTotal)}</Text>
+      <View style={styles.itemRight}>
+        <Text style={styles.itemTotal}>{formatVND(lineTotal)}</Text>
+        {canReview && item.status !== 'CANCELLED' && onReview != null && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.reviewItemButton,
+              pressed && styles.reviewItemButtonPressed,
+            ]}
+            onPress={onReview}
+            accessibilityRole="button"
+            accessibilityLabel={`Write review for ${item.productName}`}
+          >
+            <Text style={styles.reviewItemButtonText}>Write Review</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -52,6 +76,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
   const { data: order, isLoading, isError, refetch } = useOrderDetail(orderId);
   const confirmMutation = useConfirmReceived();
   const [confirming, setConfirming] = useState(false);
+  const [reviewingItem, setReviewingItem] = useState<{ productId: string; productName: string } | null>(null);
 
   const handleConfirm = () => {
     if (!order || confirmMutation.isPending) {
@@ -156,7 +181,17 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
           {order.items.map((item) => (
-            <ItemRow key={item.id} item={item} />
+            <ItemRow
+              key={item.id}
+              item={item}
+              canReview={order.status === 'COMPLETED'}
+              onReview={() =>
+                setReviewingItem({
+                  productId: item.productId,
+                  productName: item.productName,
+                })
+              }
+            />
           ))}
         </View>
 
@@ -219,6 +254,14 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
           </Pressable>
         ) : null}
       </ScrollView>
+      {reviewingItem != null && (
+        <WriteReviewModal
+          visible={true}
+          productId={reviewingItem.productId}
+          productName={reviewingItem.productName}
+          onClose={() => setReviewingItem(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -293,10 +336,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
+  itemRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
   itemTotal: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.text,
+  },
+  reviewItemButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    marginTop: 2,
+  },
+  reviewItemButtonPressed: {
+    opacity: 0.7,
+  },
+  reviewItemButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
   },
   divider: {
     height: 1,
