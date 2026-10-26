@@ -17,8 +17,10 @@ import type { AppNavigatorScreenProps } from '../../navigation/types';
 import type { User } from '../../types/auth';
 import type { CartDto, CartItemDto } from '../../types/cartApi';
 import type { OrderResponse } from '../../types/orderApi';
+import type { VoucherResponse } from '../../types/voucherApi';
 import { getCart } from '../../services/cartService';
 import { createOrder } from '../../services/orderService';
+import { validateVoucher } from '../../services/voucherService';
 import CheckoutScreen from '../CheckoutScreen';
 
 jest.mock('../../services/cartService', () => ({
@@ -32,8 +34,13 @@ jest.mock('../../services/orderService', () => ({
   createOrder: jest.fn(),
 }));
 
+jest.mock('../../services/voucherService', () => ({
+  validateVoucher: jest.fn(),
+}));
+
 const mockedGetCart = getCart as jest.MockedFunction<typeof getCart>;
 const mockedCreateOrder = createOrder as jest.MockedFunction<typeof createOrder>;
+const mockedValidateVoucher = validateVoucher as jest.MockedFunction<typeof validateVoucher>;
 
 type Navigation = AppNavigatorScreenProps<'Checkout'>['navigation'];
 
@@ -107,6 +114,23 @@ const ORDER: OrderResponse = {
   ],
 };
 
+const VOUCHER_10: VoucherResponse = {
+  code: 'WELCOME10',
+  description: '10% discount on entire order',
+  discountPercent: 10,
+  validFrom: '2026-01-01T00:00:00Z',
+  validTo: '2027-01-01T00:00:00Z',
+  usageLimit: 1000,
+  timesUsed: 0,
+};
+
+const ORDER_WITH_VOUCHER: OrderResponse = {
+  ...ORDER,
+  discountAmount: '15000.00',
+  totalAmount: '135000.00',
+  voucherCode: 'WELCOME10',
+};
+
 function makeClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
@@ -165,10 +189,15 @@ async function fillAddress(view: ReturnType<typeof renderScreen>, value: string)
   fireEvent.changeText(await view.findByLabelText('Shipping address'), value);
 }
 
+async function enterVoucher(view: ReturnType<typeof renderScreen>, value: string) {
+  fireEvent.changeText(await view.findByLabelText('Voucher code input'), value);
+}
+
 describe('CheckoutScreen', () => {
   beforeEach(() => {
     mockedGetCart.mockReset();
     mockedCreateOrder.mockReset();
+    mockedValidateVoucher.mockReset();
     mockedGetCart.mockResolvedValue(
       makeCart([
         makeLine('a', { name: 'Phone', lineTotal: '100000.00' }),
@@ -475,4 +504,175 @@ describe('CheckoutScreen', () => {
       expect(mockedCreateOrder).not.toHaveBeenCalled();
     },
   );
+
+  describe('Checkout voucher validation & application', () => {
+    it('renders voucher input field, Apply button, and platform voucher title', async () => {
+      const view = await renderReady(['a', 'b']);
+
+      expect(view.getByText('Platform voucher')).toBeTruthy();
+      expect(view.getByLabelText('Voucher code input')).toBeTruthy();
+      expect(view.getByLabelText('Apply voucher')).toBeTruthy();
+    });
+
+    it('shows error when Apply is pressed with empty or whitespace-only code without network call', async () => {
+      const view = await renderReady(['a', 'b']);
+
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Please enter a voucher code.')).toBeTruthy();
+      expect(mockedValidateVoucher).not.toHaveBeenCalled();
+
+      await enterVoucher(view, '   ');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Please enter a voucher code.')).toBeTruthy();
+      expect(mockedValidateVoucher).not.toHaveBeenCalled();
+    });
+
+    it('validates voucher with trimmed code and updates discount and total preview', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady(['a', 'b']); // Subtotal = 150.000 ₫
+
+      await enterVoucher(view, '  welcome10  ');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+
+      await waitFor(() => {
+        expect(mockedValidateVoucher).toHaveBeenCalledWith('welcome10');
+      });
+
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+      expect(view.getByText('-10%')).toBeTruthy();
+      expect(view.getByText('10% discount on entire order')).toBeTruthy();
+      expect(view.getByLabelText('Remove voucher')).toBeTruthy();
+
+      // Order summary discount preview: 150000 * 10% = 15000 ₫
+      // Estimated total: 150000 - 15000 = 135000 ₫
+      expect(view.getByText('-15.000 ₫')).toBeTruthy();
+      expect(view.getByText('135.000 ₫')).toBeTruthy();
+    });
+
+    it('removes applied voucher when Remove is pressed and restores summary', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+
+      fireEvent.press(view.getByLabelText('Remove voucher'));
+
+      expect(await view.findByLabelText('Voucher code input')).toBeTruthy();
+      expect(view.queryByText('WELCOME10')).toBeNull();
+
+      expect(view.getAllByText('150.000 ₫').length).toBeGreaterThanOrEqual(1);
+      expect(view.getAllByText('0 ₫')).toHaveLength(2);
+      expect(mockedValidateVoucher).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['RESOURCE_NOT_FOUND', 404, 'Voucher code not found. Please check and try again.'],
+      ['VOUCHER_EXPIRED', 409, 'This voucher is not active at this time.'],
+      ['VOUCHER_EXHAUSTED', 409, 'This voucher has reached its usage limit.'],
+    ])('displays friendly error message for %s error', async (code, status, expectedMessage) => {
+      mockedValidateVoucher.mockRejectedValue(new ApiError(expectedMessage, code, status));
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'TESTCODE');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+
+      expect(await view.findByText(expectedMessage)).toBeTruthy();
+      expect(view.queryByText('TESTCODE')).toBeNull();
+      expect(view.getAllByText('150.000 ₫').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('handles 401 and 403 errors when validating voucher', async () => {
+      mockedValidateVoucher.mockRejectedValue(new ApiError('Unauthorized', 'UNAUTHORIZED', 401));
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'TESTCODE');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Please sign in to apply vouchers.')).toBeTruthy();
+
+      mockedValidateVoucher.mockRejectedValue(new ApiError('Forbidden', 'FORBIDDEN', 403));
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Vouchers are available for customer accounts only.')).toBeTruthy();
+    });
+
+    it('submits checkout request with canonical voucherCode when voucher is applied', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      mockedCreateOrder.mockResolvedValue(ORDER_WITH_VOUCHER);
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'welcome10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      await waitFor(() =>
+        expect(mockedCreateOrder).toHaveBeenCalledWith({
+          cartItemIds: ['a', 'b'],
+          shippingAddress: '12 Main Street',
+          paymentMethod: 'COD',
+          voucherCode: 'WELCOME10',
+        }),
+      );
+    });
+
+    it('submits checkout request with voucherCode undefined when no voucher applied', async () => {
+      mockedCreateOrder.mockResolvedValue(ORDER);
+      const view = await renderReady(['a']);
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      await waitFor(() =>
+        expect(mockedCreateOrder).toHaveBeenCalledWith({
+          cartItemIds: ['a'],
+          shippingAddress: '12 Main Street',
+          paymentMethod: 'COD',
+          voucherCode: undefined,
+        }),
+      );
+    });
+
+    it('displays authoritative voucher code, discount amount and total in order confirmation', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      mockedCreateOrder.mockResolvedValue(ORDER_WITH_VOUCHER);
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      expect(await view.findByText('Order placed successfully')).toBeTruthy();
+      expect(view.getByText('order-123')).toBeTruthy();
+      expect(view.getByText('Voucher')).toBeTruthy();
+      expect(view.getByText('WELCOME10')).toBeTruthy();
+      expect(view.getByText('-15.000 ₫')).toBeTruthy();
+      expect(view.getByText('135.000 ₫')).toBeTruthy();
+    });
+
+    it.each([
+      ['VOUCHER_EXHAUSTED', 'This voucher has reached its usage limit. Please try another or continue without a voucher.'],
+      ['VOUCHER_EXPIRED', 'This voucher is no longer active. Please try another or continue without a voucher.'],
+    ])('clears voucher and shows error without automatic retry on checkout error %s', async (code, message) => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      mockedCreateOrder.mockRejectedValue(new ApiError(message, code, 409));
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      expect(await view.findByText(message)).toBeTruthy();
+      expect(view.queryByText('WELCOME10')).toBeNull();
+      expect(view.getByLabelText('Voucher code input')).toBeTruthy();
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+      expect(view.getByLabelText('Place Order')).toBeTruthy();
+    });
+  });
 });

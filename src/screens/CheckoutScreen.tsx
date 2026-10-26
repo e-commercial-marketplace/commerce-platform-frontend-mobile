@@ -6,7 +6,7 @@
  * navigation params. Before submitting, every id must still exist and be
  * purchasable; otherwise the screen asks the user to return to Cart.
  *
- * The request is exactly { cartItemIds, shippingAddress, paymentMethod: COD }.
+ * The request is { cartItemIds, shippingAddress, paymentMethod: COD, voucherCode? }.
  * Totals shown before checkout are a local preview; the order total displayed
  * after success is `OrderResponse.totalAmount` from the backend.
  */
@@ -16,9 +16,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,9 +33,11 @@ import { colors, radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { useCheckout } from '../hooks/useCheckout';
+import { useValidateVoucher } from '../hooks/useVoucher';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { CartLine } from '../types/cart';
 import type { OrderResponse } from '../types/orderApi';
+import type { VoucherResponse } from '../types/voucherApi';
 import { formatVND } from '../utils/format';
 
 const MAX_ADDRESS_LENGTH = 1000;
@@ -90,6 +94,7 @@ export default function CheckoutScreen({
   const { user, isAuthenticated, isRestoring } = useAuth();
   const { items, isLoading, isFetching, isError, error, refetch, isCustomer } = useCart();
   const { placeOrder, isPending } = useCheckout();
+  const validateVoucherMutation = useValidateVoucher();
 
   const { cartItemIds } = route.params;
   const [address, setAddress] = useState('');
@@ -99,6 +104,11 @@ export default function CheckoutScreen({
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+
+  // Voucher state
+  const [voucherInput, setVoucherInput] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<VoucherResponse | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
 
   const backToCart = () => navigation.navigate('Main', { screen: 'Cart' });
   const goShopping = () => navigation.navigate('Main', { screen: 'Home' });
@@ -117,12 +127,56 @@ export default function CheckoutScreen({
   const resolvedIds = resolvedLines.map((line) => line.id);
   const selectedSubtotal = resolvedLines.reduce((sum, line) => sum + line.lineTotal, 0);
 
+  // Discount preview (non-authoritative estimate)
+  const discountPercent = appliedVoucher ? appliedVoucher.discountPercent : 0;
+  const estimatedDiscount = appliedVoucher
+    ? Math.round((selectedSubtotal * discountPercent) / 100)
+    : 0;
+  const estimatedTotal = Math.max(0, selectedSubtotal - estimatedDiscount);
+
+  const isValidatingVoucher = validateVoucherMutation.isPending;
   const busy = submitting || isPending;
 
   const handleAddressChange = (value: string) => {
     setAddress(value);
     setAddressError(undefined);
     setFormError(null);
+  };
+
+  const handleApplyVoucher = async () => {
+    const trimmed = voucherInput.trim();
+    if (trimmed.length === 0) {
+      setVoucherError('Please enter a voucher code.');
+      return;
+    }
+    setVoucherError(null);
+
+    try {
+      const voucher = await validateVoucherMutation.mutateAsync(trimmed);
+      setAppliedVoucher(voucher);
+      setVoucherInput('');
+      setVoucherError(null);
+    } catch (err) {
+      const apiError = toApiError(err);
+      if (apiError.code === 'RESOURCE_NOT_FOUND') {
+        setVoucherError('Voucher code not found. Please check and try again.');
+      } else if (apiError.code === 'VOUCHER_EXPIRED') {
+        setVoucherError('This voucher is not active at this time.');
+      } else if (apiError.code === 'VOUCHER_EXHAUSTED') {
+        setVoucherError('This voucher has reached its usage limit.');
+      } else if (apiError.status === 401) {
+        setVoucherError('Please sign in to apply vouchers.');
+      } else if (apiError.status === 403) {
+        setVoucherError('Vouchers are available for customer accounts only.');
+      } else {
+        setVoucherError(apiError.message || 'Failed to validate voucher. Please try again.');
+      }
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherError(null);
   };
 
   const handlePlaceOrder = async () => {
@@ -151,14 +205,27 @@ export default function CheckoutScreen({
         cartItemIds: resolvedIds,
         shippingAddress: trimmedAddress,
         paymentMethod: 'COD',
+        voucherCode: appliedVoucher ? appliedVoucher.code : undefined,
       });
       if (created != null) {
         setOrder(created);
       }
     } catch (checkoutError) {
       const apiError = toApiError(checkoutError);
-      setFormError(apiError.message);
-      setAddressError(apiError.fieldErrors?.shippingAddress);
+
+      if (apiError.code === 'VOUCHER_EXHAUSTED') {
+        setFormError('This voucher has reached its usage limit. Please try another or continue without a voucher.');
+        setAppliedVoucher(null);
+      } else if (apiError.code === 'VOUCHER_EXPIRED') {
+        setFormError('This voucher is no longer active. Please try another or continue without a voucher.');
+        setAppliedVoucher(null);
+      } else if (apiError.code === 'RESOURCE_NOT_FOUND' && appliedVoucher != null) {
+        setFormError('Voucher is no longer valid. Please try another or continue without a voucher.');
+        setAppliedVoucher(null);
+      } else {
+        setFormError(apiError.message);
+        setAddressError(apiError.fieldErrors?.shippingAddress);
+      }
 
       // The client snapshot may be stale. Never resubmit automatically; ask
       // for the authoritative cart and send the user back to update it.
@@ -216,6 +283,8 @@ export default function CheckoutScreen({
   }
 
   if (order != null) {
+    const orderDiscount = parseMoney(order.discountAmount);
+
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
@@ -250,6 +319,18 @@ export default function CheckoutScreen({
               <Text style={styles.rowLabel}>Shipping address</Text>
               <Text style={styles.rowValue}>{order.shippingAddress}</Text>
             </View>
+            {order.voucherCode != null && (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Voucher</Text>
+                <Text style={styles.rowValue}>{order.voucherCode}</Text>
+              </View>
+            )}
+            {orderDiscount > 0 && (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Discount</Text>
+                <Text style={styles.discountValue}>-{formatVND(orderDiscount)}</Text>
+              </View>
+            )}
             <View style={[styles.row, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>{formatVND(parseMoney(order.totalAmount))}</Text>
@@ -296,7 +377,7 @@ export default function CheckoutScreen({
           <Text style={styles.stateIcon}>🛒</Text>
           <Text style={styles.stateTitle}>Your cart changed</Text>
           <Text style={styles.centerText}>
-            One or more selected items are no longer available. Return to Cart to review your
+            One or more items you selected are no longer available. Please return to your cart and review your
             selection before placing the order.
           </Text>
           {formError != null && <Text style={styles.formError}>{formError}</Text>}
@@ -365,6 +446,74 @@ export default function CheckoutScreen({
           </View>
 
           <View style={styles.sectionDivider} />
+          <Text style={styles.sectionTitle}>Platform voucher</Text>
+          <View style={styles.card}>
+            {appliedVoucher == null ? (
+              <View style={styles.voucherContainer}>
+                <View style={styles.voucherInputRow}>
+                  <TextInput
+                    style={[styles.voucherInput, voucherError != null && styles.voucherInputError]}
+                    value={voucherInput}
+                    onChangeText={(text) => {
+                      setVoucherInput(text);
+                      if (voucherError != null) setVoucherError(null);
+                    }}
+                    placeholder="Enter voucher code…"
+                    placeholderTextColor={colors.textSecondary}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    editable={!busy && !isValidatingVoucher}
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      void handleApplyVoucher();
+                    }}
+                    accessibilityLabel="Voucher code input"
+                  />
+                  <Button
+                    title="Apply"
+                    onPress={() => {
+                      void handleApplyVoucher();
+                    }}
+                    loading={isValidatingVoucher}
+                    disabled={busy || isValidatingVoucher}
+                    style={styles.voucherApplyButton}
+                    accessibilityLabel="Apply voucher"
+                  />
+                </View>
+                {voucherError != null && (
+                  <Text style={styles.voucherErrorText}>{voucherError}</Text>
+                )}
+              </View>
+            ) : (
+              <View style={styles.appliedVoucherCard}>
+                <View style={styles.appliedVoucherLeft}>
+                  <View style={styles.appliedVoucherBadge}>
+                    <Text style={styles.appliedVoucherCode}>{appliedVoucher.code}</Text>
+                    <Text style={styles.appliedVoucherPercent}>-{appliedVoucher.discountPercent}%</Text>
+                  </View>
+                  {appliedVoucher.description ? (
+                    <Text style={styles.appliedVoucherDesc} numberOfLines={2}>
+                      {appliedVoucher.description}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  onPress={handleRemoveVoucher}
+                  disabled={busy}
+                  style={({ pressed }) => [
+                    styles.removeVoucherButton,
+                    pressed && styles.removeVoucherButtonPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove voucher"
+                >
+                  <Text style={styles.removeVoucherText}>Remove</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Order summary</Text>
           <View style={styles.card}>
             <View style={styles.row}>
@@ -377,11 +526,13 @@ export default function CheckoutScreen({
             </View>
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Discount</Text>
-              <Text style={styles.rowValue}>{formatVND(0)}</Text>
+              <Text style={estimatedDiscount > 0 ? styles.discountValue : styles.rowValue}>
+                {estimatedDiscount > 0 ? `-${formatVND(estimatedDiscount)}` : formatVND(0)}
+              </Text>
             </View>
             <View style={[styles.row, styles.totalRow]}>
               <Text style={styles.totalLabel}>Estimated total</Text>
-              <Text style={styles.totalValue}>{formatVND(selectedSubtotal)}</Text>
+              <Text style={styles.totalValue}>{formatVND(estimatedTotal)}</Text>
             </View>
           </View>
 
@@ -476,6 +627,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
+  discountValue: {
+    flexShrink: 1,
+    maxWidth: '62%',
+    textAlign: 'right',
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
   totalRow: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -554,4 +713,86 @@ const styles = StyleSheet.create({
   checkoutTitle: { fontSize: 26, lineHeight: 32, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
   sectionDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
   successCircle: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#18B65B', alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+
+  // Voucher section styles
+  voucherContainer: {
+    gap: spacing.xs,
+  },
+  voucherInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  voucherInput: {
+    flex: 1,
+    height: 44,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: '#FFFFFF',
+  },
+  voucherInputError: {
+    borderColor: colors.danger,
+  },
+  voucherApplyButton: {
+    minWidth: 84,
+  },
+  voucherErrorText: {
+    fontSize: 12,
+    color: colors.danger,
+    marginTop: 2,
+  },
+  appliedVoucherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+  },
+  appliedVoucherLeft: {
+    flex: 1,
+    gap: 4,
+  },
+  appliedVoucherBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  appliedVoucherCode: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  appliedVoucherPercent: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.onPrimary,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radii.pill,
+    overflow: 'hidden',
+  },
+  appliedVoucherDesc: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  removeVoucherButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  removeVoucherButtonPressed: {
+    opacity: 0.7,
+  },
+  removeVoucherText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.danger,
+  },
 });
