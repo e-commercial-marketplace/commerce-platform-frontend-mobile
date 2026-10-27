@@ -129,6 +129,21 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
             }}
           />
 
+          <View style={styles.forgotPasswordRow}>
+            <Pressable
+              onPress={() => navigation.navigate('ForgotPassword')}
+              disabled={submitting}
+              hitSlop={spacing.sm}
+              accessibilityRole="button"
+              accessibilityLabel="Forgot password?"
+              accessibilityState={{ disabled: submitting }}
+            >
+              <Text style={[styles.forgotPasswordText, submitting && styles.forgotPasswordTextDimmed]}>
+                Forgot password?
+              </Text>
+            </Pressable>
+          </View>
+
           {formError != null && <Text style={styles.formError}>{formError}</Text>}
 
           <Pressable
@@ -191,6 +206,18 @@ const styles = StyleSheet.create({
   formError: {
     fontSize: 13,
     color: colors.danger,
+  },
+  forgotPasswordRow: {
+    alignItems: 'flex-end',
+    marginTop: -spacing.xs,
+  },
+  forgotPasswordText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  forgotPasswordTextDimmed: {
+    opacity: 0.5,
   },
   submitButton: {
     marginTop: spacing.sm,

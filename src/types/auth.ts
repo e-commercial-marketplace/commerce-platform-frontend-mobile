@@ -62,3 +62,27 @@ export type AuthResponse = {
   expiresIn: number;
   user: User;
 };
+
+/** Body of POST /auth/password/forgot. */
+export type ForgotPasswordRequest = {
+  email: string;
+};
+
+/**
+ * Body of POST /auth/password/reset.
+ * confirmPassword is validated in the UI and never sent to the backend.
+ */
+export type ResetPasswordRequest = {
+  email: string;
+  code: string;
+  newPassword: string;
+};
+
+/**
+ * Body of PATCH /users/me/password.
+ * confirmPassword is validated in the UI and never sent to the backend.
+ */
+export type ChangePasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
+};

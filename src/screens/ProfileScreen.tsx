@@ -1,9 +1,9 @@
 /**
  * Profile tab: guest entry points or the signed-in account (name, email,
- * role from the backend UserSummaryResponse) with logout. While the stored
- * session is being restored at startup a loading state is shown instead of a
- * flash of the guest state. Edit profile, avatar, orders, etc. belong to
- * later features.
+ * role from the backend UserSummaryResponse) with logout and password change.
+ * While the stored session is being restored at startup a loading state is
+ * shown instead of a flash of the guest state. Edit profile, avatar, etc.
+ * belong to later features.
  */
 
 import { useEffect, useState } from 'react';
@@ -162,6 +162,17 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
             <Text style={styles.menuButtonText}>My Orders</Text>
           </Pressable>
         ) : null}
+
+        <Pressable
+          onPress={() => {
+            navigation.navigate('ChangePassword');
+          }}
+          style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Change Password"
+        >
+          <Text style={styles.menuButtonText}>Change Password</Text>
+        </Pressable>
 
         <Pressable
           onPress={() => {
