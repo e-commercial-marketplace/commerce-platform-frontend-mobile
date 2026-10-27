@@ -50,6 +50,12 @@ export type RootStackParamList = {
   Login: undefined;
   /** Local mock registration form; opened from the guest Profile tab. */
   Register: undefined;
+  /** Request password reset code via email. */
+  ForgotPassword: undefined;
+  /** Set a new password using the emailed 6-digit code. */
+  ResetPassword: { email?: string } | undefined;
+  /** Authenticated user password change. */
+  ChangePassword: undefined;
 };
 
 /** Props for screens rendered directly by the root stack. */

@@ -95,6 +95,7 @@ function renderScreen(
     login: jest.fn(async () => {}),
     register: jest.fn(async () => {}),
     logout: jest.fn(async () => {}),
+    changePassword: jest.fn(async () => {}),
     ...authOverride,
   });
   mockedUseCart.mockReturnValue({ addItem } as never);

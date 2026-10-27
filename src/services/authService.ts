@@ -9,10 +9,13 @@ import { apiClient, refreshSession, unwrapData, unwrapVoid } from '../api/client
 import type { ApiResponse } from '../types/api';
 import type {
   AuthResponse,
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
   LoginRequest,
   RefreshRequest,
   RegisterInput,
   RegisterRequest,
+  ResetPasswordRequest,
   Role,
   User,
 } from '../types/auth';
@@ -55,5 +58,23 @@ export async function logout(refreshToken: string): Promise<void> {
 /** GET /users/me — current profile; used to restore the session at startup. */
 export async function getCurrentUser(): Promise<User> {
   const response = await apiClient.get<ApiResponse<User>>('/users/me');
+  return unwrapData(response);
+}
+
+/** POST /auth/password/forgot — requests a 6-digit reset code by email. */
+export async function forgotPassword(body: ForgotPasswordRequest): Promise<void> {
+  const response = await apiClient.post<ApiResponse<null>>('/auth/password/forgot', body);
+  unwrapVoid(response);
+}
+
+/** POST /auth/password/reset — sets a new password using the emailed 6-digit code. */
+export async function resetPassword(body: ResetPasswordRequest): Promise<void> {
+  const response = await apiClient.post<ApiResponse<null>>('/auth/password/reset', body);
+  unwrapVoid(response);
+}
+
+/** PATCH /users/me/password — changes current user password and returns rotated tokens. */
+export async function changePassword(body: ChangePasswordRequest): Promise<AuthResponse> {
+  const response = await apiClient.patch<ApiResponse<AuthResponse>>('/users/me/password', body);
   return unwrapData(response);
 }

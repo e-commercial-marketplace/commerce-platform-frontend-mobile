@@ -22,7 +22,7 @@ import { queryClient } from '../api/queryClient';
 import { queryKeys } from '../api/queryKeys';
 import * as authService from '../services/authService';
 import { clearTokens, getRefreshToken, loadTokens, saveTokens } from '../services/tokenStorage';
-import type { LoginRequest, RegisterInput, User } from '../types/auth';
+import type { ChangePasswordRequest, LoginRequest, RegisterInput, User } from '../types/auth';
 
 export type AuthContextValue = {
   /** Currently signed-in user, or null while browsing as guest. */
@@ -37,6 +37,8 @@ export type AuthContextValue = {
   register: (input: RegisterInput) => Promise<void>;
   /** Revokes the session on the backend and always clears it locally. */
   logout: () => Promise<void>;
+  /** Changes password, rotates session tokens, and keeps the user signed in. */
+  changePassword: (data: ChangePasswordRequest) => Promise<void>;
 };
 
 /** Typed context; null until an AuthProvider mounts (consumers handle that). */
@@ -139,6 +141,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const changePassword = useCallback(async (data: ChangePasswordRequest) => {
+    const auth = await authService.changePassword(data);
+    await saveTokens({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
+    setUser(auth.user);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -147,8 +155,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       login,
       register,
       logout,
+      changePassword,
     }),
-    [user, isRestoring, login, register, logout],
+    [user, isRestoring, login, register, logout, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
