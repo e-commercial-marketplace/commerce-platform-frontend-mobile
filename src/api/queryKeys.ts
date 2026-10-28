@@ -17,6 +17,11 @@
  * Note: this file intentionally declares no queries — it only names keys.
  */
 
+import type {
+  SellerOrderItemFilterParams,
+  SellerShipmentFilterParams,
+} from '../types/sellerApi';
+
 /** Public catalog list filters, mirroring GET /api/v1/products query params. */
 export type ProductListFilters = {
   /** Text search term (`q`). */
@@ -106,5 +111,27 @@ export const queryKeys = {
   shipments: {
     all: ['shipments'] as const,
     byOrder: (orderId: string) => ['shipments', 'order', orderId] as const,
+  },
+
+  /**
+   * Seller fulfillment queries and mutations.
+   * Independent cache identities for order items, shipments, and carriers.
+   */
+  sellerFulfillment: {
+    all: ['sellerFulfillment'] as const,
+    orderItems: {
+      all: ['sellerFulfillment', 'orderItems'] as const,
+      list: (params: SellerOrderItemFilterParams = {}) =>
+        ['sellerFulfillment', 'orderItems', 'list', params] as const,
+    },
+    shipments: {
+      all: ['sellerFulfillment', 'shipments'] as const,
+      list: (params: SellerShipmentFilterParams = {}) =>
+        ['sellerFulfillment', 'shipments', 'list', params] as const,
+    },
+    carriers: {
+      all: ['sellerFulfillment', 'carriers'] as const,
+      list: () => ['sellerFulfillment', 'carriers', 'list'] as const,
+    },
   },
 } as const;

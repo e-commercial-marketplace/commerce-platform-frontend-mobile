@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../constants/theme';
+import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import CartScreen from '../screens/CartScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -21,6 +22,7 @@ function OrdersPlaceholder() {
 
 export default function MainTabs() {
   const { totalItems } = useCart();
+  const { user } = useAuth();
 
   return (
     <Tab.Navigator
@@ -42,7 +44,11 @@ export default function MainTabs() {
         listeners={({ navigation }) => ({
           tabPress: (event) => {
             event.preventDefault();
-            navigation.getParent()?.navigate('MyOrders');
+            if (user?.role === 'SELLER') {
+              navigation.getParent()?.navigate('SellerFulfillment');
+            } else {
+              navigation.getParent()?.navigate('MyOrders');
+            }
           },
         })}
         options={{ tabBarIcon: ({ focused }) => <TabIcon symbol="▤" focused={focused} /> }}

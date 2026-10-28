@@ -163,6 +163,19 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
           </Pressable>
         ) : null}
 
+        {displayRole === 'SELLER' ? (
+          <Pressable
+            onPress={() => {
+              navigation.navigate('SellerFulfillment');
+            }}
+            style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Seller Orders"
+          >
+            <Text style={styles.menuButtonText}>Seller Orders</Text>
+          </Pressable>
+        ) : null}
+
         <Pressable
           onPress={() => {
             navigation.navigate('ChangePassword');

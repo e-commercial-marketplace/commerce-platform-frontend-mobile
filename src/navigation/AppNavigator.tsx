@@ -22,6 +22,7 @@ import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import SellerFulfillmentScreen from '../screens/SellerFulfillmentScreen';
 import SellerShopScreen from '../screens/SellerShopScreen';
 import MainTabs from './MainTabs';
 import type { RootStackParamList } from './types';
@@ -86,6 +87,18 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Order Detail',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="SellerFulfillment"
+        component={SellerFulfillmentScreen}
+        options={{
+          headerShown: true,
+          title: 'Seller Orders',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
