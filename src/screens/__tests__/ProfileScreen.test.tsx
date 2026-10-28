@@ -2,16 +2,20 @@
  * Unit tests for ProfileScreen.
  * Covers:
  * - Session restoration loading state
- * - Unauthenticated / guest state (Login, Register buttons; no Change Password)
+ * - Unauthenticated / guest state (Login, Register buttons; no Change Password, no Seller/Customer order buttons)
  * - Authenticated state for CUSTOMER:
  *   - displays profile info
+ *   - renders "My Orders" button and navigates to 'MyOrders'
+ *   - does NOT render "Seller Orders" button
  *   - renders "Change Password" button
- *   - pressing "Change Password" navigates to 'ChangePassword'
- *   - does not initiate any password API calls from ProfileScreen
+ *   - navigates to 'ChangePassword'
  * - Authenticated state for SELLER:
+ *   - renders "Seller Orders" button and navigates to 'SellerFulfillment'
+ *   - does NOT render "My Orders" button
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for ADMIN:
+ *   - does NOT render "Seller Orders" or "My Orders"
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Logout action
@@ -76,9 +80,11 @@ describe('ProfileScreen', () => {
 
     expect(getByText('Restoring your session…')).toBeTruthy();
     expect(queryByText('Change Password')).toBeNull();
+    expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Orders')).toBeNull();
   });
 
-  it('renders guest screen when not authenticated, without Change Password button', () => {
+  it('renders guest screen when not authenticated, without orders or Change Password buttons', () => {
     mockedUseAuth.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -97,9 +103,11 @@ describe('ProfileScreen', () => {
     expect(getByRole('button', { name: 'Log in' })).toBeTruthy();
     expect(getByRole('button', { name: 'Create account' })).toBeTruthy();
     expect(queryByText('Change Password')).toBeNull();
+    expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Orders')).toBeNull();
   });
 
-  it('renders Change Password button for authenticated CUSTOMER and navigates on press', () => {
+  it('renders My Orders and Change Password for CUSTOMER, and does NOT render Seller Orders', () => {
     const customerUser: User = {
       id: 'user-1',
       email: 'customer@example.com',
@@ -117,7 +125,7 @@ describe('ProfileScreen', () => {
       changePassword: jest.fn(),
     });
 
-    const { getByRole, getByText } = renderWithClient(
+    const { getByRole, getByText, queryByText } = renderWithClient(
       <ProfileScreen navigation={navigation} route={{} as never} />,
     );
 
@@ -125,14 +133,23 @@ describe('ProfileScreen', () => {
     expect(getByText('customer@example.com')).toBeTruthy();
     expect(getByText('Customer')).toBeTruthy();
 
+    // CUSTOMER sees My Orders
+    const myOrdersBtn = getByRole('button', { name: 'My Orders' });
+    expect(myOrdersBtn).toBeTruthy();
+    fireEvent.press(myOrdersBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('MyOrders');
+
+    // CUSTOMER does NOT see Seller Orders
+    expect(queryByText('Seller Orders')).toBeNull();
+
+    // CUSTOMER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
     expect(changePasswordBtn).toBeTruthy();
-
     fireEvent.press(changePasswordBtn);
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Change Password button for authenticated SELLER and navigates on press', () => {
+  it('renders Seller Orders for authenticated SELLER, navigates to SellerFulfillment, and does NOT render My Orders', () => {
     const sellerUser: User = {
       id: 'user-2',
       email: 'seller@example.com',
@@ -150,21 +167,30 @@ describe('ProfileScreen', () => {
       changePassword: jest.fn(),
     });
 
-    const { getByRole, getByText } = renderWithClient(
+    const { getByRole, getByText, queryByText } = renderWithClient(
       <ProfileScreen navigation={navigation} route={{} as never} />,
     );
 
     expect(getByText('John Seller')).toBeTruthy();
     expect(getByText('Seller')).toBeTruthy();
 
+    // SELLER sees Seller Orders
+    const sellerOrdersBtn = getByRole('button', { name: 'Seller Orders' });
+    expect(sellerOrdersBtn).toBeTruthy();
+    fireEvent.press(sellerOrdersBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('SellerFulfillment');
+
+    // SELLER does NOT see customer My Orders
+    expect(queryByText('My Orders')).toBeNull();
+
+    // SELLER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
     expect(changePasswordBtn).toBeTruthy();
-
     fireEvent.press(changePasswordBtn);
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Change Password button for authenticated ADMIN and navigates on press', () => {
+  it('renders Change Password for ADMIN, and does NOT render Seller Orders or My Orders', () => {
     const adminUser: User = {
       id: 'user-3',
       email: 'admin@example.com',
@@ -182,16 +208,19 @@ describe('ProfileScreen', () => {
       changePassword: jest.fn(),
     });
 
-    const { getByRole, getByText } = renderWithClient(
+    const { getByRole, getByText, queryByText } = renderWithClient(
       <ProfileScreen navigation={navigation} route={{} as never} />,
     );
 
     expect(getByText('System Admin')).toBeTruthy();
     expect(getByText('Administrator')).toBeTruthy();
 
+    // ADMIN does NOT see Seller Orders or My Orders
+    expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Orders')).toBeNull();
+
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
     expect(changePasswordBtn).toBeTruthy();
-
     fireEvent.press(changePasswordBtn);
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });

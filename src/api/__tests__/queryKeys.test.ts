@@ -7,6 +7,10 @@
  */
 
 import { queryKeys, type ProductListFilters } from '../queryKeys';
+import type {
+  SellerOrderItemFilterParams,
+  SellerShipmentFilterParams,
+} from '../../types/sellerApi';
 
 describe('queryKeys', () => {
   it('keys every list/detail query under its resource prefix', () => {
@@ -14,6 +18,7 @@ describe('queryKeys', () => {
     expect(queryKeys.products.detail('p-1')[0]).toBe('products');
     expect(queryKeys.cart.current()[0]).toBe('cart');
     expect(queryKeys.orders.detail('o-1')[0]).toBe('orders');
+    expect(queryKeys.sellerFulfillment.all[0]).toBe('sellerFulfillment');
   });
 
   it('uses stable resource-only prefixes for invalidation', () => {
@@ -22,6 +27,10 @@ describe('queryKeys', () => {
     expect(queryKeys.sellers.all).toEqual(['sellers']);
     expect(queryKeys.reviews.all).toEqual(['reviews']);
     expect(queryKeys.shipments.all).toEqual(['shipments']);
+    expect(queryKeys.sellerFulfillment.all).toEqual(['sellerFulfillment']);
+    expect(queryKeys.sellerFulfillment.orderItems.all).toEqual(['sellerFulfillment', 'orderItems']);
+    expect(queryKeys.sellerFulfillment.shipments.all).toEqual(['sellerFulfillment', 'shipments']);
+    expect(queryKeys.sellerFulfillment.carriers.all).toEqual(['sellerFulfillment', 'carriers']);
   });
 
   it('embeds filters in the product list key so combinations differ', () => {
@@ -37,5 +46,37 @@ describe('queryKeys', () => {
     expect(queryKeys.sellers.shop('s-1')).toEqual(['sellers', 'shop', 's-1']);
     expect(queryKeys.reviews.byProduct('p-1')).toEqual(['reviews', 'product', 'p-1']);
     expect(queryKeys.shipments.byOrder('o-1')).toEqual(['shipments', 'order', 'o-1']);
+  });
+
+  it('embeds filters in seller fulfillment keys for independent caching', () => {
+    const itemFilters1: SellerOrderItemFilterParams = { status: 'PENDING', page: 0 };
+    const itemFilters2: SellerOrderItemFilterParams = { status: 'CONFIRMED', page: 0 };
+    expect(queryKeys.sellerFulfillment.orderItems.list(itemFilters1)).toEqual([
+      'sellerFulfillment',
+      'orderItems',
+      'list',
+      itemFilters1,
+    ]);
+    expect(queryKeys.sellerFulfillment.orderItems.list(itemFilters1)).not.toEqual(
+      queryKeys.sellerFulfillment.orderItems.list(itemFilters2),
+    );
+
+    const shipmentFilters1: SellerShipmentFilterParams = { status: 'PREPARING', page: 0 };
+    const shipmentFilters2: SellerShipmentFilterParams = { status: 'SHIPPED', page: 0 };
+    expect(queryKeys.sellerFulfillment.shipments.list(shipmentFilters1)).toEqual([
+      'sellerFulfillment',
+      'shipments',
+      'list',
+      shipmentFilters1,
+    ]);
+    expect(queryKeys.sellerFulfillment.shipments.list(shipmentFilters1)).not.toEqual(
+      queryKeys.sellerFulfillment.shipments.list(shipmentFilters2),
+    );
+
+    expect(queryKeys.sellerFulfillment.carriers.list()).toEqual([
+      'sellerFulfillment',
+      'carriers',
+      'list',
+    ]);
   });
 });
