@@ -23,6 +23,8 @@ import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import SellerFulfillmentScreen from '../screens/SellerFulfillmentScreen';
+import SellerProductFormScreen from '../screens/SellerProductFormScreen';
+import SellerProductsScreen from '../screens/SellerProductsScreen';
 import SellerShopScreen from '../screens/SellerShopScreen';
 import MainTabs from './MainTabs';
 import type { RootStackParamList } from './types';
@@ -104,6 +106,30 @@ export default function AppNavigator() {
           headerTitleStyle: { fontWeight: '600' },
           headerShadowVisible: false,
         }}
+      />
+      <Stack.Screen
+        name="SellerProducts"
+        component={SellerProductsScreen}
+        options={{
+          headerShown: true,
+          title: 'My Products',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="SellerProductForm"
+        component={SellerProductFormScreen}
+        options={({ route }) => ({
+          headerShown: true,
+          title: route.params.mode === 'edit' ? 'Edit Product' : 'New Product',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        })}
       />
       <Stack.Screen
         name="Login"

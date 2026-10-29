@@ -21,6 +21,9 @@ import type {
   SellerOrderItemFilterParams,
   SellerShipmentFilterParams,
 } from '../types/sellerApi';
+import type { SellerProductListFilters } from '../types/sellerProductApi';
+
+export type { SellerProductListFilters };
 
 /** Public catalog list filters, mirroring GET /api/v1/products query params. */
 export type ProductListFilters = {
@@ -68,6 +71,19 @@ export const queryKeys = {
     list: (filters: ProductListFilters = {}) => ['products', 'list', filters] as const,
     /** One product detail. */
     detail: (productId: string) => ['products', 'detail', productId] as const,
+  },
+
+  /**
+   * Seller product management (`/api/v1/seller/products`).
+   */
+  sellerProducts: {
+    /** Prefix matching every seller product query. */
+    all: ['sellerProducts'] as const,
+    /** Seller product list with filters. */
+    list: (filters: SellerProductListFilters = {}) =>
+      ['sellerProducts', 'list', filters] as const,
+    /** Seller product detail. */
+    detail: (productId: string) => ['sellerProducts', 'detail', productId] as const,
   },
 
   /** Public categories (`GET /api/v1/categories`). */

@@ -29,7 +29,7 @@ const ROLE_LABELS: Record<Role, string> = {
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter((part) => part.length > 0);
   const first = parts[0]?.charAt(0) ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.charAt(0) ?? '') : '';
+  const last = parts[parts.length - 1]?.charAt(0) ?? '';
   return `${first}${last}`.toUpperCase() || '?';
 }
 
@@ -164,16 +164,29 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
         ) : null}
 
         {displayRole === 'SELLER' ? (
-          <Pressable
-            onPress={() => {
-              navigation.navigate('SellerFulfillment');
-            }}
-            style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
-            accessibilityRole="button"
-            accessibilityLabel="Seller Orders"
-          >
-            <Text style={styles.menuButtonText}>Seller Orders</Text>
-          </Pressable>
+          <>
+            <Pressable
+              onPress={() => {
+                navigation.navigate('SellerProducts');
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="My Products"
+            >
+              <Text style={styles.menuButtonText}>My Products</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                navigation.navigate('SellerFulfillment');
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Seller Orders"
+            >
+              <Text style={styles.menuButtonText}>Seller Orders</Text>
+            </Pressable>
+          </>
         ) : null}
 
         <Pressable

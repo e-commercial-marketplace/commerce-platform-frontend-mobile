@@ -46,8 +46,12 @@ export type RootStackParamList = {
   MyOrders: undefined;
   /** Customer order detail. */
   OrderDetail: { orderId: string };
-  /** Seller order fulfillment management (Phase 2 shell, Phase 3+ business features). */
+  /** Seller order fulfillment management. */
   SellerFulfillment: undefined;
+  /** Seller product management list. */
+  SellerProducts: undefined;
+  /** Seller product create or edit form. */
+  SellerProductForm: { mode: 'create' } | { mode: 'edit'; productId: string };
   /** Local mock sign-in form; opened from the guest Profile tab. */
   Login: undefined;
   /** Local mock registration form; opened from the guest Profile tab. */
