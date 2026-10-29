@@ -45,7 +45,10 @@ export type RootStackParamList = {
   /** Customer order history. */
   MyOrders: undefined;
   /** Customer order detail. */
-  OrderDetail: { orderId: string };
+  OrderDetail: {
+    orderId: string;
+    paymentHint?: 'COMPLETED' | 'FAILED' | 'INVALID' | 'CANCELLED';
+  };
   /** Seller order fulfillment management. */
   SellerFulfillment: undefined;
   /** Seller product management list. */

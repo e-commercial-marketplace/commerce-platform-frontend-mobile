@@ -7,6 +7,7 @@ import { queryClient } from './src/api/queryClient';
 import { colors } from './src/constants/theme';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { linking } from './src/navigation/linking';
 
 /** Navigation theme aligned with the app design tokens. */
 const appTheme = {
@@ -29,7 +30,7 @@ export default function App() {
             all read the same signed-in identity. The server-state client wraps
             everything so any feature query shares one cache. */}
         <AuthProvider>
-          <NavigationContainer theme={appTheme}>
+          <NavigationContainer theme={appTheme} linking={linking}>
             <StatusBar style="dark" />
             <AppNavigator />
           </NavigationContainer>

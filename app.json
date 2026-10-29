@@ -5,12 +5,16 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "ecommercemarketplace",
+    "scheme": [
+      "ecommercemarketplace",
+      "marketplace"
+    ],
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.ecommercialmarketplace.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,7 +28,8 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-web-browser"
     ]
   }
 }

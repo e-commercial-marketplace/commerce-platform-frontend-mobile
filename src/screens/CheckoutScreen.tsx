@@ -11,6 +11,8 @@
  * after success is `OrderResponse.totalAmount` from the backend.
  */
 
+import { useQueryClient } from '@tanstack/react-query';
+import * as WebBrowser from 'expo-web-browser';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,6 +28,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
+import { queryKeys } from '../api/queryKeys';
 import Button from '../components/Button';
 import FormField from '../components/FormField';
 import ProductImage from '../components/ProductImage';
@@ -36,9 +39,10 @@ import { useCheckout } from '../hooks/useCheckout';
 import { useValidateVoucher } from '../hooks/useVoucher';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { CartLine } from '../types/cart';
-import type { OrderResponse } from '../types/orderApi';
+import type { OrderResponse, PaymentMethod } from '../types/orderApi';
 import type { VoucherResponse } from '../types/voucherApi';
 import { formatVND } from '../utils/format';
+import { markPaymentUrlHandled } from '../utils/paymentDeepLink';
 
 const MAX_ADDRESS_LENGTH = 1000;
 
@@ -87,6 +91,27 @@ function humanizeStatus(value: string): string {
   return value.length === 0 ? value : value.charAt(0) + value.slice(1).toLowerCase();
 }
 
+/** Parses transient query hints from VNPay redirect URI. Authoritative state comes from GET /orders/{id}. */
+function parseRedirectUrl(url: string): { orderId?: string; status?: 'COMPLETED' | 'FAILED' | 'INVALID' } {
+  try {
+    const qIndex = url.indexOf('?');
+    if (qIndex === -1) {
+      return {};
+    }
+    const queryString = url.slice(qIndex + 1);
+    const params = new URLSearchParams(queryString);
+    const orderId = params.get('orderId') || undefined;
+    const rawStatus = params.get('status');
+    let status: 'COMPLETED' | 'FAILED' | 'INVALID' | undefined;
+    if (rawStatus === 'COMPLETED' || rawStatus === 'FAILED' || rawStatus === 'INVALID') {
+      status = rawStatus;
+    }
+    return { orderId, status };
+  } catch {
+    return {};
+  }
+}
+
 export default function CheckoutScreen({
   route,
   navigation,
@@ -95,10 +120,12 @@ export default function CheckoutScreen({
   const { items, isLoading, isFetching, isError, error, refetch, isCustomer } = useCart();
   const { placeOrder, isPending } = useCheckout();
   const validateVoucherMutation = useValidateVoucher();
+  const queryClient = useQueryClient();
 
   const { cartItemIds } = route.params;
   const [address, setAddress] = useState('');
   const [addressError, setAddressError] = useState<string | undefined>();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
   const [formError, setFormError] = useState<string | null>(null);
   const [cartProblem, setCartProblem] = useState(false);
   const [order, setOrder] = useState<OrderResponse | null>(null);
@@ -204,11 +231,71 @@ export default function CheckoutScreen({
       const created = await placeOrder({
         cartItemIds: resolvedIds,
         shippingAddress: trimmedAddress,
-        paymentMethod: 'COD',
+        paymentMethod,
         voucherCode: appliedVoucher ? appliedVoucher.code : undefined,
       });
       if (created != null) {
-        setOrder(created);
+        if (paymentMethod === 'COD') {
+          setOrder(created);
+          return;
+        }
+
+        // VNPay online payment flow
+        if (!created.paymentUrl || created.paymentUrl.trim().length === 0) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.orders.detail(created.id),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.orders.lists,
+          });
+          navigation.navigate('OrderDetail', {
+            orderId: created.id,
+            paymentHint: 'FAILED',
+          });
+          return;
+        }
+
+        let authResult: WebBrowser.WebBrowserAuthSessionResult;
+        try {
+          authResult = await WebBrowser.openAuthSessionAsync(
+            created.paymentUrl,
+            'marketplace://payment-result',
+          );
+        } catch {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.orders.detail(created.id),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.orders.lists,
+          });
+          navigation.navigate('OrderDetail', {
+            orderId: created.id,
+            paymentHint: 'FAILED',
+          });
+          return;
+        }
+
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.orders.detail(created.id),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.orders.lists,
+        });
+
+        if (authResult.type === 'success' && authResult.url) {
+          markPaymentUrlHandled(authResult.url);
+          const parsed = parseRedirectUrl(authResult.url);
+          const paymentHint = parsed.status || 'COMPLETED';
+          navigation.navigate('OrderDetail', {
+            orderId: created.id,
+            paymentHint,
+          });
+        } else {
+          navigation.navigate('OrderDetail', {
+            orderId: created.id,
+            paymentHint: 'CANCELLED',
+          });
+        }
       }
     } catch (checkoutError) {
       const apiError = toApiError(checkoutError);
@@ -438,11 +525,58 @@ export default function CheckoutScreen({
 
           <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Payment method</Text>
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Cash on delivery (COD)</Text>
-              <Text style={styles.rowValue}>Selected</Text>
-            </View>
+          <View style={styles.paymentMethodContainer}>
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityLabel="Cash on Delivery (COD)"
+              accessibilityState={{ checked: paymentMethod === 'COD' }}
+              disabled={busy}
+              onPress={() => setPaymentMethod('COD')}
+              style={({ pressed }) => [
+                styles.paymentOptionCard,
+                paymentMethod === 'COD' && styles.paymentOptionCardSelected,
+                pressed && !busy && styles.paymentOptionPressed,
+              ]}
+            >
+              <View
+                style={[
+                  styles.radioCircle,
+                  paymentMethod === 'COD' && styles.radioCircleSelected,
+                ]}
+              >
+                {paymentMethod === 'COD' && <View style={styles.radioCircleDot} />}
+              </View>
+              <View style={styles.paymentOptionInfo}>
+                <Text style={styles.paymentOptionTitle}>Cash on Delivery (COD)</Text>
+                <Text style={styles.paymentOptionDesc}>Pay when you receive your order.</Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityLabel="VNPay"
+              accessibilityState={{ checked: paymentMethod === 'VNPAY' }}
+              disabled={busy}
+              onPress={() => setPaymentMethod('VNPAY')}
+              style={({ pressed }) => [
+                styles.paymentOptionCard,
+                paymentMethod === 'VNPAY' && styles.paymentOptionCardSelected,
+                pressed && !busy && styles.paymentOptionPressed,
+              ]}
+            >
+              <View
+                style={[
+                  styles.radioCircle,
+                  paymentMethod === 'VNPAY' && styles.radioCircleSelected,
+                ]}
+              >
+                {paymentMethod === 'VNPAY' && <View style={styles.radioCircleDot} />}
+              </View>
+              <View style={styles.paymentOptionInfo}>
+                <Text style={styles.paymentOptionTitle}>VNPay</Text>
+                <Text style={styles.paymentOptionDesc}>Pay securely online through VNPay.</Text>
+              </View>
+            </Pressable>
           </View>
 
           <View style={styles.sectionDivider} />
@@ -539,13 +673,14 @@ export default function CheckoutScreen({
           {formError != null && <Text style={styles.formError}>{formError}</Text>}
 
           <Button
-            title="Place Order"
+            title={paymentMethod === 'VNPAY' ? 'Proceed to VNPay' : 'Place Order'}
             onPress={() => {
               void handlePlaceOrder();
             }}
             loading={busy}
             disabled={busy}
             fullWidth
+            accessibilityLabel={paymentMethod === 'VNPAY' ? 'Proceed to VNPay' : 'Place Order'}
           />
           <Text style={styles.footnote}>
             The backend total is authoritative and may differ slightly from this preview.
@@ -794,5 +929,56 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.danger,
+  },
+  paymentMethodContainer: {
+    gap: spacing.sm,
+  },
+  paymentOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.md,
+  },
+  paymentOptionCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: '#F8FAFC',
+  },
+  paymentOptionPressed: {
+    opacity: 0.7,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: colors.primary,
+  },
+  radioCircleDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  paymentOptionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  paymentOptionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  paymentOptionDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });
