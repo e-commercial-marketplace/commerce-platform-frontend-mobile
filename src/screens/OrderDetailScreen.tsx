@@ -1,15 +1,68 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { colors, radii, spacing } from '../constants/theme';
 import { useConfirmReceived, useOrderDetail } from '../hooks/useOrders';
+import { useRetryPayment } from '../hooks/usePayment';
 import { formatVND } from '../utils/format';
+import { markPaymentUrlHandled } from '../utils/paymentDeepLink';
 import type { AppNavigatorScreenProps } from '../navigation/types';
-import type { OrderItemResponse } from '../types/orderApi';
+import type { OrderItemResponse, OrderResponse } from '../types/orderApi';
 import { ApiError } from '../api/errors';
+import { queryKeys } from '../api/queryKeys';
+import Button from '../components/Button';
 import { ShipmentTimeline } from '../components/ShipmentTimeline';
 import WriteReviewModal from '../components/WriteReviewModal';
+
+/** 24 hours in milliseconds for VNPay expiration rule. */
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+export function isPaymentExpired(createdAt: string | null | undefined): boolean {
+  if (!createdAt) return false;
+  const createdTime = new Date(createdAt).getTime();
+  if (Number.isNaN(createdTime)) return false;
+  return Date.now() >= createdTime + TWENTY_FOUR_HOURS_MS;
+}
+
+export function isPayNowEligible(order: OrderResponse): boolean {
+  if (order.paymentMethod !== 'VNPAY') return false;
+  if (order.status !== 'PENDING') return false;
+  if (order.paymentStatus === 'COMPLETED' || order.paymentStatus === 'REFUNDED') return false;
+  if (isPaymentExpired(order.createdAt)) return false;
+  return true;
+}
+
+function parseRedirectUrl(url: string): { orderId?: string; status?: 'COMPLETED' | 'FAILED' | 'INVALID' } {
+  try {
+    const qIndex = url.indexOf('?');
+    if (qIndex === -1) {
+      return {};
+    }
+    const queryString = url.slice(qIndex + 1);
+    const params = new URLSearchParams(queryString);
+    const orderId = params.get('orderId') || undefined;
+    const rawStatus = params.get('status');
+    let status: 'COMPLETED' | 'FAILED' | 'INVALID' | undefined;
+    if (rawStatus === 'COMPLETED' || rawStatus === 'FAILED' || rawStatus === 'INVALID') {
+      status = rawStatus;
+    }
+    return { orderId, status };
+  } catch {
+    return {};
+  }
+}
 
 /** Parses a backend decimal money string for display only. */
 function parseMoney(value: string): number {
@@ -72,11 +125,146 @@ function ItemRow({
 }
 
 export default function OrderDetailScreen({ route, navigation }: AppNavigatorScreenProps<'OrderDetail'>) {
-  const { orderId } = route.params;
+  const { orderId, paymentHint: initialPaymentHint } = route.params;
   const { data: order, isLoading, isError, refetch } = useOrderDetail(orderId);
   const confirmMutation = useConfirmReceived();
+  const retryPaymentMutation = useRetryPayment();
+  const queryClient = useQueryClient();
+
   const [confirming, setConfirming] = useState(false);
   const [reviewingItem, setReviewingItem] = useState<{ productId: string; productName: string } | null>(null);
+  const [paymentHint, setPaymentHint] = useState<
+    'COMPLETED' | 'FAILED' | 'INVALID' | 'CANCELLED' | undefined
+  >(initialPaymentHint);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const isRetryingRef = useRef(false);
+  const recheckTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recheckAttemptedRef = useRef(false);
+
+  // Bounded recheck when mounted with COMPLETED hint but backend still reports PENDING
+  useEffect(() => {
+    if (
+      paymentHint === 'COMPLETED' &&
+      order &&
+      order.paymentMethod === 'VNPAY' &&
+      order.paymentStatus === 'PENDING' &&
+      !recheckAttemptedRef.current
+    ) {
+      recheckAttemptedRef.current = true;
+      recheckTimerRef.current = setTimeout(() => {
+        void refetch();
+      }, 2500);
+    }
+    return () => {
+      if (recheckTimerRef.current) {
+        clearTimeout(recheckTimerRef.current);
+      }
+    };
+  }, [paymentHint, order?.paymentStatus, order?.paymentMethod, refetch]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handlePayNow = async () => {
+    if (isRetryingRef.current || isRetrying || !order) {
+      return;
+    }
+    isRetryingRef.current = true;
+    setIsRetrying(true);
+    setRetryError(null);
+
+    try {
+      const response = await retryPaymentMutation.mutateAsync(order.id);
+
+      if (!response.paymentUrl || response.paymentUrl.trim().length === 0) {
+        setRetryError('Payment URL unavailable. Please try again later.');
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.orders.detail(order.id),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.orders.lists,
+        });
+        void refetch();
+        return;
+      }
+
+      let authResult: WebBrowser.WebBrowserAuthSessionResult;
+      try {
+        authResult = await WebBrowser.openAuthSessionAsync(
+          response.paymentUrl,
+          'marketplace://payment-result',
+        );
+      } catch {
+        setPaymentHint('FAILED');
+        setRetryError('Failed to open payment browser. Please try again.');
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.orders.detail(order.id),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.orders.lists,
+        });
+        void refetch();
+        return;
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.orders.detail(order.id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.orders.lists,
+      });
+
+      if (authResult.type === 'success' && authResult.url) {
+        markPaymentUrlHandled(authResult.url);
+        const parsed = parseRedirectUrl(authResult.url);
+        const nextHint = parsed.status || 'COMPLETED';
+        setPaymentHint(nextHint);
+        const refreshed = await refetch();
+        if (nextHint === 'COMPLETED' && refreshed.data?.paymentStatus === 'PENDING') {
+          if (recheckTimerRef.current) {
+            clearTimeout(recheckTimerRef.current);
+          }
+          recheckTimerRef.current = setTimeout(() => {
+            void refetch();
+          }, 2500);
+        }
+      } else {
+        setPaymentHint('CANCELLED');
+        void refetch();
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409 || err.code === 'ORDER_NOT_PAYABLE') {
+          setRetryError('This order can no longer be paid.');
+        } else {
+          setRetryError(err.message || 'Payment retry failed. Please try again.');
+        }
+      } else if (err instanceof Error) {
+        setRetryError(err.message || 'Payment retry failed. Please try again.');
+      } else {
+        setRetryError('Payment retry failed. Please try again.');
+      }
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.orders.detail(order.id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.orders.lists,
+      });
+      void refetch();
+    } finally {
+      isRetryingRef.current = false;
+      setIsRetrying(false);
+    }
+  };
 
   const handleConfirm = () => {
     if (!order || confirmMutation.isPending) {
@@ -139,10 +327,82 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
 
   const showConfirm = order.status === 'DELIVERED';
   const isPendingMutation = confirmMutation.isPending || confirming;
+  const isExpired = isPaymentExpired(order.createdAt);
+  const canPayNow = isPayNowEligible(order);
+
+  // Compute VNPay banner only for VNPAY orders
+  let vnpayBanner: {
+    type: 'success' | 'warning' | 'danger' | 'info';
+    title: string;
+    description: string;
+  } | null = null;
+
+  if (order.paymentMethod === 'VNPAY') {
+    if (order.paymentStatus === 'COMPLETED') {
+      vnpayBanner = {
+        type: 'success',
+        title: 'Payment successful',
+        description: 'Your payment via VNPay has been confirmed.',
+      };
+    } else if (order.paymentStatus === 'REFUNDED') {
+      vnpayBanner = {
+        type: 'info',
+        title: 'Refunded',
+        description: 'This payment has been refunded.',
+      };
+    } else if (isExpired) {
+      vnpayBanner = {
+        type: 'warning',
+        title: 'Payment expired',
+        description: 'The 24-hour payment window has expired. This order can no longer be paid.',
+      };
+    } else if (order.paymentStatus === 'FAILED') {
+      vnpayBanner = {
+        type: 'danger',
+        title: 'Payment not completed',
+        description: 'Payment was not successful. You can retry payment while this order is still payable.',
+      };
+    } else if (paymentHint === 'COMPLETED') {
+      vnpayBanner = {
+        type: 'info',
+        title: 'Checking payment status…',
+        description: 'Payment returned successfully. Checking order status…',
+      };
+    } else if (paymentHint === 'CANCELLED') {
+      vnpayBanner = {
+        type: 'warning',
+        title: 'Payment cancelled',
+        description: 'Payment was cancelled. You can retry while this order is still payable.',
+      };
+    } else if (paymentHint === 'FAILED') {
+      vnpayBanner = {
+        type: 'danger',
+        title: 'Payment not completed',
+        description: 'VNPay reported that payment was not completed.',
+      };
+    } else if (paymentHint === 'INVALID') {
+      vnpayBanner = {
+        type: 'warning',
+        title: 'Payment unverified',
+        description: 'Payment result could not be verified. Checking order status…',
+      };
+    } else {
+      vnpayBanner = {
+        type: 'warning',
+        title: 'Payment pending',
+        description: 'Please complete payment within 24 hours of placing your order.',
+      };
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order</Text>
           <View style={styles.row}>
@@ -171,6 +431,60 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
             <Text style={styles.label}>Status</Text>
             <Text style={styles.value}>{order.paymentStatus}</Text>
           </View>
+
+          {vnpayBanner != null && (
+            <View
+              style={[
+                styles.paymentBanner,
+                vnpayBanner.type === 'success' && styles.paymentBannerSuccess,
+                vnpayBanner.type === 'warning' && styles.paymentBannerWarning,
+                vnpayBanner.type === 'danger' && styles.paymentBannerDanger,
+                vnpayBanner.type === 'info' && styles.paymentBannerInfo,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.paymentBannerTitle,
+                  vnpayBanner.type === 'success' && styles.paymentBannerTitleSuccess,
+                  vnpayBanner.type === 'warning' && styles.paymentBannerTitleWarning,
+                  vnpayBanner.type === 'danger' && styles.paymentBannerTitleDanger,
+                  vnpayBanner.type === 'info' && styles.paymentBannerTitleInfo,
+                ]}
+              >
+                {vnpayBanner.title}
+              </Text>
+              <Text
+                style={[
+                  styles.paymentBannerDesc,
+                  vnpayBanner.type === 'success' && styles.paymentBannerDescSuccess,
+                  vnpayBanner.type === 'warning' && styles.paymentBannerDescWarning,
+                  vnpayBanner.type === 'danger' && styles.paymentBannerDescDanger,
+                  vnpayBanner.type === 'info' && styles.paymentBannerDescInfo,
+                ]}
+              >
+                {vnpayBanner.description}
+              </Text>
+            </View>
+          )}
+
+          {canPayNow && (
+            <View style={styles.payNowContainer}>
+              <Button
+                title="Pay Now"
+                onPress={() => {
+                  void handlePayNow();
+                }}
+                loading={isRetrying}
+                disabled={isRetrying}
+                fullWidth
+                accessibilityLabel="Pay Now"
+              />
+            </View>
+          )}
+
+          {retryError != null && (
+            <Text style={styles.retryErrorText}>{retryError}</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -348,69 +662,130 @@ const styles = StyleSheet.create({
   reviewItemButton: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-    marginTop: 2,
+    borderRadius: radii.sm,
+    backgroundColor: colors.primary,
   },
   reviewItemButtonPressed: {
-    opacity: 0.7,
+    opacity: 0.8,
   },
   reviewItemButtonText: {
+    color: colors.onPrimary,
     fontSize: 11,
     fontWeight: '600',
-    color: colors.primary,
   },
   divider: {
     height: 1,
     backgroundColor: colors.border,
+    marginVertical: spacing.xs,
   },
   totalLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.text,
   },
   totalValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.primary,
   },
   confirmButton: {
     backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
     borderRadius: radii.md,
-    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    minHeight: 48,
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
   confirmButtonText: {
     color: colors.onPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '600',
   },
   errorTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.danger,
+    color: colors.text,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   retryButton: {
-    marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: radii.md,
     backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    marginTop: spacing.sm,
   },
   retryButtonText: {
     color: colors.onPrimary,
+    fontWeight: '600',
+  },
+  paymentBanner: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    padding: spacing.sm,
+    marginTop: spacing.xs,
+    gap: 2,
+  },
+  paymentBannerSuccess: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  paymentBannerWarning: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  paymentBannerDanger: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  paymentBannerInfo: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+  },
+  paymentBannerTitle: {
+    fontSize: 13,
     fontWeight: '700',
+  },
+  paymentBannerTitleSuccess: {
+    color: '#166534',
+  },
+  paymentBannerTitleWarning: {
+    color: '#92400E',
+  },
+  paymentBannerTitleDanger: {
+    color: '#991B1B',
+  },
+  paymentBannerTitleInfo: {
+    color: '#075985',
+  },
+  paymentBannerDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  paymentBannerDescSuccess: {
+    color: '#15803D',
+  },
+  paymentBannerDescWarning: {
+    color: '#B45309',
+  },
+  paymentBannerDescDanger: {
+    color: '#B91C1C',
+  },
+  paymentBannerDescInfo: {
+    color: '#0369A1',
+  },
+  payNowContainer: {
+    marginTop: spacing.xs,
+  },
+  retryErrorText: {
+    fontSize: 12,
+    color: colors.danger,
+    marginTop: spacing.xs,
   },
 });

@@ -21,7 +21,26 @@ import type { VoucherResponse } from '../../types/voucherApi';
 import { getCart } from '../../services/cartService';
 import { createOrder } from '../../services/orderService';
 import { validateVoucher } from '../../services/voucherService';
+import * as WebBrowser from 'expo-web-browser';
+
+import { queryKeys } from '../../api/queryKeys';
+import { createVnpayPayment } from '../../services/paymentService';
 import CheckoutScreen from '../CheckoutScreen';
+
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(),
+}));
+
+jest.mock('../../services/paymentService', () => ({
+  createVnpayPayment: jest.fn(),
+}));
+
+const mockedOpenAuthSessionAsync = WebBrowser.openAuthSessionAsync as jest.MockedFunction<
+  typeof WebBrowser.openAuthSessionAsync
+>;
+const mockedCreateVnpayPayment = createVnpayPayment as jest.MockedFunction<
+  typeof createVnpayPayment
+>;
 
 jest.mock('../../services/cartService', () => ({
   getCart: jest.fn(),
@@ -115,6 +134,12 @@ const ORDER: OrderResponse = {
   ],
 };
 
+const VNPAY_ORDER: OrderResponse = {
+  ...ORDER,
+  paymentMethod: 'VNPAY',
+  paymentUrl: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Token=abc',
+};
+
 const VOUCHER_10: VoucherResponse = {
   code: 'WELCOME10',
   description: '10% discount on entire order',
@@ -199,6 +224,8 @@ describe('CheckoutScreen', () => {
     mockedGetCart.mockReset();
     mockedCreateOrder.mockReset();
     mockedValidateVoucher.mockReset();
+    mockedOpenAuthSessionAsync.mockReset();
+    mockedCreateVnpayPayment.mockReset();
     mockedGetCart.mockResolvedValue(
       makeCart([
         makeLine('a', { name: 'Phone', lineTotal: '100000.00' }),
@@ -218,10 +245,10 @@ describe('CheckoutScreen', () => {
 
     expect(view.getByText('Phone')).toBeTruthy();
     expect(view.getByText('Case')).toBeTruthy();
-    expect(view.getByText('Cash on delivery (COD)')).toBeTruthy();
+    expect(view.getByText('Cash on Delivery (COD)')).toBeTruthy();
     expect(view.getAllByText('150.000 ₫').length).toBeGreaterThanOrEqual(1);
     expect(view.getAllByText('0 ₫')).toHaveLength(2);
-    expect(view.queryByText('VNPAY')).toBeNull();
+    expect(view.getByText('VNPay')).toBeTruthy();
     expect(view.queryByText('Voucher')).toBeNull();
   });
 
@@ -676,4 +703,303 @@ describe('CheckoutScreen', () => {
       expect(view.getByLabelText('Place Order')).toBeTruthy();
     });
   });
+  describe('VNPay payment integration', () => {
+    it('defaults to COD with radio selected and Place Order button', async () => {
+      const view = await renderReady(['a']);
+
+      const codRadio = view.getByLabelText('Cash on Delivery (COD)');
+      const vnpayRadio = view.getByLabelText('VNPay');
+
+      expect(codRadio.props.accessibilityState.checked).toBe(true);
+      expect(vnpayRadio.props.accessibilityState.checked).toBe(false);
+      expect(view.getByLabelText('Place Order')).toBeTruthy();
+      expect(view.getByText('Pay when you receive your order.')).toBeTruthy();
+      expect(view.getByText('Pay securely online through VNPay.')).toBeTruthy();
+    });
+
+    it('switches payment method when VNPay radio is selected and updates submit button', async () => {
+      const view = await renderReady(['a']);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+
+      const codRadio = view.getByLabelText('Cash on Delivery (COD)');
+      const vnpayRadio = view.getByLabelText('VNPay');
+
+      expect(codRadio.props.accessibilityState.checked).toBe(false);
+      expect(vnpayRadio.props.accessibilityState.checked).toBe(true);
+      expect(view.getByLabelText('Proceed to VNPay')).toBeTruthy();
+      expect(view.queryByLabelText('Place Order')).toBeNull();
+
+      fireEvent.press(view.getByLabelText('Cash on Delivery (COD)'));
+      expect(codRadio.props.accessibilityState.checked).toBe(true);
+      expect(vnpayRadio.props.accessibilityState.checked).toBe(false);
+      expect(view.getByLabelText('Place Order')).toBeTruthy();
+    });
+
+    it('submits checkout with paymentMethod: VNPAY and launches WebBrowser with returned paymentUrl and marketplace:// scheme', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123&status=COMPLETED',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(mockedCreateOrder).toHaveBeenCalledWith({
+          cartItemIds: ['a'],
+          shippingAddress: '12 Main Street',
+          paymentMethod: 'VNPAY',
+          voucherCode: undefined,
+        });
+      });
+
+      expect(mockedCreateVnpayPayment).not.toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(mockedOpenAuthSessionAsync).toHaveBeenCalledWith(
+          VNPAY_ORDER.paymentUrl,
+          'marketplace://payment-result',
+        );
+      });
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'COMPLETED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with FAILED hint when redirect url has status=FAILED', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123&status=FAILED',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with INVALID hint when redirect url has status=INVALID', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123&status=INVALID',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'INVALID',
+        });
+      });
+    });
+
+    it('defaults paymentHint to COMPLETED if redirect url has no status param', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'COMPLETED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with CANCELLED hint when user cancels browser session', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'cancel' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'CANCELLED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with CANCELLED hint when browser session is dismissed', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'dismiss' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'CANCELLED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with FAILED hint when WebBrowser.openAuthSessionAsync rejects', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockRejectedValue(new Error('Browser not supported'));
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles missing paymentUrl without calling browser or placing duplicate order', async () => {
+      mockedCreateOrder.mockResolvedValue({ ...VNPAY_ORDER, paymentUrl: null });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+
+      expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles whitespace-only paymentUrl without calling browser or placing duplicate order', async () => {
+      mockedCreateOrder.mockResolvedValue({ ...VNPAY_ORDER, paymentUrl: '    ' });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+
+      expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it('invalidates order detail and order lists queries during VNPay checkout flow', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'cancel' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+      const invalidateSpy = jest.spyOn(view.client, 'invalidateQueries');
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: queryKeys.orders.detail('order-123'),
+        });
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: queryKeys.orders.lists,
+        });
+      });
+    });
+
+    it('prevents duplicate submission on rapid double tap for VNPay', async () => {
+      let resolveOrder!: (value: OrderResponse) => void;
+      mockedCreateOrder.mockReturnValue(
+        new Promise((resolve) => {
+          resolveOrder = resolve;
+        }),
+      );
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'cancel' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+
+      const submitBtn = view.getByLabelText('Proceed to VNPay');
+      fireEvent.press(submitBtn);
+      fireEvent.press(submitBtn);
+
+      expect((await view.findByLabelText('Proceed to VNPay')).props.accessibilityState).toMatchObject({
+        busy: true,
+        disabled: true,
+      });
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveOrder(VNPAY_ORDER);
+      });
+
+      await waitFor(() => {
+        expect(mockedOpenAuthSessionAsync).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('COD checkout never launches WebBrowser and uses inline success screen', async () => {
+      mockedCreateOrder.mockResolvedValue(ORDER);
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      expect(await view.findByText('Order placed successfully')).toBeTruthy();
+      expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+      expect(navigation.navigate).not.toHaveBeenCalled();
+    });
+  });
+
 });
