@@ -2,20 +2,21 @@
  * Unit tests for ProfileScreen.
  * Covers:
  * - Session restoration loading state
- * - Unauthenticated / guest state (Login, Register buttons; no Change Password, no Seller/Customer order buttons)
+ * - Unauthenticated / guest state (Login, Register buttons; no Change Password, no Seller/Customer order/product buttons)
  * - Authenticated state for CUSTOMER:
  *   - displays profile info
  *   - renders "My Orders" button and navigates to 'MyOrders'
- *   - does NOT render "Seller Orders" button
+ *   - does NOT render "Seller Orders" or "My Products" buttons
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for SELLER:
+ *   - renders "My Products" button and navigates to 'SellerProducts'
  *   - renders "Seller Orders" button and navigates to 'SellerFulfillment'
  *   - does NOT render "My Orders" button
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for ADMIN:
- *   - does NOT render "Seller Orders" or "My Orders"
+ *   - does NOT render "Seller Orders", "My Products", or "My Orders"
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Logout action
@@ -81,6 +82,7 @@ describe('ProfileScreen', () => {
     expect(getByText('Restoring your session…')).toBeTruthy();
     expect(queryByText('Change Password')).toBeNull();
     expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
   });
 
@@ -104,10 +106,11 @@ describe('ProfileScreen', () => {
     expect(getByRole('button', { name: 'Create account' })).toBeTruthy();
     expect(queryByText('Change Password')).toBeNull();
     expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
   });
 
-  it('renders My Orders and Change Password for CUSTOMER, and does NOT render Seller Orders', () => {
+  it('renders My Orders and Change Password for CUSTOMER, and does NOT render Seller Orders or My Products', () => {
     const customerUser: User = {
       id: 'user-1',
       email: 'customer@example.com',
@@ -139,8 +142,9 @@ describe('ProfileScreen', () => {
     fireEvent.press(myOrdersBtn);
     expect(mockNavigate).toHaveBeenCalledWith('MyOrders');
 
-    // CUSTOMER does NOT see Seller Orders
+    // CUSTOMER does NOT see Seller Orders or My Products
     expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Products')).toBeNull();
 
     // CUSTOMER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -149,7 +153,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Seller Orders for authenticated SELLER, navigates to SellerFulfillment, and does NOT render My Orders', () => {
+  it('renders My Products and Seller Orders for authenticated SELLER, navigates correctly, and does NOT render My Orders', () => {
     const sellerUser: User = {
       id: 'user-2',
       email: 'seller@example.com',
@@ -174,6 +178,12 @@ describe('ProfileScreen', () => {
     expect(getByText('John Seller')).toBeTruthy();
     expect(getByText('Seller')).toBeTruthy();
 
+    // SELLER sees My Products
+    const myProductsBtn = getByRole('button', { name: 'My Products' });
+    expect(myProductsBtn).toBeTruthy();
+    fireEvent.press(myProductsBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('SellerProducts');
+
     // SELLER sees Seller Orders
     const sellerOrdersBtn = getByRole('button', { name: 'Seller Orders' });
     expect(sellerOrdersBtn).toBeTruthy();
@@ -190,7 +200,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Change Password for ADMIN, and does NOT render Seller Orders or My Orders', () => {
+  it('renders Change Password for ADMIN, and does NOT render Seller Orders, My Products, or My Orders', () => {
     const adminUser: User = {
       id: 'user-3',
       email: 'admin@example.com',
@@ -215,8 +225,9 @@ describe('ProfileScreen', () => {
     expect(getByText('System Admin')).toBeTruthy();
     expect(getByText('Administrator')).toBeTruthy();
 
-    // ADMIN does NOT see Seller Orders or My Orders
+    // ADMIN does NOT see Seller Orders, My Products, or My Orders
     expect(queryByText('Seller Orders')).toBeNull();
+    expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
 
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
