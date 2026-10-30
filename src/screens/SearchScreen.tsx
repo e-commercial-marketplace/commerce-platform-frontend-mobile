@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ import type { Product } from '../types/product';
 const PAGE_SIZE = 20;
 
 export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'>) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [query, setQuery] = useState('');
   const [recentKeywords, setRecentKeywords] = useState<string[]>([]);
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);

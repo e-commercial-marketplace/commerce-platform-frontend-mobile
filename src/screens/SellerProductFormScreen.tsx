@@ -24,6 +24,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Switch,
   Text,
@@ -108,7 +109,7 @@ export default function SellerProductFormScreen({
   }, [isEdit, productDetail, hasInitialized]);
 
   // Keyboard awareness & auto-scroll state
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const fieldOffsets = useRef<Record<string, number>>({});
   const activeFieldRef = useRef<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);

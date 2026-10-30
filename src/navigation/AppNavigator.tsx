@@ -13,6 +13,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { colors } from '../constants/theme';
+import AiAssistantScreen from '../screens/AiAssistantScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
@@ -185,6 +186,18 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Change Password',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AiAssistant"
+        component={AiAssistantScreen}
+        options={{
+          headerShown: true,
+          title: 'Trợ lý AI',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

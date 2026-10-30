@@ -283,7 +283,7 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
                 </Text>
               </Pressable>
             </View>
-          ) : null
+          ) : undefined
         }
       />
     </SafeAreaView>
