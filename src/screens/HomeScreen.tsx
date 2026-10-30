@@ -34,6 +34,7 @@ import ProductCard, { type ProductViewMode } from '../components/ProductCard';
 import ProductImage from '../components/ProductImage';
 import SearchBar from '../components/SearchBar';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAuth } from '../hooks/useAuth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useCategories, useProductList } from '../hooks/useProducts';
 import type { MainTabScreenProps } from '../navigation/types';
@@ -50,6 +51,8 @@ const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 350;
 
 export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
+  const { user } = useAuth();
+  const showAiEntry = user?.role !== 'SELLER' && user?.role !== 'ADMIN';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ProductViewMode>('grid');
@@ -267,6 +270,26 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
               </Pressable>
             </View>
 
+            {showAiEntry ? (
+              <Pressable
+                style={styles.aiEntryCard}
+                onPress={() => navigation.navigate('AiAssistant')}
+                accessibilityRole="button"
+                accessibilityLabel="Mở trợ lý AI"
+              >
+                <View style={styles.aiEntryLeft}>
+                  <View style={styles.aiEntryBadge}>
+                    <Text style={styles.aiEntrySparkle}>✨</Text>
+                  </View>
+                  <View style={styles.aiEntryTexts}>
+                    <Text style={styles.aiEntryTitle}>Trợ lý AI</Text>
+                    <Text style={styles.aiEntrySubtitle}>Hỏi đáp sản phẩm & gợi ý mua sắm thông minh</Text>
+                  </View>
+                </View>
+                <Text style={styles.aiEntryArrow}>→</Text>
+              </Pressable>
+            ) : null}
+
             {products.length > 0 ? (
               <Pressable style={styles.heroCard} onPress={() => handleProductPress(products[0])}>
                 <View style={styles.heroCopy}>
@@ -403,7 +426,7 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
                 </Text>
               </Pressable>
             </View>
-          ) : null
+          ) : undefined
         }
       />
       <Modal
@@ -745,4 +768,52 @@ const styles = StyleSheet.create({
   optionIconMuted: { fontSize: 22, color: '#98A2B3' },
   optionText: { fontSize: 12, color: '#98A2B3' },
   optionTextActive: { fontSize: 12, color: colors.primary },
+  aiEntryCard: {
+    marginTop: spacing.sm,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  aiEntryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  aiEntryBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#CCFBF1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiEntrySparkle: {
+    fontSize: 16,
+  },
+  aiEntryTexts: {
+    flex: 1,
+  },
+  aiEntryTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  aiEntrySubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  aiEntryArrow: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    marginLeft: spacing.sm,
+  },
 });

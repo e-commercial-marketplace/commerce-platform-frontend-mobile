@@ -150,4 +150,12 @@ export const queryKeys = {
       list: () => ['sellerFulfillment', 'carriers', 'list'] as const,
     },
   },
+  /**
+   * AI Assistant chat sessions and message history.
+   */
+  ai: {
+    all: ['ai'] as const,
+    sessions: () => ['ai', 'sessions'] as const,
+    sessionMessages: (sessionId: string) => ['ai', 'sessions', sessionId, 'messages'] as const,
+  },
 } as const;

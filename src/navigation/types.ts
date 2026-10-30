@@ -65,6 +65,8 @@ export type RootStackParamList = {
   ResetPassword: { email?: string } | undefined;
   /** Authenticated user password change. */
   ChangePassword: undefined;
+  /** AI shopping assistant. */
+  AiAssistant: undefined;
 };
 
 /** Props for screens rendered directly by the root stack. */
