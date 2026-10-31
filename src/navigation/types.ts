@@ -67,6 +67,14 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   /** AI shopping assistant. */
   AiAssistant: undefined;
+  /** Human Customer–Seller chat conversation list. */
+  ConversationList: undefined;
+  /** Human Customer–Seller chat room for an existing conversation. */
+  ChatRoom: {
+    conversationId: string;
+    counterpartName?: string;
+    counterpartRole?: 'CUSTOMER' | 'SELLER';
+  };
 };
 
 /** Props for screens rendered directly by the root stack. */

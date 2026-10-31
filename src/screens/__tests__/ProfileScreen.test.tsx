@@ -2,21 +2,23 @@
  * Unit tests for ProfileScreen.
  * Covers:
  * - Session restoration loading state
- * - Unauthenticated / guest state (Login, Register buttons; no Change Password, no Seller/Customer order/product buttons)
+ * - Unauthenticated / guest state (Login, Register buttons; no Change Password, no Seller/Customer order/product buttons, no Chat inboxes)
  * - Authenticated state for CUSTOMER:
  *   - displays profile info
  *   - renders "My Orders" button and navigates to 'MyOrders'
- *   - does NOT render "Seller Orders" or "My Products" buttons
+ *   - renders "Tin nhắn" button and navigates to 'ConversationList'
+ *   - does NOT render "Seller Orders", "My Products", or "Tin nhắn khách hàng" buttons
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for SELLER:
  *   - renders "My Products" button and navigates to 'SellerProducts'
  *   - renders "Seller Orders" button and navigates to 'SellerFulfillment'
- *   - does NOT render "My Orders" button
+ *   - renders "Tin nhắn khách hàng" button and navigates to 'ConversationList'
+ *   - does NOT render "My Orders" or customer "Tin nhắn" button
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for ADMIN:
- *   - does NOT render "Seller Orders", "My Products", or "My Orders"
+ *   - does NOT render "Seller Orders", "My Products", "My Orders", or Chat inboxes
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Logout action
@@ -61,10 +63,10 @@ describe('ProfileScreen', () => {
       isLoading: false,
       isError: false,
       refetch: jest.fn(),
-    } as never);
+    } as any);
   });
 
-  it('renders restoring session indicator when session is being restored', () => {
+  it('renders loading spinner and subtitle while restoring session', () => {
     mockedUseAuth.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -84,6 +86,8 @@ describe('ProfileScreen', () => {
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
+    expect(queryByText('Tin nhắn')).toBeNull();
+    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
   });
 
   it('renders guest screen when not authenticated, without orders or Change Password buttons', () => {
@@ -108,9 +112,11 @@ describe('ProfileScreen', () => {
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
+    expect(queryByText('Tin nhắn')).toBeNull();
+    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
   });
 
-  it('renders My Orders and Change Password for CUSTOMER, and does NOT render Seller Orders or My Products', () => {
+  it('renders My Orders, Tin nhắn, and Change Password for CUSTOMER, and does NOT render Seller Orders, My Products, or Seller Chat', () => {
     const customerUser: User = {
       id: 'user-1',
       email: 'customer@example.com',
@@ -142,9 +148,16 @@ describe('ProfileScreen', () => {
     fireEvent.press(myOrdersBtn);
     expect(mockNavigate).toHaveBeenCalledWith('MyOrders');
 
-    // CUSTOMER does NOT see Seller Orders or My Products
+    // CUSTOMER sees Tin nhắn
+    const chatBtn = getByRole('button', { name: 'Tin nhắn' });
+    expect(chatBtn).toBeTruthy();
+    fireEvent.press(chatBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('ConversationList');
+
+    // CUSTOMER does NOT see Seller Orders, My Products, or Tin nhắn khách hàng
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
+    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
 
     // CUSTOMER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -153,7 +166,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders My Products and Seller Orders for authenticated SELLER, navigates correctly, and does NOT render My Orders', () => {
+  it('renders My Products, Seller Orders, and Tin nhắn khách hàng for authenticated SELLER, navigates correctly, and does NOT render My Orders or customer Tin nhắn', () => {
     const sellerUser: User = {
       id: 'user-2',
       email: 'seller@example.com',
@@ -190,8 +203,15 @@ describe('ProfileScreen', () => {
     fireEvent.press(sellerOrdersBtn);
     expect(mockNavigate).toHaveBeenCalledWith('SellerFulfillment');
 
-    // SELLER does NOT see customer My Orders
+    // SELLER sees Tin nhắn khách hàng
+    const sellerChatBtn = getByRole('button', { name: 'Tin nhắn khách hàng' });
+    expect(sellerChatBtn).toBeTruthy();
+    fireEvent.press(sellerChatBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('ConversationList');
+
+    // SELLER does NOT see customer My Orders or customer Tin nhắn
     expect(queryByText('My Orders')).toBeNull();
+    expect(queryByText('Tin nhắn')).toBeNull();
 
     // SELLER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -200,7 +220,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Change Password for ADMIN, and does NOT render Seller Orders, My Products, or My Orders', () => {
+  it('renders Change Password for ADMIN, and does NOT render Seller Orders, My Products, My Orders, or Chat inboxes', () => {
     const adminUser: User = {
       id: 'user-3',
       email: 'admin@example.com',
@@ -225,10 +245,12 @@ describe('ProfileScreen', () => {
     expect(getByText('System Admin')).toBeTruthy();
     expect(getByText('Administrator')).toBeTruthy();
 
-    // ADMIN does NOT see Seller Orders, My Products, or My Orders
+    // ADMIN does NOT see Seller Orders, My Products, My Orders, or Chat inboxes
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
+    expect(queryByText('Tin nhắn')).toBeNull();
+    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
 
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
     expect(changePasswordBtn).toBeTruthy();

@@ -20,6 +20,7 @@ import WriteReviewModal from '../components/WriteReviewModal';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
+import { useOpenConversation } from '../hooks/useChat';
 import { useProductDetail } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
@@ -41,6 +42,12 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [writeReviewVisible, setWriteReviewVisible] = useState(false);
+  const openConversationMutation = useOpenConversation();
+  const [chatError, setChatError] = useState<string | null>(null);
+  const isOpeningChatRef = useRef(false);
+
+  const canShowChatAction = !isAuthenticated || user?.role === 'CUSTOMER';
+  const isOpeningChat = openConversationMutation.isPending;
 
   const handleOpenWriteReview = () => {
     if (!isAuthenticated || user == null) {
@@ -238,6 +245,47 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   // The owning seller, when the backend provided one.
   const sellerId = product.sellerId;
 
+  const handleOpenChat = async () => {
+    if (isOpeningChatRef.current || openConversationMutation.isPending) {
+      return;
+    }
+
+    if (!isAuthenticated || user == null) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    if (user.role !== 'CUSTOMER') {
+      return;
+    }
+
+    if (!sellerId) {
+      setChatError('Không tìm thấy thông tin người bán.');
+      return;
+    }
+
+    isOpeningChatRef.current = true;
+    setChatError(null);
+
+    try {
+      const conversation = await openConversationMutation.mutateAsync({
+        sellerId,
+        productId: product.id,
+      });
+
+      navigation.navigate('ChatRoom', {
+        conversationId: conversation.id,
+        counterpartName: shop?.name,
+        counterpartRole: 'SELLER',
+      });
+    } catch (err: unknown) {
+      const apiErr = toApiError(err);
+      setChatError(apiErr.message || 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.');
+    } finally {
+      isOpeningChatRef.current = false;
+    }
+  };
+
   function handleOpenShop() {
     if (sellerId == null) {
       return;
@@ -261,6 +309,7 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
         <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="lg" />
 
         {sellerId != null && (
+          <View style={styles.sellerSection}>
           <Pressable
             onPress={handleOpenShop}
             style={({ pressed }) => [styles.sellerRow, pressed && styles.sellerRowPressed]}
@@ -276,7 +325,32 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
             </View>
             <Text style={styles.chevron}>›</Text>
           </Pressable>
-        )}
+
+          {canShowChatAction && (
+            <Pressable
+              onPress={handleOpenChat}
+              disabled={isOpeningChat}
+              style={({ pressed }) => [
+                styles.chatWithShopButton,
+                isOpeningChat && styles.chatWithShopButtonDisabled,
+                pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Nhắn tin với shop"
+            >
+              {isOpeningChat ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <Text style={styles.chatWithShopIcon}>💬</Text>
+                  <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+          {chatError != null && <Text style={styles.chatErrorText}>{chatError}</Text>}
+        </View>
+      )}
 
         <View style={styles.quantitySection}>
           <Text style={styles.sectionTitle}>Quantity</Text>
@@ -425,6 +499,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: colors.textSecondary,
+  },
+  sellerSection: {
+    gap: spacing.sm,
+  },
+  chatWithShopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    gap: spacing.xs + 2,
+  },
+  chatWithShopButtonDisabled: {
+    opacity: 0.6,
+  },
+  chatWithShopButtonPressed: {
+    backgroundColor: '#E6F8FA',
+  },
+  chatWithShopIcon: {
+    fontSize: 16,
+  },
+  chatWithShopText: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  chatErrorText: {
+    fontSize: typography.xs,
+    color: colors.danger,
+    textAlign: 'center',
   },
   sellerRow: {
     flexDirection: 'row',

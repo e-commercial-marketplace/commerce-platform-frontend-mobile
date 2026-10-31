@@ -17,7 +17,10 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as WebBrowser from 'expo-web-browser';
 
 import { ApiError } from '../../api/errors';
+import { useAuth } from '../../hooks/useAuth';
+import { useOpenConversation } from '../../hooks/useChat';
 import { useConfirmReceived, useOrderDetail } from '../../hooks/useOrders';
+import { useSellerShop } from '../../hooks/useSellers';
 import { useCreateReview } from '../../hooks/useReviews';
 import { createVnpayPayment } from '../../services/paymentService';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
@@ -45,12 +48,27 @@ jest.mock('../../services/paymentService', () => ({
   createVnpayPayment: jest.fn(),
 }));
 
+jest.mock('../../hooks/useAuth', () => ({
+  useAuth: jest.fn(),
+}));
+
+jest.mock('../../hooks/useChat', () => ({
+  useOpenConversation: jest.fn(),
+}));
+
+jest.mock('../../hooks/useSellers', () => ({
+  useSellerShop: jest.fn(),
+}));
+
 const mockedUseOrderDetail = useOrderDetail as jest.MockedFunction<typeof useOrderDetail>;
 const mockedUseConfirmReceived = useConfirmReceived as jest.MockedFunction<typeof useConfirmReceived>;
 const mockedCreateVnpayPayment = createVnpayPayment as jest.MockedFunction<typeof createVnpayPayment>;
 const mockedOpenAuthSessionAsync = WebBrowser.openAuthSessionAsync as jest.MockedFunction<
   typeof WebBrowser.openAuthSessionAsync
 >;
+const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockedUseOpenConversation = useOpenConversation as jest.MockedFunction<typeof useOpenConversation>;
+const mockedUseSellerShop = useSellerShop as jest.MockedFunction<typeof useSellerShop>;
 
 type Navigation = AppNavigatorScreenProps<'OrderDetail'>['navigation'];
 
@@ -140,6 +158,8 @@ describe('OrderDetailScreen', () => {
     };
   }
 
+  const mockOpenConversationMutateAsync = jest.fn();
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseConfirmReceived.mockReturnValue({
@@ -148,6 +168,28 @@ describe('OrderDetailScreen', () => {
     } as any);
     mockedCreateVnpayPayment.mockReset();
     mockedOpenAuthSessionAsync.mockReset();
+
+    mockedUseAuth.mockReturnValue({
+      user: { id: 'cust-uuid-1', role: 'CUSTOMER', email: 'customer@test.com' },
+      token: 'jwt-token-123',
+      isAuthenticated: true,
+      isInitialized: true,
+      login: jest.fn(),
+      register: jest.fn(),
+      logout: jest.fn(),
+    } as any);
+
+    mockOpenConversationMutateAsync.mockReset();
+    mockedUseOpenConversation.mockReturnValue({
+      mutateAsync: mockOpenConversationMutateAsync,
+      isPending: false,
+    } as any);
+
+    mockedUseSellerShop.mockImplementation((sellerId: string) => ({
+      data: sellerId ? { id: sellerId, name: `Official Store ${sellerId}`, productCount: 10 } : undefined,
+      isLoading: false,
+      isError: false,
+    } as any));
   });
 
   describe('Existing Review & Confirm Received behavior (regression)', () => {
@@ -627,6 +669,308 @@ describe('OrderDetailScreen', () => {
 
       expect(refetchMock).toHaveBeenCalledTimes(1);
       jest.useRealTimers();
+    });
+  });
+
+  describe('Human Chat Integration — Contact Seller from Order Detail (Phase 5B)', () => {
+    it('allows a Customer to see "Nhắn tin với shop" and start/open a conversation', async () => {
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      mockOpenConversationMutateAsync.mockResolvedValueOnce({
+        id: 'conv-new-order-1',
+        customerId: 'cust-uuid-1',
+        sellerId: 'seller-uuid-1',
+        productId: null,
+        orderId: 'order-uuid-1',
+        createdAt: '2026-10-30T10:00:00Z',
+        lastMessageAt: null,
+      });
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(undefined, mockNav);
+
+      const chatButton = getByText('Nhắn tin với shop');
+      expect(chatButton).toBeTruthy();
+
+      fireEvent.press(chatButton);
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      const payload = mockOpenConversationMutateAsync.mock.calls[0][0];
+      // Must use actual sellerId from order
+      expect(payload.sellerId).toBe('seller-uuid-1');
+      // Must use actual orderId from order
+      expect(payload.orderId).toBe('order-uuid-1');
+      // Must NOT send customerId
+      expect(payload.customerId).toBeUndefined();
+
+      // Must navigate to returned conversation.id
+      expect(mockNav.navigate).toHaveBeenCalledWith('ChatRoom', {
+        conversationId: 'conv-new-order-1',
+        counterpartName: 'Official Store seller-uuid-1',
+        counterpartRole: 'SELLER',
+      });
+    });
+
+    it('navigates to ChatRoom when backend returns existing conversation (200 OK)', async () => {
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      // Existing conversation might not have orderId attached or have previous context
+      mockOpenConversationMutateAsync.mockResolvedValueOnce({
+        id: 'conv-existing-99',
+        customerId: 'cust-uuid-1',
+        sellerId: 'seller-uuid-1',
+        productId: 'prod-uuid-previous',
+        orderId: null,
+        createdAt: '2026-10-25T10:00:00Z',
+        lastMessageAt: '2026-10-29T10:00:00Z',
+      });
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(undefined, mockNav);
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      // Must navigate to the real conversation returned without fabricating client-side context
+      expect(mockNav.navigate).toHaveBeenCalledWith('ChatRoom', {
+        conversationId: 'conv-existing-99',
+        counterpartName: 'Official Store seller-uuid-1',
+        counterpartRole: 'SELLER',
+      });
+    });
+
+    it('hides "Nhắn tin với shop" button for SELLER role', () => {
+      mockedUseAuth.mockReturnValue({
+        user: { id: 'seller-uuid-1', role: 'SELLER', email: 'seller@test.com' },
+        token: 'jwt-token',
+        isAuthenticated: true,
+      } as any);
+
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const { queryByText } = renderScreen();
+      expect(queryByText('Nhắn tin với shop')).toBeNull();
+    });
+
+    it('hides "Nhắn tin với shop" button for ADMIN role', () => {
+      mockedUseAuth.mockReturnValue({
+        user: { id: 'admin-uuid-1', role: 'ADMIN', email: 'admin@test.com' },
+        token: 'jwt-token',
+        isAuthenticated: true,
+      } as any);
+
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const { queryByText } = renderScreen();
+      expect(queryByText('Nhắn tin với shop')).toBeNull();
+    });
+
+    it('navigates unauthenticated user to Login on chat press if rendered', () => {
+      mockedUseAuth.mockReturnValue({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+      } as any);
+
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const { queryByText } = renderScreen();
+      // Since isCustomer is false when unauthenticated, button is not rendered
+      expect(queryByText('Nhắn tin với shop')).toBeNull();
+    });
+
+    it('supports multi-seller orders with distinct chat action per seller without arbitrary selection', async () => {
+      const multiSellerOrder: OrderResponse = {
+        ...baseOrder,
+        id: 'order-multi-seller-9',
+        items: [
+          {
+            id: 'item-1',
+            orderId: 'order-multi-seller-9',
+            productId: 'prod-1',
+            productName: 'Sony Headphones',
+            unitPrice: '5000000.00',
+            quantity: 1,
+            status: 'CONFIRMED',
+            sellerId: 'seller-sony',
+          },
+          {
+            id: 'item-2',
+            orderId: 'order-multi-seller-9',
+            productId: 'prod-2',
+            productName: 'Apple iPad',
+            unitPrice: '15000000.00',
+            quantity: 1,
+            status: 'CONFIRMED',
+            sellerId: 'seller-apple',
+          },
+        ],
+      };
+
+      mockedUseOrderDetail.mockReturnValue({
+        data: multiSellerOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      mockOpenConversationMutateAsync.mockResolvedValueOnce({
+        id: 'conv-apple-order',
+        customerId: 'cust-uuid-1',
+        sellerId: 'seller-apple',
+        productId: null,
+        orderId: 'order-multi-seller-9',
+        createdAt: '2026-10-30T10:00:00Z',
+        lastMessageAt: null,
+      });
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getAllByText, getByTestId } = renderScreen({ orderId: 'order-multi-seller-9' }, mockNav);
+
+      const chatButtons = getAllByText('Nhắn tin với shop');
+      expect(chatButtons).toHaveLength(2);
+
+      // Explicitly tap Seller Apple's chat button
+      const appleChatButton = getByTestId('chat-seller-seller-apple');
+      expect(appleChatButton).toBeTruthy();
+
+      fireEvent.press(appleChatButton);
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      // Verifies frontend selected seller-apple, NOT the first seller (seller-sony)
+      const payload = mockOpenConversationMutateAsync.mock.calls[0][0];
+      expect(payload.sellerId).toBe('seller-apple');
+      expect(payload.orderId).toBe('order-multi-seller-9');
+
+      expect(mockNav.navigate).toHaveBeenCalledWith('ChatRoom', {
+        conversationId: 'conv-apple-order',
+        counterpartName: 'Official Store seller-apple',
+        counterpartRole: 'SELLER',
+      });
+    });
+
+    it('prevents rapid double-tap from creating duplicate openConversation requests', () => {
+      mockedUseOpenConversation.mockReturnValue({
+        mutateAsync: mockOpenConversationMutateAsync,
+        isPending: true,
+      } as any);
+
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(undefined, mockNav);
+
+      const chatButton = getByText('Nhắn tin với shop');
+      fireEvent.press(chatButton);
+
+      expect(mockOpenConversationMutateAsync).not.toHaveBeenCalled();
+      expect(mockNav.navigate).not.toHaveBeenCalled();
+    });
+
+    it('displays error and does not navigate when openConversation fails', async () => {
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      mockOpenConversationMutateAsync.mockRejectedValueOnce(
+        new ApiError('Lỗi kết nối máy chủ', 'NETWORK_ERROR', null),
+      );
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(undefined, mockNav);
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockNav.navigate).not.toHaveBeenCalled();
+      expect(getByText('Lỗi kết nối máy chủ')).toBeTruthy();
+
+      // Retry remains possible
+      mockOpenConversationMutateAsync.mockResolvedValueOnce({
+        id: 'conv-retry-success',
+        customerId: 'cust-uuid-1',
+        sellerId: 'seller-uuid-1',
+        productId: null,
+        orderId: 'order-uuid-1',
+        createdAt: '2026-10-30T10:00:00Z',
+        lastMessageAt: null,
+      });
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(2);
+      });
+
+      expect(mockNav.navigate).toHaveBeenCalledWith('ChatRoom', {
+        conversationId: 'conv-retry-success',
+        counterpartName: 'Official Store seller-uuid-1',
+        counterpartRole: 'SELLER',
+      });
+    });
+
+    it('navigates to SellerShop when shop header is pressed', () => {
+      mockedUseOrderDetail.mockReturnValue({
+        data: baseOrder,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(undefined, mockNav);
+
+      const shopName = getByText('Official Store seller-uuid-1');
+      fireEvent.press(shopName);
+
+      expect(mockNav.navigate).toHaveBeenCalledWith('SellerShop', {
+        sellerId: 'seller-uuid-1',
+      });
     });
   });
 });
