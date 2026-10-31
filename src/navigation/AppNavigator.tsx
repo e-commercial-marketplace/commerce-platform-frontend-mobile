@@ -15,7 +15,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../constants/theme';
 import AiAssistantScreen from '../screens/AiAssistantScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import ChatRoomScreen from '../screens/ChatRoomScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
+import ConversationListScreen from '../screens/ConversationListScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MyOrdersScreen from '../screens/MyOrdersScreen';
@@ -203,6 +205,30 @@ export default function AppNavigator() {
           headerTitleStyle: { fontWeight: '600' },
           headerShadowVisible: false,
         }}
+      />
+      <Stack.Screen
+        name="ConversationList"
+        component={ConversationListScreen}
+        options={{
+          headerShown: true,
+          title: 'Tin nhắn',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="ChatRoom"
+        component={ChatRoomScreen}
+        options={({ route }) => ({
+          headerShown: true,
+          title: route.params.counterpartName ?? 'Trò chuyện',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        })}
       />
     </Stack.Navigator>
   );

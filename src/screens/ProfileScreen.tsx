@@ -151,16 +151,29 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
         </View>
 
         {displayRole === 'CUSTOMER' ? (
-          <Pressable
-            onPress={() => {
-              navigation.navigate('MyOrders');
-            }}
-            style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
-            accessibilityRole="button"
-            accessibilityLabel="My Orders"
-          >
-            <Text style={styles.menuButtonText}>My Orders</Text>
-          </Pressable>
+          <>
+            <Pressable
+              onPress={() => {
+                navigation.navigate('MyOrders');
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="My Orders"
+            >
+              <Text style={styles.menuButtonText}>My Orders</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                navigation.navigate('ConversationList');
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Tin nhắn"
+            >
+              <Text style={styles.menuButtonText}>Tin nhắn</Text>
+            </Pressable>
+          </>
         ) : null}
 
         {displayRole === 'SELLER' ? (
@@ -185,6 +198,17 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               accessibilityLabel="Seller Orders"
             >
               <Text style={styles.menuButtonText}>Seller Orders</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                navigation.navigate('ConversationList');
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Tin nhắn khách hàng"
+            >
+              <Text style={styles.menuButtonText}>Tin nhắn khách hàng</Text>
             </Pressable>
           </>
         ) : null}

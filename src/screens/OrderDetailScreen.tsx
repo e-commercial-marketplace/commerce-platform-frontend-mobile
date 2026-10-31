@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,14 +13,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAuth } from '../hooks/useAuth';
+import { useOpenConversation } from '../hooks/useChat';
+import { useSellerShop } from '../hooks/useSellers';
+import ShopAvatar from '../components/ShopAvatar';
 import { useConfirmReceived, useOrderDetail } from '../hooks/useOrders';
 import { useRetryPayment } from '../hooks/usePayment';
 import { formatVND } from '../utils/format';
 import { markPaymentUrlHandled } from '../utils/paymentDeepLink';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { OrderItemResponse, OrderResponse } from '../types/orderApi';
-import { ApiError } from '../api/errors';
+import { ApiError, toApiError } from '../api/errors';
 import { queryKeys } from '../api/queryKeys';
 import Button from '../components/Button';
 import { ShipmentTimeline } from '../components/ShipmentTimeline';
@@ -124,6 +128,96 @@ function ItemRow({
   );
 }
 
+
+function OrderSellerGroup({
+  sellerId,
+  items,
+  isCustomer,
+  isCompletedOrder,
+  onReviewItem,
+  onOpenShop,
+  onOpenChat,
+  isOpeningChat,
+  chatError,
+  showDivider,
+}: {
+  sellerId: string;
+  items: OrderItemResponse[];
+  isCustomer: boolean;
+  isCompletedOrder: boolean;
+  onReviewItem: (item: OrderItemResponse) => void;
+  onOpenShop: (sellerId: string) => void;
+  onOpenChat: (sellerId: string, shopName?: string) => void;
+  isOpeningChat: boolean;
+  chatError: string | null;
+  showDivider: boolean;
+}) {
+  const isRealSeller = Boolean(sellerId && sellerId !== 'unknown');
+  const { data: shop } = useSellerShop(isRealSeller ? sellerId : '');
+  const shopName = shop?.name ?? (isRealSeller ? `Shop #${sellerId.slice(0, 8)}` : 'Shop');
+
+  return (
+    <View style={[styles.sellerGroup, showDivider && styles.sellerGroupWithDivider]}>
+      {isRealSeller && (
+        <View style={styles.sellerHeader}>
+          <Pressable
+            onPress={() => onOpenShop(sellerId)}
+            style={({ pressed }) => [styles.sellerHeaderInfo, pressed && styles.sellerHeaderPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Shop ${shopName}`}
+          >
+            <ShopAvatar name={shop?.name} size={36} />
+            <View style={styles.sellerNameContainer}>
+              <Text style={styles.sellerGroupName} numberOfLines={1}>
+                {shopName}
+              </Text>
+              <Text style={styles.sellerSubtitle}>Xem shop</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+
+          {isCustomer && (
+            <Pressable
+              testID={`chat-seller-${sellerId}`}
+              onPress={() => onOpenChat(sellerId, shop?.name)}
+              disabled={isOpeningChat}
+              style={({ pressed }) => [
+                styles.chatWithShopButton,
+                isOpeningChat && styles.chatWithShopButtonDisabled,
+                pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Nhắn tin với shop"
+            >
+              {isOpeningChat ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <Text style={styles.chatWithShopIcon}>💬</Text>
+                  <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+
+          {chatError != null && <Text style={styles.chatErrorText}>{chatError}</Text>}
+        </View>
+      )}
+
+      <View style={styles.sellerItemsList}>
+        {items.map((item) => (
+          <ItemRow
+            key={item.id}
+            item={item}
+            canReview={isCompletedOrder}
+            onReview={() => onReviewItem(item)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export default function OrderDetailScreen({ route, navigation }: AppNavigatorScreenProps<'OrderDetail'>) {
   const { orderId, paymentHint: initialPaymentHint } = route.params;
   const { data: order, isLoading, isError, refetch } = useOrderDetail(orderId);
@@ -143,6 +237,83 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
   const isRetryingRef = useRef(false);
   const recheckTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recheckAttemptedRef = useRef(false);
+
+  const { user, isAuthenticated } = useAuth();
+  const openConversationMutation = useOpenConversation();
+  const [activeChatSellerId, setActiveChatSellerId] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<{ sellerId: string; message: string } | null>(null);
+  const isOpeningChatRef = useRef(false);
+
+  const canShowChatAction = isAuthenticated && user?.role === 'CUSTOMER';
+  const isOpeningChat = openConversationMutation.isPending;
+
+  const handleOpenChat = async (sellerId: string, shopName?: string) => {
+    if (isOpeningChatRef.current || openConversationMutation.isPending) {
+      return;
+    }
+
+    if (!isAuthenticated || user == null) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    if (user.role !== 'CUSTOMER') {
+      return;
+    }
+
+    if (!sellerId || sellerId === 'unknown') {
+      setChatError({
+        sellerId: sellerId || '',
+        message: 'Không tìm thấy thông tin người bán.',
+      });
+      return;
+    }
+
+    isOpeningChatRef.current = true;
+    setActiveChatSellerId(sellerId);
+    setChatError(null);
+
+    try {
+      const conversation = await openConversationMutation.mutateAsync({
+        sellerId,
+        orderId: order?.id ?? orderId,
+      });
+
+      navigation.navigate('ChatRoom', {
+        conversationId: conversation.id,
+        counterpartName: shopName,
+        counterpartRole: 'SELLER',
+      });
+    } catch (err: unknown) {
+      const apiErr = toApiError(err);
+      setChatError({
+        sellerId,
+        message: apiErr.message || 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.',
+      });
+    } finally {
+      isOpeningChatRef.current = false;
+      setActiveChatSellerId(null);
+    }
+  };
+
+  const sellerGroups = useMemo(() => {
+    if (!order?.items) return [];
+    const map = new Map<string, OrderItemResponse[]>();
+    for (const item of order.items) {
+      const sId = item.sellerId || 'unknown';
+      const existing = map.get(sId);
+      if (existing) {
+        existing.push(item);
+      } else {
+        map.set(sId, [item]);
+      }
+    }
+    const result: { sellerId: string; items: OrderItemResponse[] }[] = [];
+    for (const [sellerId, groupedItems] of map.entries()) {
+      result.push({ sellerId, items: groupedItems });
+    }
+    return result;
+  }, [order?.items]);
 
   // Bounded recheck when mounted with COMPLETED hint but backend still reports PENDING
   useEffect(() => {
@@ -494,17 +665,24 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
-          {order.items.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              canReview={order.status === 'COMPLETED'}
-              onReview={() =>
+          {sellerGroups.map((group, index) => (
+            <OrderSellerGroup
+              key={group.sellerId || `seller-${index}`}
+              sellerId={group.sellerId}
+              items={group.items}
+              isCustomer={canShowChatAction}
+              isCompletedOrder={order.status === 'COMPLETED'}
+              onReviewItem={(item) =>
                 setReviewingItem({
                   productId: item.productId,
                   productName: item.productName,
                 })
               }
+              onOpenShop={(sId) => navigation.navigate('SellerShop', { sellerId: sId })}
+              onOpenChat={handleOpenChat}
+              isOpeningChat={isOpeningChat && activeChatSellerId === group.sellerId}
+              chatError={chatError?.sellerId === group.sellerId ? chatError.message : null}
+              showDivider={index > 0}
             />
           ))}
         </View>
@@ -787,5 +965,77 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.danger,
     marginTop: spacing.xs,
+  },
+  sellerGroup: {
+    gap: spacing.xs,
+  },
+  sellerGroupWithDivider: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  sellerHeader: {
+    gap: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  sellerHeaderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  sellerHeaderPressed: {
+    opacity: 0.7,
+  },
+  sellerNameContainer: {
+    flex: 1,
+  },
+  sellerGroupName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  sellerSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  chevron: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  chatWithShopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xs + 3,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    gap: spacing.xs + 2,
+  },
+  chatWithShopButtonDisabled: {
+    opacity: 0.6,
+  },
+  chatWithShopButtonPressed: {
+    backgroundColor: '#E6F8FA',
+  },
+  chatWithShopIcon: {
+    fontSize: 14,
+  },
+  chatWithShopText: {
+    fontSize: typography.xs + 1,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  chatErrorText: {
+    fontSize: typography.xs,
+    color: colors.danger,
+    textAlign: 'center',
+  },
+  sellerItemsList: {
+    gap: 2,
   },
 });

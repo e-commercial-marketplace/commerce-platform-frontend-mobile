@@ -158,4 +158,15 @@ export const queryKeys = {
     sessions: () => ['ai', 'sessions'] as const,
     sessionMessages: (sessionId: string) => ['ai', 'sessions', sessionId, 'messages'] as const,
   },
+  /**
+   * Human real-time Customer–Seller Chat.
+   */
+  chat: {
+    all: ['chat'] as const,
+    conversations: () => ['chat', 'conversations'] as const,
+    messages: (conversationId: string) =>
+      ['chat', 'conversations', conversationId, 'messages'] as const,
+    paginatedMessages: (conversationId: string, page: number) =>
+      ['chat', 'conversations', conversationId, 'messages', page] as const,
+  },
 } as const;

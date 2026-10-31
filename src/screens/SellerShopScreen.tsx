@@ -19,7 +19,7 @@
  * - SUCCESS : the request succeeded and the products are rendered.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -31,10 +31,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ApiError } from '../api/errors';
+import { ApiError, toApiError } from '../api/errors';
 import ProductCard, { type ProductViewMode } from '../components/ProductCard';
 import ShopAvatar from '../components/ShopAvatar';
-import { colors, radii, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAuth } from '../hooks/useAuth';
+import { useOpenConversation } from '../hooks/useChat';
 import { useProductList } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
@@ -47,6 +49,54 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
   const { sellerId } = route.params;
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<ProductViewMode>('grid');
+
+  const { user, isAuthenticated } = useAuth();
+  const openConversationMutation = useOpenConversation();
+  const [chatError, setChatError] = useState<string | null>(null);
+  const isOpeningChatRef = useRef(false);
+
+  const canShowChatAction = !isAuthenticated || user?.role === 'CUSTOMER';
+  const isOpeningChat = openConversationMutation.isPending;
+
+  const handleOpenChat = async () => {
+    if (isOpeningChatRef.current || openConversationMutation.isPending) {
+      return;
+    }
+
+    if (!isAuthenticated || user == null) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    if (user.role !== 'CUSTOMER') {
+      return;
+    }
+
+    if (!sellerId) {
+      setChatError('Không tìm thấy thông tin người bán.');
+      return;
+    }
+
+    isOpeningChatRef.current = true;
+    setChatError(null);
+
+    try {
+      const conversation = await openConversationMutation.mutateAsync({
+        sellerId,
+      });
+
+      navigation.navigate('ChatRoom', {
+        conversationId: conversation.id,
+        counterpartName: shop?.name,
+        counterpartRole: 'SELLER',
+      });
+    } catch (err: unknown) {
+      const apiErr = toApiError(err);
+      setChatError(apiErr.message || 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.');
+    } finally {
+      isOpeningChatRef.current = false;
+    }
+  };
 
   const {
     data: shop,
@@ -165,6 +215,29 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
               : ' '}
           </Text>
         </View>
+        {canShowChatAction && (
+          <Pressable
+            onPress={handleOpenChat}
+            disabled={isOpeningChat}
+            style={({ pressed }) => [
+              styles.chatWithShopButton,
+              isOpeningChat && styles.chatWithShopButtonDisabled,
+              pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Nhắn tin với shop"
+          >
+            {isOpeningChat ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <>
+                <Text style={styles.chatWithShopIcon}>💬</Text>
+                <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
+              </>
+            )}
+          </Pressable>
+        )}
+        {chatError != null && <Text style={styles.chatErrorText}>{chatError}</Text>}
       </View>
     );
   }
@@ -309,6 +382,39 @@ const styles = StyleSheet.create({
   centerText: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  chatWithShopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    gap: spacing.xs + 2,
+    marginTop: spacing.sm,
+  },
+  chatWithShopButtonDisabled: {
+    opacity: 0.6,
+  },
+  chatWithShopButtonPressed: {
+    backgroundColor: '#E6F8FA',
+  },
+  chatWithShopIcon: {
+    fontSize: 16,
+  },
+  chatWithShopText: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  chatErrorText: {
+    fontSize: typography.xs,
+    color: colors.danger,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   shopHeader: {
     flexDirection: 'row',

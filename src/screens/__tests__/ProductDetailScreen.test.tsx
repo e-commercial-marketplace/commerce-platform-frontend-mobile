@@ -1,14 +1,15 @@
 /**
- * Buy Now handoff tests.
+ * Buy Now handoff & Customer Chat Entry tests.
  *
- * The screen's data/cart hooks are mocked so the test focuses on the flow:
- * add the selected quantity through the real cart mutation contract, find the
- * resulting cart line by productId (never by array position), then navigate to
- * Checkout with that cart-item id.
+ * The screen's data/cart/chat hooks are mocked so tests focus on the flows:
+ * - Cart flow: add selected quantity through the real cart mutation contract, find resulting cart line by productId, then navigate to Checkout.
+ * - Human Chat flow: Customer starts/opens a conversation with Seller from Product Detail.
  */
 
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+
+import { ApiError } from '../../api/errors';
 
 import type { AppNavigatorScreenProps } from '../../navigation/types';
 import type { User } from '../../types/auth';
@@ -16,12 +17,14 @@ import type { Cart } from '../../types/cart';
 import type { Product } from '../../types/product';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
+import { useOpenConversation } from '../../hooks/useChat';
 import { useProductDetail } from '../../hooks/useProducts';
 import { useSellerShop } from '../../hooks/useSellers';
 import ProductDetailScreen from '../ProductDetailScreen';
 
 jest.mock('../../hooks/useAuth', () => ({ useAuth: jest.fn() }));
 jest.mock('../../hooks/useCart', () => ({ useCart: jest.fn() }));
+jest.mock('../../hooks/useChat', () => ({ useOpenConversation: jest.fn() }));
 jest.mock('../../hooks/useProducts', () => ({ useProductDetail: jest.fn() }));
 jest.mock('../../hooks/useSellers', () => ({ useSellerShop: jest.fn() }));
 const EMPTY_REVIEWS = { content: [], page: 0, size: 5, totalElements: 0, totalPages: 0 };
@@ -41,6 +44,7 @@ jest.mock('../../hooks/useReviews', () => ({
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockedUseCart = useCart as jest.MockedFunction<typeof useCart>;
+const mockedUseOpenConversation = useOpenConversation as jest.MockedFunction<typeof useOpenConversation>;
 const mockedUseProductDetail = useProductDetail as jest.MockedFunction<typeof useProductDetail>;
 const mockedUseSellerShop = useSellerShop as jest.MockedFunction<typeof useSellerShop>;
 
@@ -84,7 +88,7 @@ function makeLine(id: string, productId: string, quantity = 1) {
 }
 
 function renderScreen(
-  addItem: jest.Mock,
+  addItem: jest.Mock = jest.fn(),
   navigation: Navigation = { navigate: jest.fn() } as unknown as Navigation,
   authOverride?: Partial<ReturnType<typeof useAuth>>,
 ) {
@@ -106,7 +110,7 @@ function renderScreen(
     error: null,
     refetch: jest.fn(),
   } as never);
-  mockedUseSellerShop.mockReturnValue({ data: undefined } as never);
+  mockedUseSellerShop.mockReturnValue({ data: { id: 's-1', name: 'Official Store' } } as never);
 
   return {
     navigation,
@@ -125,51 +129,189 @@ function renderScreen(
   };
 }
 
-describe('ProductDetailScreen Buy Now', () => {
+describe('ProductDetailScreen', () => {
+  const mockOpenConversationMutateAsync = jest.fn();
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedUseOpenConversation.mockReturnValue({
+      mutateAsync: mockOpenConversationMutateAsync,
+      isPending: false,
+    } as any);
   });
 
-  it('uses the returned cart and finds the line by productId, not items[0]', async () => {
-    const updatedCart: Cart = {
-      items: [makeLine('cart-other', 'p-other'), makeLine('cart-target', PRODUCT.id)],
-      subtotal: 200000,
-      totalItems: 2,
-    };
-    const addItem = jest.fn().mockResolvedValue(updatedCart);
-    const { getByLabelText, navigation } = renderScreen(addItem);
+  describe('Buy Now & Cart Integration', () => {
+    it('uses the returned cart and finds the line by productId, not items[0]', async () => {
+      const updatedCart: Cart = {
+        items: [makeLine('cart-other', 'p-other'), makeLine('cart-target', PRODUCT.id)],
+        subtotal: 200000,
+        totalItems: 2,
+      };
+      const addItem = jest.fn().mockResolvedValue(updatedCart);
+      const { getByLabelText, navigation } = renderScreen(addItem);
 
-    fireEvent.press(getByLabelText('Buy Now'));
+      fireEvent.press(getByLabelText('Buy Now'));
 
-    await waitFor(() =>
-      expect(navigation.navigate).toHaveBeenCalledWith('Checkout', {
-        cartItemIds: ['cart-target'],
-      }),
-    );
-    expect(addItem).toHaveBeenCalledWith(PRODUCT.id, 1);
+      await waitFor(() =>
+        expect(navigation.navigate).toHaveBeenCalledWith('Checkout', {
+          cartItemIds: ['cart-target'],
+        }),
+      );
+      expect(addItem).toHaveBeenCalledWith(PRODUCT.id, 1);
+    });
+
+    it('uses the merged existing cart line returned by the backend', async () => {
+      const updatedCart: Cart = {
+        items: [makeLine('cart-existing', PRODUCT.id, 4)],
+        subtotal: 400000,
+        totalItems: 4,
+      };
+      const addItem = jest.fn().mockResolvedValue(updatedCart);
+      const { getByLabelText, navigation } = renderScreen(addItem);
+
+      fireEvent.press(getByLabelText('Buy Now'));
+
+      await waitFor(() =>
+        expect(navigation.navigate).toHaveBeenCalledWith('Checkout', {
+          cartItemIds: ['cart-existing'],
+        }),
+      );
+    });
   });
 
-  it('uses the merged existing cart line returned by the backend', async () => {
-    const updatedCart: Cart = {
-      items: [makeLine('cart-existing', PRODUCT.id, 4)],
-      subtotal: 400000,
-      totalItems: 4,
-    };
-    const addItem = jest.fn().mockResolvedValue(updatedCart);
-    const { getByLabelText, navigation } = renderScreen(addItem);
+  describe('Customer Start Conversation with Seller (Phase 5A)', () => {
+    it('renders "Nhắn tin với shop" button for authenticated Customer', () => {
+      const { getByText } = renderScreen();
+      expect(getByText('Nhắn tin với shop')).toBeTruthy();
+    });
 
-    fireEvent.press(getByLabelText('Buy Now'));
+    it('calls openConversation with actual sellerId and productId without customerId', async () => {
+      mockOpenConversationMutateAsync.mockResolvedValueOnce({
+        id: 'conv-new-1',
+        customerId: 'u-1',
+        sellerId: 's-1',
+        productId: 'p-target',
+        orderId: null,
+        createdAt: '2026-10-30T10:00:00Z',
+        lastMessageAt: null,
+      });
 
-    await waitFor(() =>
-      expect(navigation.navigate).toHaveBeenCalledWith('Checkout', {
-        cartItemIds: ['cart-existing'],
-      }),
-    );
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(jest.fn(), mockNav);
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      const callPayload = mockOpenConversationMutateAsync.mock.calls[0][0];
+      expect(callPayload.sellerId).toBe('s-1');
+      expect(callPayload.productId).toBe('p-target');
+      // Critical check: customerId MUST NOT be sent in request body
+      expect(callPayload.customerId).toBeUndefined();
+
+      expect(mockNav.navigate).toHaveBeenCalledWith('ChatRoom', {
+        conversationId: 'conv-new-1',
+        counterpartName: 'Official Store',
+        counterpartRole: 'SELLER',
+      });
+    });
+
+    it('navigates to ChatRoom when backend returns existing conversation (200 OK)', async () => {
+      mockOpenConversationMutateAsync.mockResolvedValueOnce({
+        id: 'conv-existing-88',
+        customerId: 'u-1',
+        sellerId: 's-1',
+        productId: null,
+        orderId: null,
+        createdAt: '2026-10-25T10:00:00Z',
+        lastMessageAt: '2026-10-30T09:00:00Z',
+      });
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(jest.fn(), mockNav);
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockNav.navigate).toHaveBeenCalledWith('ChatRoom', {
+        conversationId: 'conv-existing-88',
+        counterpartName: 'Official Store',
+        counterpartRole: 'SELLER',
+      });
+    });
+
+    it('prevents double tap when openConversation mutation is pending', () => {
+      mockedUseOpenConversation.mockReturnValue({
+        mutateAsync: mockOpenConversationMutateAsync,
+        isPending: true,
+      } as any);
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByRole } = renderScreen(jest.fn(), mockNav);
+
+      const chatButton = getByRole('button', { name: 'Nhắn tin với shop' });
+      fireEvent.press(chatButton);
+
+      expect(mockOpenConversationMutateAsync).not.toHaveBeenCalled();
+      expect(mockNav.navigate).not.toHaveBeenCalled();
+    });
+
+    it('displays error and does not navigate when openConversation fails', async () => {
+      mockOpenConversationMutateAsync.mockRejectedValueOnce(
+        new ApiError('Không thể kết nối máy chủ', 'NETWORK_ERROR', null),
+      );
+
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(jest.fn(), mockNav);
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      await waitFor(() => {
+        expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockNav.navigate).not.toHaveBeenCalled();
+      expect(getByText('Không thể kết nối máy chủ')).toBeTruthy();
+    });
+
+    it('navigates guest to Login when "Nhắn tin với shop" is pressed', () => {
+      const mockNav = { navigate: jest.fn() } as unknown as Navigation;
+      const { getByText } = renderScreen(jest.fn(), mockNav, {
+        user: null,
+        isAuthenticated: false,
+      });
+
+      fireEvent.press(getByText('Nhắn tin với shop'));
+
+      expect(mockNav.navigate).toHaveBeenCalledWith('Login');
+      expect(mockOpenConversationMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('hides "Nhắn tin với shop" button for SELLER role', () => {
+      const { queryByText } = renderScreen(jest.fn(), undefined, {
+        user: { ...CUSTOMER, role: 'SELLER' },
+        isAuthenticated: true,
+      });
+      expect(queryByText('Nhắn tin với shop')).toBeNull();
+    });
+
+    it('hides "Nhắn tin với shop" button for ADMIN role', () => {
+      const { queryByText } = renderScreen(jest.fn(), undefined, {
+        user: { ...CUSTOMER, role: 'ADMIN' },
+        isAuthenticated: true,
+      });
+      expect(queryByText('Nhắn tin với shop')).toBeNull();
+    });
   });
 
   describe('Reviews Integration', () => {
     it('renders customer reviews section with aggregate summary', () => {
-      const { getByText } = renderScreen(jest.fn());
+      const { getByText } = renderScreen();
       expect(getByText('Customer Reviews')).toBeTruthy();
       expect(getByText('No reviews yet')).toBeTruthy();
     });
@@ -186,7 +328,7 @@ describe('ProductDetailScreen Buy Now', () => {
     });
 
     it('opens WriteReviewModal when customer clicks Write a Review', () => {
-      const { getByText, getByPlaceholderText } = renderScreen(jest.fn());
+      const { getByText, getByPlaceholderText } = renderScreen();
       fireEvent.press(getByText('Write a Review'));
       expect(getByPlaceholderText('What did you think of the product?')).toBeTruthy();
     });
