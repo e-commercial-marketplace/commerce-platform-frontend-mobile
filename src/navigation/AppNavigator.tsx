@@ -29,6 +29,15 @@ import SellerFulfillmentScreen from '../screens/SellerFulfillmentScreen';
 import SellerProductFormScreen from '../screens/SellerProductFormScreen';
 import SellerProductsScreen from '../screens/SellerProductsScreen';
 import SellerShopScreen from '../screens/SellerShopScreen';
+import AdminPortalScreen from '../screens/admin/AdminPortalScreen';
+import AdminSellerApprovalScreen from '../screens/admin/AdminSellerApprovalScreen';
+import AdminUserListScreen from '../screens/admin/AdminUserListScreen';
+import AdminUserDetailScreen from '../screens/admin/AdminUserDetailScreen';
+import AdminUserCreateScreen from '../screens/admin/AdminUserCreateScreen';
+import AdminUserEditScreen from '../screens/admin/AdminUserEditScreen';
+import AdminCategoryScreen from '../screens/admin/AdminCategoryScreen';
+import AdminVoucherScreen from '../screens/admin/AdminVoucherScreen';
+import AdminCarrierScreen from '../screens/admin/AdminCarrierScreen';
 import MainTabs from './MainTabs';
 import type { RootStackParamList } from './types';
 
@@ -229,6 +238,114 @@ export default function AppNavigator() {
           headerTitleStyle: { fontWeight: '600' },
           headerShadowVisible: false,
         })}
+      />
+      <Stack.Screen
+        name="AdminPortal"
+        component={AdminPortalScreen}
+        options={{
+          headerShown: true,
+          title: 'Quản trị hệ thống',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminSellerApproval"
+        component={AdminSellerApprovalScreen}
+        options={{
+          headerShown: true,
+          title: 'Quản lý người bán',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminUserList"
+        component={AdminUserListScreen}
+        options={{
+          headerShown: true,
+          title: 'Quản lý người dùng',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminUserDetail"
+        component={AdminUserDetailScreen}
+        options={{
+          headerShown: true,
+          title: 'Chi tiết người dùng',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminUserCreate"
+        component={AdminUserCreateScreen}
+        options={{
+          headerShown: true,
+          title: 'Thêm người dùng mới',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminUserEdit"
+        component={AdminUserEditScreen}
+        options={{
+          headerShown: true,
+          title: 'Chỉnh sửa người dùng',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminCategory"
+        component={AdminCategoryScreen}
+        options={{
+          headerShown: true,
+          title: 'Quản lý danh mục',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminVoucher"
+        component={AdminVoucherScreen}
+        options={{
+          headerShown: true,
+          title: 'Quản lý mã giảm giá',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="AdminCarrier"
+        component={AdminCarrierScreen}
+        options={{
+          headerShown: true,
+          title: 'Quản lý đơn vị vận chuyển',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
       />
     </Stack.Navigator>
   );

@@ -88,6 +88,7 @@ describe('ProfileScreen', () => {
     expect(queryByText('My Orders')).toBeNull();
     expect(queryByText('Tin nhắn')).toBeNull();
     expect(queryByText('Tin nhắn khách hàng')).toBeNull();
+    expect(queryByText('Quản trị hệ thống')).toBeNull();
   });
 
   it('renders guest screen when not authenticated, without orders or Change Password buttons', () => {
@@ -158,6 +159,7 @@ describe('ProfileScreen', () => {
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('Tin nhắn khách hàng')).toBeNull();
+    expect(queryByText('Quản trị hệ thống')).toBeNull();
 
     // CUSTOMER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -212,6 +214,7 @@ describe('ProfileScreen', () => {
     // SELLER does NOT see customer My Orders or customer Tin nhắn
     expect(queryByText('My Orders')).toBeNull();
     expect(queryByText('Tin nhắn')).toBeNull();
+    expect(queryByText('Quản trị hệ thống')).toBeNull();
 
     // SELLER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -220,7 +223,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Change Password for ADMIN, and does NOT render Seller Orders, My Products, My Orders, or Chat inboxes', () => {
+  it('renders Quản trị hệ thống and Change Password for ADMIN, and does NOT render Seller Orders, My Products, My Orders, or Chat inboxes', () => {
     const adminUser: User = {
       id: 'user-3',
       email: 'admin@example.com',
@@ -251,6 +254,12 @@ describe('ProfileScreen', () => {
     expect(queryByText('My Orders')).toBeNull();
     expect(queryByText('Tin nhắn')).toBeNull();
     expect(queryByText('Tin nhắn khách hàng')).toBeNull();
+
+    // ADMIN sees Quản trị hệ thống
+    const adminPortalBtn = getByRole('button', { name: 'Quản trị hệ thống' });
+    expect(adminPortalBtn).toBeTruthy();
+    fireEvent.press(adminPortalBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('AdminPortal');
 
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
     expect(changePasswordBtn).toBeTruthy();

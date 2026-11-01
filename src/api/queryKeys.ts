@@ -169,4 +169,36 @@ export const queryKeys = {
     paginatedMessages: (conversationId: string, page: number) =>
       ['chat', 'conversations', conversationId, 'messages', page] as const,
   },
+  /**
+   * Platform vouchers (customer validation and checkout).
+   */
+  vouchers: {
+    all: ['vouchers'] as const,
+  },
+  /**
+   * Admin portal queries and mutations.
+   */
+  admin: {
+    all: ['admin'] as const,
+    sellers: {
+      all: ['admin', 'sellers'] as const,
+      list: (params: { search?: string; page?: number; size?: number } = {}) =>
+        ['admin', 'sellers', 'list', params] as const,
+    },
+    users: {
+      all: ['admin', 'users'] as const,
+      list: (params: { role?: string; search?: string; page?: number; size?: number } = {}) =>
+        ['admin', 'users', 'list', params] as const,
+      detail: (id: string) => ['admin', 'users', 'detail', id] as const,
+    },
+    vouchers: {
+      all: ['admin', 'vouchers'] as const,
+      list: (params: { page?: number; size?: number } = {}) =>
+        ['admin', 'vouchers', 'list', params] as const,
+    },
+    carriers: {
+      all: ['admin', 'carriers'] as const,
+      list: () => ['admin', 'carriers', 'list'] as const,
+    },
+  },
 } as const;

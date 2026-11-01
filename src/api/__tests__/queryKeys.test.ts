@@ -33,6 +33,9 @@ describe('queryKeys', () => {
     expect(queryKeys.sellerFulfillment.orderItems.all).toEqual(['sellerFulfillment', 'orderItems']);
     expect(queryKeys.sellerFulfillment.shipments.all).toEqual(['sellerFulfillment', 'shipments']);
     expect(queryKeys.sellerFulfillment.carriers.all).toEqual(['sellerFulfillment', 'carriers']);
+    expect(queryKeys.admin.all).toEqual(['admin']);
+    expect(queryKeys.admin.sellers.all).toEqual(['admin', 'sellers']);
+    expect(queryKeys.admin.users.all).toEqual(['admin', 'users']);
   });
 
   it('embeds filters in the product list key so combinations differ', () => {
@@ -78,6 +81,7 @@ describe('queryKeys', () => {
     expect(queryKeys.sellers.shop('s-1')).toEqual(['sellers', 'shop', 's-1']);
     expect(queryKeys.reviews.byProduct('p-1')).toEqual(['reviews', 'product', 'p-1']);
     expect(queryKeys.shipments.byOrder('o-1')).toEqual(['shipments', 'order', 'o-1']);
+    expect(queryKeys.admin.users.detail('u-1')).toEqual(['admin', 'users', 'detail', 'u-1']);
   });
 
   it('embeds filters in seller fulfillment keys for independent caching', () => {
@@ -110,5 +114,17 @@ describe('queryKeys', () => {
       'carriers',
       'list',
     ]);
+
+    expect(queryKeys.vouchers.all).toEqual(['vouchers']);
+    expect(queryKeys.admin.vouchers.all).toEqual(['admin', 'vouchers']);
+    expect(queryKeys.admin.vouchers.list({ page: 0, size: 20 })).toEqual([
+      'admin',
+      'vouchers',
+      'list',
+      { page: 0, size: 20 },
+    ]);
+
+    expect(queryKeys.admin.carriers.all).toEqual(['admin', 'carriers']);
+    expect(queryKeys.admin.carriers.list()).toEqual(['admin', 'carriers', 'list']);
   });
 });
