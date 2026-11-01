@@ -75,6 +75,24 @@ export type RootStackParamList = {
     counterpartName?: string;
     counterpartRole?: 'CUSTOMER' | 'SELLER';
   };
+  /** Admin portal main landing hub. */
+  AdminPortal: undefined;
+  /** Admin portal seller management and approval. */
+  AdminSellerApproval: undefined;
+  /** Admin portal user management list. */
+  AdminUserList: undefined;
+  /** Admin portal user detail view. */
+  AdminUserDetail: { userId: string };
+  /** Admin portal user creation form. */
+  AdminUserCreate: undefined;
+  /** Admin portal user edit form. */
+  AdminUserEdit: { userId: string };
+  /** Admin portal category management. */
+  AdminCategory: undefined;
+  /** Admin portal platform voucher management. */
+  AdminVoucher: undefined;
+  /** Admin portal shipping carrier management. */
+  AdminCarrier: undefined;
 };
 
 /** Props for screens rendered directly by the root stack. */

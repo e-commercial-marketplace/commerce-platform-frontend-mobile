@@ -213,6 +213,22 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
           </>
         ) : null}
 
+        {displayRole === 'ADMIN' ? (
+          <>
+            <Pressable
+              onPress={() => {
+                navigation.navigate('AdminPortal');
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Quản trị hệ thống"
+              testID="admin-portal-button"
+            >
+              <Text style={styles.menuButtonText}>Quản trị hệ thống</Text>
+            </Pressable>
+          </>
+        ) : null}
+
         <Pressable
           onPress={() => {
             navigation.navigate('ChangePassword');

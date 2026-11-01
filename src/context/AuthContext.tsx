@@ -55,6 +55,7 @@ type AuthProviderProps = {
  */
 function clearCartCache(): void {
   queryClient.removeQueries({ queryKey: queryKeys.cart.all });
+  queryClient.removeQueries({ queryKey: queryKeys.admin.all });
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
