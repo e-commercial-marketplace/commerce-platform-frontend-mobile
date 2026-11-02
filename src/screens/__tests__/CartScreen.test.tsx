@@ -51,6 +51,7 @@ function makeAuth(user: User | null): AuthContextValue {
     register: jest.fn(async () => {}),
     logout: jest.fn(async () => {}),
     changePassword: jest.fn(async () => {}),
+    updateUserName: jest.fn(),
   };
 }
 

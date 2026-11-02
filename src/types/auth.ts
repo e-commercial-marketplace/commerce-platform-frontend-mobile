@@ -18,6 +18,21 @@ export type User = {
   role: Role;
 };
 
+/** UserProfileResponse của GET và PATCH /users/me: thêm thông tin liên hệ so với User. */
+export type UserProfile = User & {
+  /** Số điện thoại; null khi chưa đặt. */
+  phone: string | null;
+  /** Địa chỉ; null khi chưa đặt. */
+  address: string | null;
+};
+
+/** Body của PATCH /users/me. Trường không gửi thì giữ nguyên; chuỗi rỗng xoá phone hoặc address. */
+export type UpdateProfileRequest = {
+  name?: string;
+  phone?: string;
+  address?: string;
+};
+
 /** Body of POST /auth/login. */
 export type LoginRequest = {
   email: string;

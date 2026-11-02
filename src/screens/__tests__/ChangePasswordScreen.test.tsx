@@ -48,6 +48,7 @@ describe('ChangePasswordScreen', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: mockChangePassword,
+      updateUserName: jest.fn(),
     });
   });
 

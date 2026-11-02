@@ -80,6 +80,7 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText } = render(
@@ -104,6 +105,7 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole } = render(
@@ -122,6 +124,7 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { queryByRole } = render(
@@ -140,6 +143,7 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { queryByRole } = render(

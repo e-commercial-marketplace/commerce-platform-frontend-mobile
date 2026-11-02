@@ -35,6 +35,7 @@ describe('LoginScreen', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
   });
 

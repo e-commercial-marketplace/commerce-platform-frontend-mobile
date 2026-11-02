@@ -8,7 +8,7 @@
 import { apiClient } from '../../api/client';
 import { ApiError } from '../../api/errors';
 import type { AuthResponse } from '../../types/auth';
-import { changePassword, forgotPassword, resetPassword } from '../authService';
+import { changePassword, forgotPassword, resetPassword, updateProfile } from '../authService';
 
 jest.mock('../../api/client', () => {
   const actual = jest.requireActual('../../api/client');
@@ -200,5 +200,18 @@ describe('authService - password management', () => {
         message: 'New password must be different from the current password',
       });
     });
+  });
+});
+
+describe('updateProfile', () => {
+  it('sends PATCH /users/me and returns the updated profile', async () => {
+    const profile = { id: 'u1', email: 'u@test.dev', name: 'New', role: 'CUSTOMER', phone: null, address: null };
+    mockedClient.patch.mockResolvedValueOnce({
+      data: { success: true, data: profile, error: null },
+      status: 200,
+    });
+
+    await expect(updateProfile({ name: 'New', phone: '' })).resolves.toEqual(profile);
+    expect(mockedClient.patch).toHaveBeenCalledWith('/users/me', { name: 'New', phone: '' });
   });
 });

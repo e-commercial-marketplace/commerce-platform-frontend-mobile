@@ -18,6 +18,8 @@ import type {
   ResetPasswordRequest,
   Role,
   User,
+  UpdateProfileRequest,
+  UserProfile,
 } from '../types/auth';
 
 /** Default role for public registration. */
@@ -56,8 +58,14 @@ export async function logout(refreshToken: string): Promise<void> {
 }
 
 /** GET /users/me — current profile; used to restore the session at startup. */
-export async function getCurrentUser(): Promise<User> {
-  const response = await apiClient.get<ApiResponse<User>>('/users/me');
+export async function getCurrentUser(): Promise<UserProfile> {
+  const response = await apiClient.get<ApiResponse<UserProfile>>('/users/me');
+  return unwrapData(response);
+}
+
+/** PATCH /users/me — sửa tên, số điện thoại, địa chỉ của chính người đang đăng nhập. */
+export async function updateProfile(body: UpdateProfileRequest): Promise<UserProfile> {
+  const response = await apiClient.patch<ApiResponse<UserProfile>>('/users/me', body);
   return unwrapData(response);
 }
 

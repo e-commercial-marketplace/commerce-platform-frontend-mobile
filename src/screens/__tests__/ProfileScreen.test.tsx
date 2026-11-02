@@ -75,6 +75,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByText, queryByText } = renderWithClient(
@@ -100,6 +101,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -133,6 +135,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -184,6 +187,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -239,6 +243,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -285,6 +290,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole } = renderWithClient(
@@ -297,5 +303,32 @@ describe('ProfileScreen', () => {
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalledTimes(1);
     });
+  });
+  it('shows contact details and opens Edit Profile', () => {
+    mockedUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'u@test.dev', name: 'U', role: 'CUSTOMER' },
+      isAuthenticated: true,
+      isRestoring: false,
+      login: jest.fn(),
+      register: jest.fn(),
+      logout: mockLogout,
+      changePassword: jest.fn(),
+      updateUserName: jest.fn(),
+    });
+    mockedUseCurrentUser.mockReturnValue({
+      data: { id: 'u1', email: 'u@test.dev', name: 'U', role: 'CUSTOMER', phone: '0912345678', address: null },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const { getByRole, getByText } = renderWithClient(
+      <ProfileScreen navigation={navigation} route={{} as never} />,
+    );
+
+    expect(getByText('0912345678')).toBeTruthy();
+    expect(getByText('Not set')).toBeTruthy();
+    fireEvent.press(getByRole('button', { name: 'Edit Profile' }));
+    expect(mockNavigate).toHaveBeenCalledWith('EditProfile');
   });
 });

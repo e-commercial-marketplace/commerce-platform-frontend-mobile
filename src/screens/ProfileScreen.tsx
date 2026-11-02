@@ -1,9 +1,8 @@
 /**
  * Profile tab: guest entry points or the signed-in account (name, email,
- * role from the backend UserSummaryResponse) with logout and password change.
+ * role, phone, address from GET /users/me) with profile edit, logout and password change.
  * While the stored session is being restored at startup a loading state is
- * shown instead of a flash of the guest state. Edit profile, avatar, etc.
- * belong to later features.
+ * shown instead of a flash of the guest state. Avatar belongs to a later feature.
  */
 
 import { useEffect, useState } from 'react';
@@ -148,6 +147,16 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
             <Text style={styles.cardLabel}>Role</Text>
             <Text style={styles.cardValue}>{ROLE_LABELS[displayRole]}</Text>
           </View>
+          <View style={styles.cardDivider} />
+          <View style={styles.cardRow}>
+            <Text style={styles.cardLabel}>Phone</Text>
+            <Text style={styles.cardValue}>{profile?.phone || 'Not set'}</Text>
+          </View>
+          <View style={styles.cardDivider} />
+          <View style={styles.cardRow}>
+            <Text style={styles.cardLabel}>Address</Text>
+            <Text style={[styles.cardValue, styles.cardValueWrap]}>{profile?.address || 'Not set'}</Text>
+          </View>
         </View>
 
         {displayRole === 'CUSTOMER' ? (
@@ -228,6 +237,17 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
             </Pressable>
           </>
         ) : null}
+
+        <Pressable
+          onPress={() => {
+            navigation.navigate('EditProfile');
+          }}
+          style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Edit Profile"
+        >
+          <Text style={styles.menuButtonText}>Edit Profile</Text>
+        </Pressable>
 
         <Pressable
           onPress={() => {
@@ -344,6 +364,11 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  cardValueWrap: {
+    flexShrink: 1,
+    marginLeft: spacing.md,
+    textAlign: 'right',
   },
   cardValue: {
     flexShrink: 1,

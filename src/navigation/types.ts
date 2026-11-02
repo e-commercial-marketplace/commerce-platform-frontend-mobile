@@ -65,6 +65,8 @@ export type RootStackParamList = {
   ResetPassword: { email?: string } | undefined;
   /** Authenticated user password change. */
   ChangePassword: undefined;
+  /** Sửa tên, số điện thoại, địa chỉ của người đang đăng nhập. */
+  EditProfile: undefined;
   /** AI shopping assistant. */
   AiAssistant: undefined;
   /** Human Customer–Seller chat conversation list. */

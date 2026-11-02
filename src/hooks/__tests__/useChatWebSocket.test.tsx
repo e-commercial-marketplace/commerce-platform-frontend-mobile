@@ -103,6 +103,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue(null);
 
@@ -125,6 +126,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('admin-token');
 
@@ -146,6 +148,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('valid-customer-token');
 
@@ -166,6 +169,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('valid-seller-token');
 
@@ -188,6 +192,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('token');
 
@@ -228,6 +233,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('token');
 
@@ -261,6 +267,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('token');
 
@@ -287,6 +294,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('token');
 
@@ -319,6 +327,7 @@ describe('useChatWebSocket hook', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
       mockedGetAccessToken.mockReturnValue('token');
 
