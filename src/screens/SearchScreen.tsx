@@ -32,6 +32,12 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
+  // Trang gắn với cặp từ khoá + danh mục: khi cặp này đổi, `page` về 0 ngay trong
+  // cùng lần render, nên không bao giờ gửi request từ khoá mới kèm số trang cũ.
+  const searchScope = `${debouncedQuery}|${selectedCategoryId}`;
+  const [pageState, setPageState] = useState({ scope: searchScope, page: 0 });
+  const page = pageState.scope === searchScope ? pageState.page : 0;
+
   const { data: categoriesData } = useCategories();
   const categories = useMemo(() => [{ id: 'all', name: 'All' }, ...(categoriesData ?? [])], [categoriesData]);
 
@@ -39,14 +45,15 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
     () => ({
       q: debouncedQuery || undefined,
       categoryId: selectedCategoryId === 'all' ? undefined : selectedCategoryId,
-      page: 0,
+      page,
       size: PAGE_SIZE,
     }),
-    [debouncedQuery, selectedCategoryId],
+    [debouncedQuery, selectedCategoryId, page],
   );
   const { data, isPending, isError, refetch } = useProductList(filters);
   const allFetchedProducts = data?.products ?? [];
   const products = debouncedQuery ? allFetchedProducts : [];
+  const totalPages = data?.totalPages ?? 0;
   const categoryImageByName = useMemo(() => {
     const map = new Map<string, Product['image']>();
     for (const product of allFetchedProducts) {
@@ -54,6 +61,18 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
     }
     return map;
   }, [allFetchedProducts]);
+
+  function goToPreviousPage() {
+    if (page > 0) {
+      setPageState({ scope: searchScope, page: page - 1 });
+    }
+  }
+
+  function goToNextPage() {
+    if (totalPages > 0 && page < totalPages - 1) {
+      setPageState({ scope: searchScope, page: page + 1 });
+    }
+  }
 
   function rememberKeyword(value: string) {
     const keyword = value.trim();
@@ -177,6 +196,37 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
           keyboardDismissMode="on-drag"
           ListHeaderComponent={<Text style={styles.resultLabel}>{data?.totalElements ?? products.length} results for “{query.trim()}”</Text>}
           ListEmptyComponent={<View style={styles.center}><Text style={styles.emptyTitle}>No products found</Text><Text style={styles.emptyHint}>Try another keyword.</Text></View>}
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={styles.pagination}>
+                <Pressable
+                  onPress={goToPreviousPage}
+                  disabled={page === 0}
+                  style={[styles.pageButton, page === 0 && styles.pageButtonDisabled]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous page"
+                >
+                  <Text style={[styles.pageButtonText, page === 0 && styles.pageButtonTextDisabled]}>
+                    Previous
+                  </Text>
+                </Pressable>
+                <Text style={styles.pageInfo}>
+                  Page {page + 1} / {totalPages}
+                </Text>
+                <Pressable
+                  onPress={goToNextPage}
+                  disabled={page >= totalPages - 1}
+                  style={[styles.pageButton, page >= totalPages - 1 && styles.pageButtonDisabled]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next page"
+                >
+                  <Text style={[styles.pageButtonText, page >= totalPages - 1 && styles.pageButtonTextDisabled]}>
+                    Next
+                  </Text>
+                </Pressable>
+              </View>
+            ) : undefined
+          }
         />
       )}
     </SafeAreaView>
@@ -231,5 +281,11 @@ const styles = StyleSheet.create({
   results: { padding: spacing.md, paddingBottom: 36, gap: spacing.sm },
   gridRow: { gap: spacing.sm },
   resultLabel: { marginBottom: spacing.md, fontSize: 14, color: colors.textSecondary },
+  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  pageButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radii.sm },
+  pageButtonDisabled: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  pageButtonText: { color: colors.onPrimary, fontWeight: '600' },
+  pageButtonTextDisabled: { color: colors.textSecondary },
+  pageInfo: { fontSize: 13, color: colors.textSecondary },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
 });
