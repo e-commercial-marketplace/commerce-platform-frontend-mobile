@@ -15,6 +15,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
   Keyboard,
@@ -28,6 +29,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { toApiError } from '../api/errors';
 import { ChatMessageBubble } from '../components/chat/ChatMessageBubble';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
@@ -38,15 +40,19 @@ import {
   useSendMessage,
 } from '../hooks/useChat';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
+import { useImageUpload } from '../hooks/useImageUpload';
 import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { MessageResponse } from '../types/chatApi';
 import { generateClientMessageKey } from '../utils/chatIdempotency';
+import { pickImage } from '../utils/imagePicker';
 
 export type FailedMessage = {
   tempId: string;
   idempotencyKey: string;
   content: string;
+  /** Ảnh đã upload xong: gửi lại không phải upload lần nữa. */
+  imageUrl?: string | null;
   createdAt: string;
   senderId: string;
   isFailed: true;
@@ -124,6 +130,7 @@ export default function ChatRoomScreen({
 
   // Message mutation & Mark read mutation
   const sendMessageMutation = useSendMessage();
+  const imageUpload = useImageUpload('CHAT');
   const markReadMutation = useMarkConversationRead();
 
   // Text composer state
@@ -179,15 +186,15 @@ export default function ChatRoomScreen({
 
   // Send message with caller-controlled Idempotency-Key
   const handleSendMessage = useCallback(
-    async (contentToSend?: string, existingKey?: string) => {
+    async (contentToSend?: string, existingKey?: string, imageUrl?: string | null) => {
       const content = (contentToSend ?? inputText).trim();
-      if (!content || isSendingRef.current || !user) return;
+      if ((!content && !imageUrl) || isSendingRef.current || !user) return;
 
       isSendingRef.current = true;
       const idempotencyKey = existingKey ?? generateClientMessageKey();
 
       // Clear input on new message
-      if (!contentToSend) {
+      if (contentToSend === undefined) {
         setInputText('');
       }
 
@@ -199,7 +206,7 @@ export default function ChatRoomScreen({
       try {
         await sendMessageMutation.mutateAsync({
           conversationId,
-          request: { content },
+          request: imageUrl ? { imageUrl } : { content },
           idempotencyKey,
         });
       } catch (error) {
@@ -208,6 +215,7 @@ export default function ChatRoomScreen({
           tempId: `failed_${idempotencyKey}`,
           idempotencyKey,
           content,
+          imageUrl,
           createdAt: new Date().toISOString(),
           senderId: user.id,
           isFailed: true,
@@ -222,6 +230,21 @@ export default function ChatRoomScreen({
     },
     [inputText, user, conversationId, sendMessageMutation],
   );
+
+  // Gửi ảnh ngay sau khi chọn. Upload lỗi chỉ báo lỗi; gửi lỗi tạo bong bóng để thử lại mà không upload lại.
+  // shortcut: nếu một tin khác đang gửi đúng lúc upload xong thì ảnh bị bỏ qua, người dùng chọn lại; thêm hàng đợi nếu gặp thật.
+  const handlePickImage = useCallback(async () => {
+    if (imageUpload.isPending) return;
+    try {
+      const picked = await pickImage();
+      if (picked != null) {
+        const uploadedUrl = await imageUpload.mutateAsync(picked);
+        await handleSendMessage('', undefined, uploadedUrl);
+      }
+    } catch (error) {
+      Alert.alert('Không gửi được ảnh', toApiError(error).message);
+    }
+  }, [imageUpload, handleSendMessage]);
 
   // Older-message pagination handler (triggered when user scrolls towards top in inverted list)
   const handleLoadOlder = useCallback(() => {
@@ -253,7 +276,8 @@ export default function ChatRoomScreen({
     );
   }
 
-  const isSendDisabled = inputText.trim().length === 0 || sendMessageMutation.isPending;
+  const isSendDisabled =
+    inputText.trim().length === 0 || sendMessageMutation.isPending || imageUpload.isPending;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -334,6 +358,7 @@ export default function ChatRoomScreen({
                             handleSendMessage(
                               item.content,
                               (item as FailedMessage).idempotencyKey,
+                              item.imageUrl,
                             )
                         : undefined
                     }
@@ -358,6 +383,23 @@ export default function ChatRoomScreen({
 
         {/* Text Composer */}
         <View style={styles.composerWrapper}>
+          <Pressable
+            style={styles.imageButton}
+            onPress={() => {
+              void handlePickImage();
+            }}
+            disabled={imageUpload.isPending || sendMessageMutation.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Gửi ảnh"
+            accessibilityState={{ busy: imageUpload.isPending }}
+          >
+            {imageUpload.isPending ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.imageButtonIcon}>🖼️</Text>
+            )}
+          </Pressable>
+
           <TextInput
             style={styles.composerInput}
             value={inputText}
@@ -487,6 +529,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderColor: colors.border,
     borderWidth: 1,
+  },
+  imageButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonIcon: {
+    fontSize: 22,
   },
   sendButton: {
     width: 40,

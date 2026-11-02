@@ -25,9 +25,10 @@ type ProductImageProps = {
   source: ImageSourcePropType;
   /** Layout of the image frame (size, radius, ...). */
   style?: StyleProp<ImageStyle>;
+  testID?: string;
 };
 
-export default function ProductImage({ source, style }: ProductImageProps) {
+export default function ProductImage({ source, style, testID }: ProductImageProps) {
   // Stores the source that failed so the fallback resets automatically if
   // the prop ever changes (e.g. another product), without needing an effect.
   // Local asset ids compare by value; object sources by reference, which is
@@ -44,6 +45,7 @@ export default function ProductImage({ source, style }: ProductImageProps) {
 
   return (
     <Image
+      testID={testID}
       source={source}
       style={style}
       resizeMode="cover"
