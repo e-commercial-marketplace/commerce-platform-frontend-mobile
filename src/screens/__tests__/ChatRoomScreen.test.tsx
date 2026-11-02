@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 import ChatRoomScreen from '../ChatRoomScreen';
 import { useAuth } from '../../hooks/useAuth';
@@ -11,13 +11,17 @@ import {
   useSendMessage,
 } from '../../hooks/useChat';
 import { useChatWebSocket } from '../../hooks/useChatWebSocket';
+import { useImageUpload } from '../../hooks/useImageUpload';
 import { useSellerShop } from '../../hooks/useSellers';
 import type { MessageResponse } from '../../types/chatApi';
+import { pickImage } from '../../utils/imagePicker';
 
 jest.mock('../../hooks/useAuth');
 jest.mock('../../hooks/useChat');
 jest.mock('../../hooks/useChatWebSocket');
 jest.mock('../../hooks/useSellers');
+jest.mock('../../hooks/useImageUpload', () => ({ useImageUpload: jest.fn() }));
+jest.mock('../../utils/imagePicker', () => ({ pickImage: jest.fn() }));
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockedUseConversationMessages = useConversationMessages as jest.MockedFunction<
@@ -39,6 +43,7 @@ describe('ChatRoomScreen', () => {
   const mockSendMessageMutateAsync = jest.fn();
   const mockMarkReadMutate = jest.fn();
   const mockReconnect = jest.fn();
+  const mockUploadMutateAsync = jest.fn();
 
   const navigation = {
     navigate: mockNavigate,
@@ -63,6 +68,11 @@ describe('ChatRoomScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    (useImageUpload as jest.Mock).mockReturnValue({
+      mutateAsync: mockUploadMutateAsync,
+      isPending: false,
+    });
 
     mockedUseChatWebSocket.mockReturnValue({
       connectionState: 'connected',
@@ -97,6 +107,84 @@ describe('ChatRoomScreen', () => {
     mockedUseMarkConversationRead.mockReturnValue({
       mutate: mockMarkReadMutate,
     } as any);
+  });
+
+  describe('Sending images', () => {
+    const picked = { uri: 'file:///photo.jpg', name: 'image.jpg', type: 'image/jpeg' };
+    const url = 'https://res.cloudinary.com/demo/image/upload/chat/a.jpg';
+
+    const renderRoom = () => {
+      mockedUseAuth.mockReturnValue({
+        user: { id: 'cust-456', role: 'CUSTOMER', name: 'C', email: 'c@test.com' },
+        isAuthenticated: true,
+      } as any);
+      mockedUseConversationMessages.mockReturnValue({
+        data: { pages: [{ content: [mockMessage], last: true }] },
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetch,
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      } as any);
+      return render(<ChatRoomScreen navigation={navigation} route={baseRoute} />);
+    };
+
+    it('uploads and sends right after picking, keeping the typed text', async () => {
+      (pickImage as jest.Mock).mockResolvedValueOnce(picked);
+      mockUploadMutateAsync.mockResolvedValueOnce(url);
+      mockSendMessageMutateAsync.mockResolvedValueOnce({});
+      const { getByLabelText } = renderRoom();
+
+      fireEvent.changeText(getByLabelText('Nhập tin nhắn'), 'chưa gửi');
+      fireEvent.press(getByLabelText('Gửi ảnh'));
+
+      await waitFor(() => {
+        expect(mockSendMessageMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({ conversationId: 'conv-123', request: { imageUrl: url } }),
+        );
+      });
+      expect(getByLabelText('Nhập tin nhắn').props.value).toBe('chưa gửi');
+    });
+
+    it('does nothing when the picker is cancelled', async () => {
+      (pickImage as jest.Mock).mockResolvedValueOnce(null);
+      const { getByLabelText } = renderRoom();
+
+      fireEvent.press(getByLabelText('Gửi ảnh'));
+
+      await waitFor(() => expect(pickImage).toHaveBeenCalled());
+      expect(mockUploadMutateAsync).not.toHaveBeenCalled();
+      expect(mockSendMessageMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('only alerts when the upload fails', async () => {
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      (pickImage as jest.Mock).mockResolvedValueOnce(picked);
+      mockUploadMutateAsync.mockRejectedValueOnce(new Error('boom'));
+      const { getByLabelText } = renderRoom();
+
+      fireEvent.press(getByLabelText('Gửi ảnh'));
+
+      await waitFor(() => expect(alert).toHaveBeenCalled());
+      expect(mockSendMessageMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('retries a failed image with the same key and without uploading again', async () => {
+      (pickImage as jest.Mock).mockResolvedValueOnce(picked);
+      mockUploadMutateAsync.mockResolvedValueOnce(url);
+      mockSendMessageMutateAsync.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({});
+      const { getByLabelText, findByLabelText } = renderRoom();
+
+      fireEvent.press(getByLabelText('Gửi ảnh'));
+      fireEvent.press(await findByLabelText('Thử lại gửi tin nhắn'));
+
+      await waitFor(() => expect(mockSendMessageMutateAsync).toHaveBeenCalledTimes(2));
+      const [first, second] = mockSendMessageMutateAsync.mock.calls.map((call) => call[0]);
+      expect(second.request).toEqual({ imageUrl: url });
+      expect(second.idempotencyKey).toBe(first.idempotencyKey);
+      expect(mockUploadMutateAsync).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('Role Gating & Authentication', () => {

@@ -158,6 +158,7 @@ describe('AiAssistantScreen', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     mockedUseAskAi.mockReturnValue({
@@ -318,6 +319,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
     });
 
@@ -414,6 +416,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       mockMutateAsync
@@ -464,6 +467,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getByText, queryByPlaceholderText } = render(
@@ -491,6 +495,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getByText } = render(
@@ -617,6 +622,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
     });
 
@@ -890,6 +896,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       rerender(<AiAssistantScreen navigation={navigation} route={{} as never} />);
@@ -992,6 +999,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       let resolveLateResponse: (val: any) => void = () => {};

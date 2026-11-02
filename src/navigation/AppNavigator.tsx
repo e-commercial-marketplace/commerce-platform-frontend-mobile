@@ -15,6 +15,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../constants/theme';
 import AiAssistantScreen from '../screens/AiAssistantScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import ConversationListScreen from '../screens/ConversationListScreen';
@@ -185,6 +186,18 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Reset Password',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{
+          headerShown: true,
+          title: 'Edit Profile',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

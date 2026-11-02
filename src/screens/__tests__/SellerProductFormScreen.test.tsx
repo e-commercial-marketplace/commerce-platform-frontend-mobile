@@ -22,7 +22,7 @@
  * 17. stock=0 accepted
  * 18. active + blank image rejected
  * 19. inactive + blank image accepted
- * 20. imageUrl >2048 rejected
+ * 20. image upload (choose, cancel, failure, keep old URL)
  * 21. duplicate submit prevented while pending
  * 22. create success returns to previous screen
  *
@@ -53,7 +53,9 @@ import { Alert, Keyboard } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { ApiError } from '../../api/errors';
+import { useImageUpload } from '../../hooks/useImageUpload';
 import { useCategories } from '../../hooks/useProducts';
+import { pickImage } from '../../utils/imagePicker';
 import {
   useCreateSellerProduct,
   useSellerProduct,
@@ -66,7 +68,23 @@ import type {
 import SellerProductFormScreen from '../SellerProductFormScreen';
 
 jest.mock('../../hooks/useProducts');
+jest.mock('../../hooks/useImageUpload', () => ({ useImageUpload: jest.fn() }));
+jest.mock('../../utils/imagePicker', () => ({ pickImage: jest.fn() }));
 jest.mock('../../hooks/useSellerProducts');
+
+const mockedPickImage = pickImage as jest.MockedFunction<typeof pickImage>;
+const mockUploadMutateAsync = jest.fn();
+const pickedImage = { uri: 'file:///photo.jpg', name: 'image.jpg', type: 'image/jpeg' };
+
+/** Chọn ảnh qua nút như người dùng thật; upload giả trả về url, rồi chờ ảnh xem trước xuất hiện. */
+async function chooseImage(getByTestId: (id: string) => any, url: string) {
+  mockedPickImage.mockResolvedValueOnce(pickedImage);
+  mockUploadMutateAsync.mockResolvedValueOnce(url);
+  fireEvent.press(getByTestId('pick-image-button'));
+  await waitFor(() => {
+    expect(getByTestId('image-preview').props.source).toEqual({ uri: url });
+  });
+}
 
 const mockedUseCategories = useCategories as jest.MockedFunction<
   typeof useCategories
@@ -116,6 +134,10 @@ describe('SellerProductFormScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Alert, 'alert');
+    (useImageUpload as jest.Mock).mockReturnValue({
+      mutateAsync: mockUploadMutateAsync,
+      isPending: false,
+    });
 
     mockedUseCategories.mockReturnValue({
       data: mockCategories,
@@ -158,7 +180,7 @@ describe('SellerProductFormScreen', () => {
       expect(getByTestId('name-input').props.value).toBe('');
       expect(getByTestId('price-input').props.value).toBe('');
       expect(getByTestId('stock-input').props.value).toBe('');
-      expect(getByTestId('image-url-input').props.value).toBe('');
+      expect(getByTestId('pick-image-button')).toBeTruthy();
       expect(getByTestId('description-input').props.value).toBe('');
       expect(getByTestId('submit-button')).toBeTruthy();
     });
@@ -195,7 +217,7 @@ describe('SellerProductFormScreen', () => {
       fireEvent.press(getByTestId('category-option-cat-111'));
       fireEvent.changeText(getByTestId('price-input'), '1250000.50');
       fireEvent.changeText(getByTestId('stock-input'), '15');
-      fireEvent.changeText(getByTestId('image-url-input'), '  https://example.com/item.jpg  ');
+      await chooseImage(getByTestId, 'https://example.com/item.jpg');
       fireEvent.changeText(getByTestId('description-input'), 'Awesome tactile keyboard');
 
       fireEvent.press(getByTestId('submit-button'));
@@ -409,7 +431,7 @@ describe('SellerProductFormScreen', () => {
       fireEvent.press(getByTestId('category-option-cat-111'));
       fireEvent.changeText(getByTestId('price-input'), '50000');
       fireEvent.changeText(getByTestId('stock-input'), '0');
-      fireEvent.changeText(getByTestId('image-url-input'), 'https://example.com/item.jpg');
+      await chooseImage(getByTestId, 'https://example.com/item.jpg');
 
       fireEvent.press(getByTestId('submit-button'));
 
@@ -435,7 +457,7 @@ describe('SellerProductFormScreen', () => {
       await waitFor(() => {
         expect(mockCreateMutateAsync).not.toHaveBeenCalled();
         expect(
-          getByText('Image URL is required when listing product as active'),
+          getByText('Product image is required when listing product as active'),
         ).toBeTruthy();
       });
     });
@@ -465,26 +487,45 @@ describe('SellerProductFormScreen', () => {
       });
     });
 
-    it('20. imageUrl >2048 rejected', async () => {
-      const { getByTestId, getByText } = render(
+    it('20a. cancelling the picker changes nothing and shows no error', async () => {
+      mockedPickImage.mockResolvedValueOnce(null);
+      const { getByTestId, queryByTestId } = render(
         <SellerProductFormScreen navigation={mockNavigation} route={createRoute} />,
       );
 
-      fireEvent.changeText(getByTestId('name-input'), 'Valid Name');
-      fireEvent.press(getByTestId('category-option-cat-111'));
-      fireEvent.changeText(getByTestId('price-input'), '150000');
-      fireEvent.changeText(getByTestId('stock-input'), '10');
-      fireEvent.changeText(
-        getByTestId('image-url-input'),
-        'https://example.com/' + 'x'.repeat(2035),
+      fireEvent.press(getByTestId('pick-image-button'));
+
+      await waitFor(() => expect(mockedPickImage).toHaveBeenCalled());
+      expect(mockUploadMutateAsync).not.toHaveBeenCalled();
+      expect(queryByTestId('image-url-error-text')).toBeNull();
+      expect(queryByTestId('image-preview')).toBeNull();
+    });
+
+    it('20b. a failed upload shows the error under the image field', async () => {
+      mockedPickImage.mockResolvedValueOnce(pickedImage);
+      mockUploadMutateAsync.mockRejectedValueOnce(new ApiError('Upload failed', 'UPLOAD_FAILED', 500));
+      const { getByTestId, findByTestId, queryByTestId } = render(
+        <SellerProductFormScreen navigation={mockNavigation} route={createRoute} />,
+      );
+
+      fireEvent.press(getByTestId('pick-image-button'));
+
+      expect((await findByTestId('image-url-error-text')).props.children).toBe('Upload failed');
+      expect(queryByTestId('image-preview')).toBeNull();
+    });
+
+    it('20c. saving is blocked while the image is uploading', () => {
+      (useImageUpload as jest.Mock).mockReturnValue({
+        mutateAsync: mockUploadMutateAsync,
+        isPending: true,
+      });
+      const { getByTestId } = render(
+        <SellerProductFormScreen navigation={mockNavigation} route={createRoute} />,
       );
 
       fireEvent.press(getByTestId('submit-button'));
 
-      await waitFor(() => {
-        expect(mockCreateMutateAsync).not.toHaveBeenCalled();
-        expect(getByText('Image URL must not exceed 2048 characters')).toBeTruthy();
-      });
+      expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
 
     it('21. duplicate submit prevented while pending', () => {
@@ -515,7 +556,7 @@ describe('SellerProductFormScreen', () => {
       fireEvent.press(getByTestId('category-option-cat-111'));
       fireEvent.changeText(getByTestId('price-input'), '100000');
       fireEvent.changeText(getByTestId('stock-input'), '5');
-      fireEvent.changeText(getByTestId('image-url-input'), 'https://example.com/img.jpg');
+      await chooseImage(getByTestId, 'https://example.com/img.jpg');
 
       fireEvent.press(getByTestId('submit-button'));
 
@@ -557,9 +598,9 @@ describe('SellerProductFormScreen', () => {
       expect(getByText('Edit Product')).toBeTruthy();
       expect(getByTestId('name-input').props.value).toBe('Existing Keyboard Pro');
       expect(getByTestId('price-input').props.value).toBe('2500000.00');
-      expect(getByTestId('image-url-input').props.value).toBe(
-        'https://example.com/existing-keyboard.jpg',
-      );
+      expect(getByTestId('image-preview').props.source).toEqual({
+        uri: 'https://example.com/existing-keyboard.jpg',
+      });
       expect(getByTestId('description-input').props.value).toBe(
         'Existing high-end mechanical keyboard',
       );
@@ -686,7 +727,7 @@ describe('SellerProductFormScreen', () => {
       await waitFor(() => {
         expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
         expect(
-          getByText('Image URL is required when listing product as active'),
+          getByText('Product image is required when listing product as active'),
         ).toBeTruthy();
       });
     });
@@ -710,10 +751,7 @@ describe('SellerProductFormScreen', () => {
       );
 
       // Provide valid image and activate switch
-      fireEvent.changeText(
-        getByTestId('image-url-input'),
-        'https://example.com/new-img.jpg',
-      );
+      await chooseImage(getByTestId, 'https://example.com/new-img.jpg');
       const activeSwitch = getByTestId('active-switch');
       fireEvent(activeSwitch, 'valueChange', true);
 
@@ -925,7 +963,7 @@ describe('SellerProductFormScreen', () => {
       fireEvent.press(getByTestId('category-option-cat-222'));
       fireEvent.changeText(getByTestId('price-input'), '200000');
       fireEvent.changeText(getByTestId('stock-input'), '10');
-      fireEvent.changeText(getByTestId('image-url-input'), 'https://example.com/img.jpg');
+      await chooseImage(getByTestId, 'https://example.com/img.jpg');
 
       fireEvent.press(getByTestId('submit-button'));
 
@@ -967,14 +1005,13 @@ describe('SellerProductFormScreen', () => {
       fireEvent(getByTestId('name-input'), 'focus');
       fireEvent(getByTestId('price-input'), 'focus');
       fireEvent(getByTestId('stock-input'), 'focus');
-      fireEvent(getByTestId('image-url-input'), 'focus');
       fireEvent(getByTestId('description-input'), 'focus');
 
       // Verify layout measurement events are handled
       fireEvent(getByTestId('name-input'), 'layout', {
         nativeEvent: { layout: { y: 20 } },
       });
-      fireEvent(getByTestId('image-url-input'), 'layout', {
+      fireEvent(getByTestId('pick-image-button'), 'layout', {
         nativeEvent: { layout: { y: 350 } },
       });
       fireEvent(getByTestId('description-input'), 'layout', {
@@ -1005,7 +1042,7 @@ describe('SellerProductFormScreen', () => {
       expect(getCreateTestId('categories-container')).toBeTruthy();
       expect(getCreateTestId('price-input')).toBeTruthy();
       expect(getCreateTestId('stock-input')).toBeTruthy();
-      expect(getCreateTestId('image-url-input')).toBeTruthy();
+      expect(getCreateTestId('pick-image-button')).toBeTruthy();
       expect(getCreateTestId('description-input')).toBeTruthy();
       expect(getCreateTestId('active-switch')).toBeTruthy();
       expect(getCreateTestId('submit-button')).toBeTruthy();
@@ -1018,7 +1055,7 @@ describe('SellerProductFormScreen', () => {
       expect(getEditTestId('categories-container')).toBeTruthy();
       expect(getEditTestId('price-input')).toBeTruthy();
       expect(getEditTestId('stock-notice-box')).toBeTruthy();
-      expect(getEditTestId('image-url-input')).toBeTruthy();
+      expect(getEditTestId('pick-image-button')).toBeTruthy();
       expect(getEditTestId('description-input')).toBeTruthy();
       expect(getEditTestId('active-switch')).toBeTruthy();
       expect(getEditTestId('submit-button')).toBeTruthy();
@@ -1054,7 +1091,7 @@ describe('SellerProductFormScreen', () => {
       });
 
       // Inputs and submit buttons remain fully accessible
-      expect(getByTestId('image-url-input')).toBeTruthy();
+      expect(getByTestId('pick-image-button')).toBeTruthy();
       expect(getByTestId('description-input')).toBeTruthy();
       expect(getByTestId('submit-button')).toBeTruthy();
 
