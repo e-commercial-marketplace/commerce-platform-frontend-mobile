@@ -1,4 +1,4 @@
-/** Upload một ảnh theo mục đích, trả về URL Cloudinary. Mutation không tự thử lại. */
+/** Upload one image for a purpose and return the Cloudinary URL. The mutation does not retry automatically. */
 
 import { useMutation } from '@tanstack/react-query';
 

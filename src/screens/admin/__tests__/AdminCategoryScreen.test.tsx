@@ -49,9 +49,9 @@ const mockCustomerUser = {
 };
 
 const mockCategories: CategorySummaryDto[] = [
-  { id: 'cat-1', name: 'Điện thoại & Phụ kiện' },
-  { id: 'cat-2', name: 'Máy tính & Laptop' },
-  { id: 'cat-3', name: 'Thời trang nam' },
+  { id: 'cat-1', name: 'Phones & Accessories' },
+  { id: 'cat-2', name: 'Computers & Laptops' },
+  { id: 'cat-3', name: 'Menswear' },
 ];
 
 describe('AdminCategoryScreen', () => {
@@ -105,7 +105,7 @@ describe('AdminCategoryScreen', () => {
       );
 
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
-      expect(getByText('Truy cập bị từ chối')).toBeTruthy();
+      expect(getByText('Access denied')).toBeTruthy();
     });
 
     it('renders unauthorized guard when unauthenticated', () => {
@@ -121,7 +121,7 @@ describe('AdminCategoryScreen', () => {
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
     });
 
-    it('navigates back when Quay lại is pressed on unauthorized guard', () => {
+    it('navigates back when Go back is pressed on unauthorized guard', () => {
       mockedUseAuth.mockReturnValue({
         user: mockCustomerUser,
         isAuthenticated: true,
@@ -131,7 +131,7 @@ describe('AdminCategoryScreen', () => {
         <AdminCategoryScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      fireEvent.press(getByRole('button', { name: 'Quay lại' }));
+      fireEvent.press(getByRole('button', { name: 'Go back' }));
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
@@ -142,19 +142,19 @@ describe('AdminCategoryScreen', () => {
         <AdminCategoryScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Danh mục sản phẩm')).toBeTruthy();
-      expect(getByText(/3 danh mục • Hệ thống danh mục phẳng, không phân cấp/)).toBeTruthy();
+      expect(getByText('Product categories')).toBeTruthy();
+      expect(getByText(/3 categories • Flat category system, no hierarchy/)).toBeTruthy();
 
       expect(getByTestId('admin-category-item-cat-1')).toBeTruthy();
-      expect(getByText('Điện thoại & Phụ kiện')).toBeTruthy();
+      expect(getByText('Phones & Accessories')).toBeTruthy();
       expect(getByTestId('admin-category-rename-btn-cat-1')).toBeTruthy();
       expect(getByTestId('admin-category-delete-btn-cat-1')).toBeTruthy();
 
       expect(getByTestId('admin-category-item-cat-2')).toBeTruthy();
-      expect(getByText('Máy tính & Laptop')).toBeTruthy();
+      expect(getByText('Computers & Laptops')).toBeTruthy();
 
       expect(getByTestId('admin-category-item-cat-3')).toBeTruthy();
-      expect(getByText('Thời trang nam')).toBeTruthy();
+      expect(getByText('Menswear')).toBeTruthy();
     });
 
     it('renders loading indicator when isLoading is true', () => {
@@ -171,7 +171,7 @@ describe('AdminCategoryScreen', () => {
       );
 
       expect(getByTestId('admin-category-loading')).toBeTruthy();
-      expect(getByText('Đang tải danh sách danh mục...')).toBeTruthy();
+      expect(getByText('Loading categories...')).toBeTruthy();
     });
 
     it('renders error state and handles retry button', () => {
@@ -188,7 +188,7 @@ describe('AdminCategoryScreen', () => {
       );
 
       expect(getByTestId('admin-category-error')).toBeTruthy();
-      expect(getByText('Không thể tải danh mục')).toBeTruthy();
+      expect(getByText('Could not load categories')).toBeTruthy();
 
       fireEvent.press(getByTestId('admin-category-retry-btn'));
       expect(mockRefetch).toHaveBeenCalledTimes(1);
@@ -208,12 +208,12 @@ describe('AdminCategoryScreen', () => {
       );
 
       expect(getByTestId('admin-category-empty')).toBeTruthy();
-      expect(getByText('Chưa có danh mục nào')).toBeTruthy();
+      expect(getByText('No categories yet')).toBeTruthy();
     });
   });
 
   describe('Create Category Flow', () => {
-    it('opens create modal when Thêm mới is pressed', () => {
+    it('opens create modal when Add new is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminCategoryScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -221,7 +221,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-create-button'));
 
       expect(getByTestId('admin-category-create-modal')).toBeTruthy();
-      expect(getByText('Thêm danh mục mới')).toBeTruthy();
+      expect(getByText('Add new category')).toBeTruthy();
       expect(getByTestId('admin-category-name-input')).toBeTruthy();
     });
 
@@ -234,14 +234,14 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-submit-create-btn'));
 
       expect(getByTestId('admin-category-create-error')).toBeTruthy();
-      expect(getByText('Vui lòng nhập tên danh mục.')).toBeTruthy();
+      expect(getByText('Please enter the category name.')).toBeTruthy();
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
 
     it('successfully creates category and alerts user', async () => {
       mockCreateMutateAsync.mockResolvedValueOnce({
         id: 'cat-new',
-        name: 'Sách & Văn phòng phẩm',
+        name: 'Books & Stationery',
       });
 
       const { getByTestId, queryByTestId } = render(
@@ -251,7 +251,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-create-button'));
       fireEvent.changeText(
         getByTestId('admin-category-name-input'),
-        'Sách & Văn phòng phẩm',
+        'Books & Stationery',
       );
 
       await act(async () => {
@@ -259,11 +259,11 @@ describe('AdminCategoryScreen', () => {
       });
 
       expect(mockCreateMutateAsync).toHaveBeenCalledWith({
-        name: 'Sách & Văn phòng phẩm',
+        name: 'Books & Stationery',
       });
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã thêm danh mục "Sách & Văn phòng phẩm".',
+        'Success',
+        'Added category "Books & Stationery".',
       );
     });
 
@@ -279,7 +279,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-create-button'));
       fireEvent.changeText(
         getByTestId('admin-category-name-input'),
-        'Điện thoại & Phụ kiện',
+        'Phones & Accessories',
       );
 
       await act(async () => {
@@ -288,17 +288,17 @@ describe('AdminCategoryScreen', () => {
 
       expect(getByTestId('admin-category-create-error')).toBeTruthy();
       expect(
-        getByText('Tên danh mục đã tồn tại trên hệ thống. Vui lòng chọn tên khác.'),
+        getByText('The category name already exists in the system. Please choose another name.'),
       ).toBeTruthy();
     });
 
-    it('closes create modal when Hủy is pressed', () => {
+    it('closes create modal when Cancel is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminCategoryScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
       fireEvent.press(getByTestId('admin-category-create-button'));
-      expect(getByText('Thêm danh mục mới')).toBeTruthy();
+      expect(getByText('Add new category')).toBeTruthy();
 
       fireEvent.press(getByTestId('admin-category-cancel-create-btn'));
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
@@ -314,9 +314,9 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-rename-btn-cat-1'));
 
       expect(getByTestId('admin-category-rename-modal')).toBeTruthy();
-      expect(getByText('Đổi tên danh mục')).toBeTruthy();
+      expect(getByText('Rename category')).toBeTruthy();
       expect(getByTestId('admin-category-rename-input').props.value).toBe(
-        'Điện thoại & Phụ kiện',
+        'Phones & Accessories',
       );
     });
 
@@ -347,14 +347,14 @@ describe('AdminCategoryScreen', () => {
       });
 
       expect(getByTestId('admin-category-rename-error')).toBeTruthy();
-      expect(getByText('Vui lòng nhập tên danh mục.')).toBeTruthy();
+      expect(getByText('Please enter the category name.')).toBeTruthy();
       expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
     });
 
     it('successfully renames category and alerts user', async () => {
       mockUpdateMutateAsync.mockResolvedValueOnce({
         id: 'cat-1',
-        name: 'Thiết bị di động',
+        name: 'Mobile Devices',
       });
 
       const { getByTestId } = render(
@@ -364,7 +364,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-rename-btn-cat-1'));
       fireEvent.changeText(
         getByTestId('admin-category-rename-input'),
-        'Thiết bị di động',
+        'Mobile Devices',
       );
 
       await act(async () => {
@@ -373,11 +373,11 @@ describe('AdminCategoryScreen', () => {
 
       expect(mockUpdateMutateAsync).toHaveBeenCalledWith({
         id: 'cat-1',
-        payload: { name: 'Thiết bị di động' },
+        payload: { name: 'Mobile Devices' },
       });
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã đổi tên danh mục thành "Thiết bị di động".',
+        'Success',
+        'Renamed category to "Mobile Devices".',
       );
     });
 
@@ -393,7 +393,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-rename-btn-cat-1'));
       fireEvent.changeText(
         getByTestId('admin-category-rename-input'),
-        'Máy tính & Laptop',
+        'Computers & Laptops',
       );
 
       await act(async () => {
@@ -402,13 +402,13 @@ describe('AdminCategoryScreen', () => {
 
       expect(getByTestId('admin-category-rename-error')).toBeTruthy();
       expect(
-        getByText('Tên danh mục đã tồn tại trên hệ thống. Vui lòng chọn tên khác.'),
+        getByText('The category name already exists in the system. Please choose another name.'),
       ).toBeTruthy();
     });
   });
 
   describe('Delete Category Flow', () => {
-    it('prompts confirmation Alert when Xóa is pressed', () => {
+    it('prompts confirmation Alert when Delete is pressed', () => {
       const { getByTestId } = render(
         <AdminCategoryScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -416,8 +416,8 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-delete-btn-cat-1'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Xác nhận xóa danh mục',
-        expect.stringContaining('Bạn có chắc chắn muốn xóa danh mục "Điện thoại & Phụ kiện"?'),
+        'Confirm category deletion',
+        expect.stringContaining('Are you sure you want to delete the category "Phones & Accessories"?'),
         expect.any(Array),
       );
     });
@@ -432,7 +432,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-delete-btn-cat-1'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = alertButtons.find((btn: any) => btn.text === 'Xóa');
+      const deleteButton = alertButtons.find((btn: any) => btn.text === 'Delete');
 
       await act(async () => {
         await deleteButton.onPress();
@@ -440,8 +440,8 @@ describe('AdminCategoryScreen', () => {
 
       expect(mockDeleteMutateAsync).toHaveBeenCalledWith('cat-1');
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã xóa danh mục "Điện thoại & Phụ kiện".',
+        'Success',
+        'Deleted category "Phones & Accessories".',
       );
     });
 
@@ -457,7 +457,7 @@ describe('AdminCategoryScreen', () => {
       fireEvent.press(getByTestId('admin-category-delete-btn-cat-1'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = alertButtons.find((btn: any) => btn.text === 'Xóa');
+      const deleteButton = alertButtons.find((btn: any) => btn.text === 'Delete');
 
       await act(async () => {
         await deleteButton.onPress();
@@ -465,8 +465,8 @@ describe('AdminCategoryScreen', () => {
 
       expect(mockDeleteMutateAsync).toHaveBeenCalledWith('cat-1');
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Không thể xóa danh mục',
-        'Danh mục này đang có sản phẩm liên kết (kể cả sản phẩm đã ẩn). Vui lòng chuyển hoặc xóa các sản phẩm thuộc danh mục này trước.',
+        'Cannot delete category',
+        'This category still has linked products (including hidden ones). Please move or delete the products in this category first.',
       );
     });
   });

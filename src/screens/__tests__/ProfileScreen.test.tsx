@@ -6,15 +6,15 @@
  * - Authenticated state for CUSTOMER:
  *   - displays profile info
  *   - renders "My Orders" button and navigates to 'MyOrders'
- *   - renders "Tin nhắn" button and navigates to 'ConversationList'
- *   - does NOT render "Seller Orders", "My Products", or "Tin nhắn khách hàng" buttons
+ *   - renders "Messages" button and navigates to 'ConversationList'
+ *   - does NOT render "Seller Orders", "My Products", or "Customer messages" buttons
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for SELLER:
  *   - renders "My Products" button and navigates to 'SellerProducts'
  *   - renders "Seller Orders" button and navigates to 'SellerFulfillment'
- *   - renders "Tin nhắn khách hàng" button and navigates to 'ConversationList'
- *   - does NOT render "My Orders" or customer "Tin nhắn" button
+ *   - renders "Customer messages" button and navigates to 'ConversationList'
+ *   - does NOT render "My Orders" or customer "Messages" button
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for ADMIN:
@@ -87,9 +87,9 @@ describe('ProfileScreen', () => {
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
-    expect(queryByText('Tin nhắn')).toBeNull();
-    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
-    expect(queryByText('Quản trị hệ thống')).toBeNull();
+    expect(queryByText('Messages')).toBeNull();
+    expect(queryByText('Customer messages')).toBeNull();
+    expect(queryByText('System administration')).toBeNull();
   });
 
   it('renders guest screen when not authenticated, without orders or Change Password buttons', () => {
@@ -115,11 +115,11 @@ describe('ProfileScreen', () => {
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
-    expect(queryByText('Tin nhắn')).toBeNull();
-    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
+    expect(queryByText('Messages')).toBeNull();
+    expect(queryByText('Customer messages')).toBeNull();
   });
 
-  it('renders My Orders, Tin nhắn, and Change Password for CUSTOMER, and does NOT render Seller Orders, My Products, or Seller Chat', () => {
+  it('renders My Orders, Messages, and Change Password for CUSTOMER, and does NOT render Seller Orders, My Products, or Seller Chat', () => {
     const customerUser: User = {
       id: 'user-1',
       email: 'customer@example.com',
@@ -152,17 +152,17 @@ describe('ProfileScreen', () => {
     fireEvent.press(myOrdersBtn);
     expect(mockNavigate).toHaveBeenCalledWith('MyOrders');
 
-    // CUSTOMER sees Tin nhắn
-    const chatBtn = getByRole('button', { name: 'Tin nhắn' });
+    // CUSTOMER sees Messages
+    const chatBtn = getByRole('button', { name: 'Messages' });
     expect(chatBtn).toBeTruthy();
     fireEvent.press(chatBtn);
     expect(mockNavigate).toHaveBeenCalledWith('ConversationList');
 
-    // CUSTOMER does NOT see Seller Orders, My Products, or Tin nhắn khách hàng
+    // CUSTOMER does NOT see Seller Orders, My Products, or Customer messages
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
-    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
-    expect(queryByText('Quản trị hệ thống')).toBeNull();
+    expect(queryByText('Customer messages')).toBeNull();
+    expect(queryByText('System administration')).toBeNull();
 
     // CUSTOMER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -171,7 +171,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders My Products, Seller Orders, and Tin nhắn khách hàng for authenticated SELLER, navigates correctly, and does NOT render My Orders or customer Tin nhắn', () => {
+  it('renders My Products, Seller Orders, and Customer messages for authenticated SELLER, navigates correctly, and does NOT render My Orders or customer Messages', () => {
     const sellerUser: User = {
       id: 'user-2',
       email: 'seller@example.com',
@@ -209,16 +209,16 @@ describe('ProfileScreen', () => {
     fireEvent.press(sellerOrdersBtn);
     expect(mockNavigate).toHaveBeenCalledWith('SellerFulfillment');
 
-    // SELLER sees Tin nhắn khách hàng
-    const sellerChatBtn = getByRole('button', { name: 'Tin nhắn khách hàng' });
+    // SELLER sees Customer messages
+    const sellerChatBtn = getByRole('button', { name: 'Customer messages' });
     expect(sellerChatBtn).toBeTruthy();
     fireEvent.press(sellerChatBtn);
     expect(mockNavigate).toHaveBeenCalledWith('ConversationList');
 
-    // SELLER does NOT see customer My Orders or customer Tin nhắn
+    // SELLER does NOT see customer My Orders or customer Messages
     expect(queryByText('My Orders')).toBeNull();
-    expect(queryByText('Tin nhắn')).toBeNull();
-    expect(queryByText('Quản trị hệ thống')).toBeNull();
+    expect(queryByText('Messages')).toBeNull();
+    expect(queryByText('System administration')).toBeNull();
 
     // SELLER sees Change Password
     const changePasswordBtn = getByRole('button', { name: 'Change Password' });
@@ -227,7 +227,7 @@ describe('ProfileScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ChangePassword');
   });
 
-  it('renders Quản trị hệ thống and Change Password for ADMIN, and does NOT render Seller Orders, My Products, My Orders, or Chat inboxes', () => {
+  it('renders System administration and Change Password for ADMIN, and does NOT render Seller Orders, My Products, My Orders, or Chat inboxes', () => {
     const adminUser: User = {
       id: 'user-3',
       email: 'admin@example.com',
@@ -257,11 +257,11 @@ describe('ProfileScreen', () => {
     expect(queryByText('Seller Orders')).toBeNull();
     expect(queryByText('My Products')).toBeNull();
     expect(queryByText('My Orders')).toBeNull();
-    expect(queryByText('Tin nhắn')).toBeNull();
-    expect(queryByText('Tin nhắn khách hàng')).toBeNull();
+    expect(queryByText('Messages')).toBeNull();
+    expect(queryByText('Customer messages')).toBeNull();
 
-    // ADMIN sees Quản trị hệ thống
-    const adminPortalBtn = getByRole('button', { name: 'Quản trị hệ thống' });
+    // ADMIN sees System administration
+    const adminPortalBtn = getByRole('button', { name: 'System administration' });
     expect(adminPortalBtn).toBeTruthy();
     fireEvent.press(adminPortalBtn);
     expect(mockNavigate).toHaveBeenCalledWith('AdminPortal');

@@ -1,6 +1,6 @@
 /**
- * Tất cả voucher đang dùng được, cuộn tới đâu tải tới đó. Công khai, kể cả Guest.
- * Màn này chỉ xem và sao chép mã; áp dụng voucher nằm ở màn đặt hàng, nơi bắt buộc đăng nhập.
+ * All usable vouchers, loaded as you scroll. Public, including Guests.
+ * This screen only views and copies codes; applying a voucher happens at checkout, where sign-in is required.
  */
 
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';

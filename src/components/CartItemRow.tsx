@@ -13,7 +13,7 @@
  * inactive or the quantity is already 1 (the backend refuses PATCH to 0).
  */
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing } from '../constants/theme';
 import type { CartLine } from '../types/cart';
@@ -32,8 +32,6 @@ type CartItemRowProps = {
   onToggleSelected?: () => void;
   /** Disables every control (another cart mutation is in flight). */
   disabled?: boolean;
-  /** This specific row is the one being updated/removed. */
-  pending?: boolean;
 };
 
 export default function CartItemRow({
@@ -44,7 +42,6 @@ export default function CartItemRow({
   selected = false,
   onToggleSelected,
   disabled = false,
-  pending = false,
 }: CartItemRowProps) {
   const { quantity, active, availableStock } = item;
 
@@ -126,8 +123,6 @@ export default function CartItemRow({
                 </Pressable>
               </View>
             )}
-
-            {pending && <ActivityIndicator size="small" color={colors.primary} />}
 
             <Pressable
               onPress={onRemove}

@@ -52,7 +52,7 @@ describe('HomeScreen AI Entry Point', () => {
     (useUsableVouchers as jest.Mock).mockReturnValue({ data: undefined });
 
     mockedUseCategories.mockReturnValue({
-      data: [{ id: 'cat-1', name: 'Điện tử' }],
+      data: [{ id: 'cat-1', name: 'Electronics' }],
       isPending: false,
       isError: false,
       error: null,
@@ -91,10 +91,10 @@ describe('HomeScreen AI Entry Point', () => {
       <HomeScreen navigation={navigation} route={{} as never} />,
     );
 
-    const aiButton = getByRole('button', { name: 'Mở trợ lý AI' });
+    const aiButton = getByRole('button', { name: 'Open AI assistant' });
     expect(aiButton).toBeTruthy();
-    expect(getByText('Trợ lý AI')).toBeTruthy();
-    expect(getByText('Hỏi đáp sản phẩm & gợi ý mua sắm thông minh')).toBeTruthy();
+    expect(getByText('AI assistant')).toBeTruthy();
+    expect(getByText('Product Q&A and smart shopping suggestions')).toBeTruthy();
 
     fireEvent.press(aiButton);
     expect(mockNavigate).toHaveBeenCalledWith('AiAssistant');
@@ -116,7 +116,7 @@ describe('HomeScreen AI Entry Point', () => {
       <HomeScreen navigation={navigation} route={{} as never} />,
     );
 
-    expect(getByRole('button', { name: 'Mở trợ lý AI' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Open AI assistant' })).toBeTruthy();
   });
 
   it('hides AI Assistant entry card for SELLER', () => {
@@ -135,7 +135,7 @@ describe('HomeScreen AI Entry Point', () => {
       <HomeScreen navigation={navigation} route={{} as never} />,
     );
 
-    expect(queryByRole('button', { name: 'Mở trợ lý AI' })).toBeNull();
+    expect(queryByRole('button', { name: 'Open AI assistant' })).toBeNull();
   });
 
   it('hides AI Assistant entry card for ADMIN', () => {
@@ -154,6 +154,6 @@ describe('HomeScreen AI Entry Point', () => {
       <HomeScreen navigation={navigation} route={{} as never} />,
     );
 
-    expect(queryByRole('button', { name: 'Mở trợ lý AI' })).toBeNull();
+    expect(queryByRole('button', { name: 'Open AI assistant' })).toBeNull();
   });
 });

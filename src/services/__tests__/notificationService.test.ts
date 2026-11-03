@@ -56,7 +56,7 @@ describe('notificationService', () => {
       expect(mockedNotifications.setNotificationChannelAsync).toHaveBeenCalledWith(
         NOTIFICATION_CHANNEL_DEFAULT,
         expect.objectContaining({
-          name: 'Thông báo chung',
+          name: 'General notifications',
           importance: Notifications.AndroidImportance.DEFAULT,
         }),
       );
@@ -64,7 +64,7 @@ describe('notificationService', () => {
       expect(mockedNotifications.setNotificationChannelAsync).toHaveBeenCalledWith(
         NOTIFICATION_CHANNEL_CHAT,
         expect.objectContaining({
-          name: 'Tin nhắn trò chuyện',
+          name: 'Chat messages',
           importance: Notifications.AndroidImportance.HIGH,
         }),
       );
@@ -72,7 +72,7 @@ describe('notificationService', () => {
       expect(mockedNotifications.setNotificationChannelAsync).toHaveBeenCalledWith(
         NOTIFICATION_CHANNEL_ORDERS,
         expect.objectContaining({
-          name: 'Cập nhật đơn hàng',
+          name: 'Order updates',
           importance: Notifications.AndroidImportance.HIGH,
         }),
       );
@@ -174,16 +174,16 @@ describe('notificationService', () => {
       };
 
       const id = await scheduleLocalTestNotification({
-        title: 'Tin nhắn mới',
-        body: 'Bạn có tin nhắn từ Shop TechStore',
+        title: 'New message',
+        body: 'You have a message from TechStore',
         data: chatData,
       });
 
       expect(id).toBe('local-notif-123');
       expect(mockedNotifications.scheduleNotificationAsync).toHaveBeenCalledWith({
         content: {
-          title: 'Tin nhắn mới',
-          body: 'Bạn có tin nhắn từ Shop TechStore',
+          title: 'New message',
+          body: 'You have a message from TechStore',
           data: chatData,
           channelId: NOTIFICATION_CHANNEL_CHAT,
         },
@@ -201,16 +201,16 @@ describe('notificationService', () => {
       };
 
       const id = await scheduleLocalTestNotification({
-        title: 'Đơn hàng đã giao',
-        body: 'Đơn hàng #order-test-2 đã được giao thành công',
+        title: 'Order delivered',
+        body: 'Order #order-test-2 was delivered successfully',
         data: orderData,
       });
 
       expect(id).toBe('local-notif-456');
       expect(mockedNotifications.scheduleNotificationAsync).toHaveBeenCalledWith({
         content: {
-          title: 'Đơn hàng đã giao',
-          body: 'Đơn hàng #order-test-2 đã được giao thành công',
+          title: 'Order delivered',
+          body: 'Order #order-test-2 was delivered successfully',
           data: orderData,
           channelId: NOTIFICATION_CHANNEL_ORDERS,
         },
@@ -228,15 +228,15 @@ describe('notificationService', () => {
       };
 
       await scheduleLocalTestNotification({
-        title: 'Cập nhật',
-        body: 'Đơn hàng mới',
+        title: 'Update',
+        body: 'New order',
         data: orderData,
       });
 
       expect(mockedNotifications.scheduleNotificationAsync).toHaveBeenCalledWith({
         content: {
-          title: 'Cập nhật',
-          body: 'Đơn hàng mới',
+          title: 'Update',
+          body: 'New order',
           data: orderData,
         },
         trigger: null,

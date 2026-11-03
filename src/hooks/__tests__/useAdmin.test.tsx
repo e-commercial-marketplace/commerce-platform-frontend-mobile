@@ -498,7 +498,7 @@ describe('useAdmin hooks', () => {
   describe('useAdminVouchers', () => {
     const mockVoucher: VoucherResponse = {
       code: 'SALE20',
-      description: 'Giảm 20%',
+      description: '20% off',
       discountPercent: 20,
       validFrom: '2026-11-01T00:00:00Z',
       validTo: '2026-12-01T00:00:00Z',
@@ -641,7 +641,7 @@ describe('useAdmin hooks', () => {
   describe('Carrier Management Hooks (Phase 5)', () => {
     const mockCarrier1: Carrier = {
       id: 'carrier-1',
-      name: 'Giao Hàng Nhanh',
+      name: 'Fast Delivery',
       active: true,
     };
     const mockCarrier2: Carrier = {

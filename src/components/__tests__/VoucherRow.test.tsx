@@ -1,5 +1,5 @@
 /**
- * Dòng voucher: nút Copy chép đúng mã và báo đã chép, không kích hoạt thao tác áp dụng.
+ * Voucher row: the Copy button copies the exact code and reports it was copied, without triggering the apply action.
  */
 
 import * as Clipboard from 'expo-clipboard';

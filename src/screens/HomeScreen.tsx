@@ -111,7 +111,7 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
     return next;
   }, [debouncedQuery, selectedCategoryId, page, appliedMinPrice, appliedMaxPrice, appliedMinRating]);
 
-  // Đang tải, lỗi hoặc rỗng thì danh sách rỗng và khu voucher tự ẩn, không ảnh hưởng sản phẩm.
+  // While loading, on error or when empty the list is empty and the voucher section hides itself without affecting products.
   const vouchers = useUsableVouchers().data?.pages[0]?.content.slice(0, HOME_VOUCHER_COUNT) ?? [];
   const { data, isPending, isError, error, refetch, isFetching } = useProductList(filters);
 
@@ -280,15 +280,15 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
                 style={styles.aiEntryCard}
                 onPress={() => navigation.navigate('AiAssistant')}
                 accessibilityRole="button"
-                accessibilityLabel="Mở trợ lý AI"
+                accessibilityLabel="Open AI assistant"
               >
                 <View style={styles.aiEntryLeft}>
                   <View style={styles.aiEntryBadge}>
                     <Text style={styles.aiEntrySparkle}>✨</Text>
                   </View>
                   <View style={styles.aiEntryTexts}>
-                    <Text style={styles.aiEntryTitle}>Trợ lý AI</Text>
-                    <Text style={styles.aiEntrySubtitle}>Hỏi đáp sản phẩm & gợi ý mua sắm thông minh</Text>
+                    <Text style={styles.aiEntryTitle}>AI assistant</Text>
+                    <Text style={styles.aiEntrySubtitle}>Product Q&A and smart shopping suggestions</Text>
                   </View>
                 </View>
                 <Text style={styles.aiEntryArrow}>→</Text>

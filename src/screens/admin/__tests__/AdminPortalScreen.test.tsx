@@ -45,7 +45,7 @@ describe('AdminPortalScreen', () => {
       );
 
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
-      expect(getByText('Truy cập bị từ chối')).toBeTruthy();
+      expect(getByText('Access denied')).toBeTruthy();
     });
 
     it('renders unauthorized guard when unauthenticated', () => {
@@ -61,7 +61,7 @@ describe('AdminPortalScreen', () => {
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
     });
 
-    it('calls navigation.goBack() when Quay lại is pressed on unauthorized guard', () => {
+    it('calls navigation.goBack() when Go back is pressed on unauthorized guard', () => {
       mockedUseAuth.mockReturnValue({
         user: mockCustomerUser,
         isAuthenticated: true,
@@ -71,7 +71,7 @@ describe('AdminPortalScreen', () => {
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      fireEvent.press(getByRole('button', { name: 'Quay lại' }));
+      fireEvent.press(getByRole('button', { name: 'Go back' }));
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
@@ -89,11 +89,11 @@ describe('AdminPortalScreen', () => {
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Quản trị hệ thống')).toBeTruthy();
-      expect(getByText(/Xin chào, Super Admin/)).toBeTruthy();
+      expect(getByText('System administration')).toBeTruthy();
+      expect(getByText(/Hello, Super Admin/)).toBeTruthy();
     });
 
-    it('navigates to AdminUserList when Quản lý người dùng is pressed', () => {
+    it('navigates to AdminUserList when User management is pressed', () => {
       const { getByTestId } = render(
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -102,7 +102,7 @@ describe('AdminPortalScreen', () => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith('AdminUserList');
     });
 
-    it('navigates to AdminSellerApproval when Quản lý người bán is pressed', () => {
+    it('navigates to AdminSellerApproval when Seller management is pressed', () => {
       const { getByTestId } = render(
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -111,32 +111,32 @@ describe('AdminPortalScreen', () => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith('AdminSellerApproval');
     });
 
-    it('navigates to AdminCategory when Quản lý danh mục is pressed', () => {
+    it('navigates to AdminCategory when Category management is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Quản lý danh mục')).toBeTruthy();
+      expect(getByText('Category management')).toBeTruthy();
       fireEvent.press(getByTestId('admin-portal-category-management-btn'));
       expect(mockNavigation.navigate).toHaveBeenCalledWith('AdminCategory');
     });
 
-    it('navigates to AdminVoucher when Quản lý mã giảm giá is pressed', () => {
+    it('navigates to AdminVoucher when Voucher management is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Quản lý mã giảm giá')).toBeTruthy();
+      expect(getByText('Voucher management')).toBeTruthy();
       fireEvent.press(getByTestId('admin-portal-voucher-management-btn'));
       expect(mockNavigation.navigate).toHaveBeenCalledWith('AdminVoucher');
     });
 
-    it('navigates to AdminCarrier when Quản lý đơn vị vận chuyển is pressed', () => {
+    it('navigates to AdminCarrier when Carrier management is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminPortalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Quản lý đơn vị vận chuyển')).toBeTruthy();
+      expect(getByText('Carrier management')).toBeTruthy();
       fireEvent.press(getByTestId('admin-portal-carrier-management-btn'));
       expect(mockNavigation.navigate).toHaveBeenCalledWith('AdminCarrier');
     });

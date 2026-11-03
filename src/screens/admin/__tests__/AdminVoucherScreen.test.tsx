@@ -54,7 +54,7 @@ const mockCustomerUser = {
 const mockVouchers: VoucherResponse[] = [
   {
     code: 'ACTIVE10',
-    description: 'Giảm 10% đơn hàng',
+    description: '10% off orders',
     discountPercent: 10,
     validFrom: '2026-01-01T00:00:00Z',
     validTo: '2027-01-01T00:00:00Z',
@@ -63,7 +63,7 @@ const mockVouchers: VoucherResponse[] = [
   },
   {
     code: 'FUTURE20',
-    description: 'Giảm 20% sự kiện tương lai',
+    description: '20% off future event',
     discountPercent: 20,
     validFrom: '2028-01-01T00:00:00Z',
     validTo: '2028-02-01T00:00:00Z',
@@ -72,7 +72,7 @@ const mockVouchers: VoucherResponse[] = [
   },
   {
     code: 'EXPIRED30',
-    description: 'Voucher đã hết hạn',
+    description: 'Voucher has expired',
     discountPercent: 30,
     validFrom: '2025-01-01T00:00:00Z',
     validTo: '2025-02-01T00:00:00Z',
@@ -81,7 +81,7 @@ const mockVouchers: VoucherResponse[] = [
   },
   {
     code: 'LIMIT40',
-    description: 'Voucher hết lượt dùng',
+    description: 'Voucher usage exhausted',
     discountPercent: 40,
     validFrom: '2026-01-01T00:00:00Z',
     validTo: '2027-01-01T00:00:00Z',
@@ -218,7 +218,7 @@ describe('AdminVoucherScreen', () => {
       );
 
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
-      expect(getByText('Truy cập bị từ chối')).toBeTruthy();
+      expect(getByText('Access denied')).toBeTruthy();
     });
 
     it('renders unauthorized guard when unauthenticated', () => {
@@ -234,7 +234,7 @@ describe('AdminVoucherScreen', () => {
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
     });
 
-    it('navigates back when Quay lại is pressed on unauthorized guard', () => {
+    it('navigates back when Go back is pressed on unauthorized guard', () => {
       mockedUseAuth.mockReturnValue({
         user: mockCustomerUser,
         isAuthenticated: true,
@@ -244,7 +244,7 @@ describe('AdminVoucherScreen', () => {
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      fireEvent.press(getByRole('button', { name: 'Quay lại' }));
+      fireEvent.press(getByRole('button', { name: 'Go back' }));
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
@@ -255,13 +255,13 @@ describe('AdminVoucherScreen', () => {
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Mã giảm giá toàn sàn')).toBeTruthy();
-      expect(getByText(/4 mã giảm giá • Áp dụng cho đơn hàng toàn nền tảng/)).toBeTruthy();
+      expect(getByText('Platform-wide vouchers')).toBeTruthy();
+      expect(getByText(/4 vouchers • Applies to orders across the whole platform/)).toBeTruthy();
 
       expect(getByTestId('admin-voucher-card-ACTIVE10')).toBeTruthy();
       expect(getByTestId('admin-voucher-code-ACTIVE10')).toBeTruthy();
       expect(getByText('ACTIVE10')).toBeTruthy();
-      expect(getByText('🏷️ Giảm 10%')).toBeTruthy();
+      expect(getByText('🏷️ Discount 10%')).toBeTruthy();
 
       expect(getByTestId('admin-voucher-card-FUTURE20')).toBeTruthy();
       expect(getByText('FUTURE20')).toBeTruthy();
@@ -287,7 +287,7 @@ describe('AdminVoucherScreen', () => {
       );
 
       expect(getByTestId('admin-voucher-loading')).toBeTruthy();
-      expect(getByText('Đang tải danh sách mã giảm giá...')).toBeTruthy();
+      expect(getByText('Loading vouchers...')).toBeTruthy();
     });
 
     it('renders error state and triggers retry', () => {
@@ -304,7 +304,7 @@ describe('AdminVoucherScreen', () => {
       );
 
       expect(getByTestId('admin-voucher-error')).toBeTruthy();
-      expect(getByText('Không thể tải danh sách voucher')).toBeTruthy();
+      expect(getByText('Could not load the voucher list')).toBeTruthy();
 
       fireEvent.press(getByTestId('admin-voucher-retry-btn'));
       expect(mockRefetch).toHaveBeenCalledTimes(1);
@@ -330,7 +330,7 @@ describe('AdminVoucherScreen', () => {
       );
 
       expect(getByTestId('admin-voucher-empty')).toBeTruthy();
-      expect(getByText('Chưa có mã giảm giá nào')).toBeTruthy();
+      expect(getByText('No vouchers yet')).toBeTruthy();
     });
   });
 
@@ -366,7 +366,7 @@ describe('AdminVoucherScreen', () => {
   });
 
   describe('Create Voucher Flow', () => {
-    it('opens create modal when Tạo voucher is pressed', () => {
+    it('opens create modal when Create voucher is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -374,7 +374,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-create-btn'));
 
       expect(getByTestId('admin-voucher-create-modal')).toBeTruthy();
-      expect(getByText('Tạo mã giảm giá mới')).toBeTruthy();
+      expect(getByText('Create new voucher')).toBeTruthy();
       expect(getByTestId('admin-voucher-code-input')).toBeTruthy();
     });
 
@@ -387,7 +387,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-submit-create-btn'));
 
       expect(getByTestId('admin-voucher-create-error')).toBeTruthy();
-      expect(getByText('Vui lòng nhập mã voucher.')).toBeTruthy();
+      expect(getByText('Please enter the voucher code.')).toBeTruthy();
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
 
@@ -402,7 +402,7 @@ describe('AdminVoucherScreen', () => {
 
       expect(getByTestId('admin-voucher-create-error')).toBeTruthy();
       expect(
-        getByText(/Mã voucher chỉ được chứa chữ cái, số, gạch ngang/),
+        getByText(/The voucher code may only contain letters, digits, hyphens/),
       ).toBeTruthy();
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
@@ -418,7 +418,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-submit-create-btn'));
 
       expect(getByTestId('admin-voucher-create-error')).toBeTruthy();
-      expect(getByText('Tỷ lệ giảm giá phải là số nguyên từ 1% đến 100%.')).toBeTruthy();
+      expect(getByText('The discount rate must be an integer from 1% to 100%.')).toBeTruthy();
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
 
@@ -435,7 +435,7 @@ describe('AdminVoucherScreen', () => {
 
       expect(getByTestId('admin-voucher-create-error')).toBeTruthy();
       expect(
-        getByText('Thời gian bắt đầu (validFrom) phải trước thời gian kết thúc (validTo).'),
+        getByText('The start time (validFrom) must be before the end time (validTo).'),
       ).toBeTruthy();
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
@@ -443,7 +443,7 @@ describe('AdminVoucherScreen', () => {
     it('creates voucher successfully and alerts user', async () => {
       mockCreateMutateAsync.mockResolvedValueOnce({
         code: 'SUMMER2026',
-        description: 'Mùa hè rực rỡ',
+        description: 'Bright summer',
         discountPercent: 25,
         validFrom: '2026-06-01T00:00:00.000Z',
         validTo: '2026-07-01T00:00:00.000Z',
@@ -461,7 +461,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.changeText(getByTestId('admin-voucher-limit-input'), '200');
       fireEvent.changeText(getByTestId('admin-voucher-from-input'), '2026-06-01T00:00:00.000Z');
       fireEvent.changeText(getByTestId('admin-voucher-to-input'), '2026-07-01T00:00:00.000Z');
-      fireEvent.changeText(getByTestId('admin-voucher-desc-input'), 'Mùa hè rực rỡ');
+      fireEvent.changeText(getByTestId('admin-voucher-desc-input'), 'Bright summer');
 
       await act(async () => {
         fireEvent.press(getByTestId('admin-voucher-submit-create-btn'));
@@ -469,7 +469,7 @@ describe('AdminVoucherScreen', () => {
 
       expect(mockCreateMutateAsync).toHaveBeenCalledWith({
         code: 'SUMMER2026',
-        description: 'Mùa hè rực rỡ',
+        description: 'Bright summer',
         discountPercent: 25,
         validFrom: '2026-06-01T00:00:00.000Z',
         validTo: '2026-07-01T00:00:00.000Z',
@@ -477,8 +477,8 @@ describe('AdminVoucherScreen', () => {
       });
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã tạo mã giảm giá "SUMMER2026" thành công.',
+        'Success',
+        'Created voucher "SUMMER2026" successfully.',
       );
     });
 
@@ -500,17 +500,17 @@ describe('AdminVoucherScreen', () => {
 
       expect(getByTestId('admin-voucher-create-error')).toBeTruthy();
       expect(
-        getByText('Mã voucher "ACTIVE10" đã tồn tại. Vui lòng chọn mã khác.'),
+        getByText('Voucher code "ACTIVE10" already exists. Please choose another code.'),
       ).toBeTruthy();
     });
 
-    it('closes create modal when Hủy is pressed', () => {
+    it('closes create modal when Cancel is pressed', () => {
       const { getByTestId, getByText } = render(
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
       fireEvent.press(getByTestId('admin-voucher-create-btn'));
-      expect(getByText('Tạo mã giảm giá mới')).toBeTruthy();
+      expect(getByText('Create new voucher')).toBeTruthy();
 
       fireEvent.press(getByTestId('admin-voucher-cancel-create-btn'));
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
@@ -526,7 +526,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-edit-btn-ACTIVE10'));
 
       expect(getByTestId('admin-voucher-edit-modal')).toBeTruthy();
-      expect(getByText('Chỉnh sửa mã giảm giá')).toBeTruthy();
+      expect(getByText('Edit voucher')).toBeTruthy();
       expect(getByTestId('admin-voucher-code-readonly')).toBeTruthy();
       expect(getAllByText('ACTIVE10').length).toBeGreaterThanOrEqual(2);
     });
@@ -541,7 +541,7 @@ describe('AdminVoucherScreen', () => {
 
       expect(queryByTestId('admin-voucher-edit-discount-input')).toBeNull();
       expect(
-        getByText(/Mã này đã được dùng 5 lần nên không thể đổi % giảm giá/),
+        getByText(/This code has been used 5 times so the discount percentage cannot be changed/),
       ).toBeTruthy();
     });
 
@@ -572,7 +572,7 @@ describe('AdminVoucherScreen', () => {
 
       expect(getByTestId('admin-voucher-edit-error')).toBeTruthy();
       expect(
-        getByText('Giới hạn lượt dùng không được nhỏ hơn số lượt đã dùng (5).'),
+        getByText('The usage limit cannot be lower than the number of uses so far (5).'),
       ).toBeTruthy();
       expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
     });
@@ -580,7 +580,7 @@ describe('AdminVoucherScreen', () => {
     it('updates voucher successfully and alerts user', async () => {
       mockUpdateMutateAsync.mockResolvedValueOnce({
         code: 'ACTIVE10',
-        description: 'Mô tả cập nhật',
+        description: 'Updated description',
         discountPercent: 10,
         validFrom: '2026-01-01T00:00:00Z',
         validTo: '2027-06-01T00:00:00Z',
@@ -595,7 +595,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-edit-btn-ACTIVE10'));
       fireEvent.changeText(getByTestId('admin-voucher-edit-limit-input'), '300');
       fireEvent.changeText(getByTestId('admin-voucher-edit-to-input'), '2027-06-01T00:00:00Z');
-      fireEvent.changeText(getByTestId('admin-voucher-edit-desc-input'), 'Mô tả cập nhật');
+      fireEvent.changeText(getByTestId('admin-voucher-edit-desc-input'), 'Updated description');
 
       await act(async () => {
         fireEvent.press(getByTestId('admin-voucher-submit-edit-btn'));
@@ -604,7 +604,7 @@ describe('AdminVoucherScreen', () => {
       expect(mockUpdateMutateAsync).toHaveBeenCalledWith({
         code: 'ACTIVE10',
         payload: {
-          description: 'Mô tả cập nhật',
+          description: 'Updated description',
           discountPercent: 10,
           usageLimit: 300,
           validFrom: new Date('2026-01-01T00:00:00Z').toISOString(),
@@ -613,14 +613,14 @@ describe('AdminVoucherScreen', () => {
       });
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã cập nhật mã giảm giá "ACTIVE10".',
+        'Success',
+        'Updated voucher "ACTIVE10".',
       );
     });
   });
 
   describe('Expire / Deactivate Flow', () => {
-    it('prompts confirmation Alert with accurate soft-expire explanation when Ngừng phát hành is pressed', () => {
+    it('prompts confirmation Alert with accurate soft-expire explanation when Stop issuing is pressed', () => {
       const { getByTestId } = render(
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -628,13 +628,13 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-expire-btn-ACTIVE10'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Ngừng phát hành voucher',
-        expect.stringContaining('Bạn có chắc chắn muốn ngừng phát hành voucher "ACTIVE10" ngay lập tức?'),
+        'Stop issuing voucher',
+        expect.stringContaining('Are you sure you want to stop issuing voucher "ACTIVE10" right away?'),
         expect.any(Array),
       );
     });
 
-    it('cancels expiration when user selects Hủy', () => {
+    it('cancels expiration when user selects Cancel', () => {
       const { getByTestId } = render(
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -642,7 +642,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-expire-btn-ACTIVE10'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const cancelButton = alertButtons.find((btn: any) => btn.text === 'Hủy');
+      const cancelButton = alertButtons.find((btn: any) => btn.text === 'Cancel');
 
       expect(cancelButton).toBeTruthy();
       expect(mockExpireMutateAsync).not.toHaveBeenCalled();
@@ -651,7 +651,7 @@ describe('AdminVoucherScreen', () => {
     it('expires voucher successfully when user confirms and alerts user', async () => {
       mockExpireMutateAsync.mockResolvedValueOnce({
         code: 'ACTIVE10',
-        description: 'Giảm 10% đơn hàng',
+        description: '10% off orders',
         discountPercent: 10,
         validFrom: '2026-01-01T00:00:00Z',
         validTo: '2026-06-01T12:00:00Z',
@@ -666,7 +666,7 @@ describe('AdminVoucherScreen', () => {
       fireEvent.press(getByTestId('admin-voucher-expire-btn-ACTIVE10'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const confirmButton = alertButtons.find((btn: any) => btn.text === 'Xác nhận ngừng');
+      const confirmButton = alertButtons.find((btn: any) => btn.text === 'Confirm stop');
 
       await act(async () => {
         await confirmButton.onPress();
@@ -674,19 +674,19 @@ describe('AdminVoucherScreen', () => {
 
       expect(mockExpireMutateAsync).toHaveBeenCalledWith('ACTIVE10');
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã ngừng phát hành voucher "ACTIVE10".',
+        'Success',
+        'Stopped issuing voucher "ACTIVE10".',
       );
     });
 
-    it('does NOT render Ngừng phát hành button for EXPIRED vouchers (renders Đã kết thúc)', () => {
+    it('does NOT render Stop issuing button for EXPIRED vouchers (renders Ended)', () => {
       const { queryByTestId, getByText } = render(
         <AdminVoucherScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
       // EXPIRED30 has status EXPIRED
       expect(queryByTestId('admin-voucher-expire-btn-EXPIRED30')).toBeNull();
-      expect(getByText('Đã kết thúc')).toBeTruthy();
+      expect(getByText('Ended')).toBeTruthy();
     });
   });
 });

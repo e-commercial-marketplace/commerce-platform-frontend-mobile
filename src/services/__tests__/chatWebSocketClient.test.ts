@@ -266,7 +266,7 @@ describe('ChatWebSocketClient', () => {
         id: 'msg-123',
         conversationId: 'conv-456',
         senderId: 'user-789',
-        content: 'Xin chao shop',
+        content: 'Hello shop',
         imageUrl: null,
         isRead: false,
         createdAt: '2026-10-30T10:00:00Z',

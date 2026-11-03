@@ -14,7 +14,7 @@ import type { VoucherResponse, VoucherSummaryPage } from '../types/voucherApi';
 
 export const VOUCHERS_PAGE_SIZE = 20;
 
-/** GET /vouchers — voucher đang dùng được, % cao nhất trước. Công khai, không cần đăng nhập. */
+/** GET /vouchers - usable vouchers, highest % first. Public, no sign-in needed. */
 export async function getUsableVouchers(
   page = 0,
   size = VOUCHERS_PAGE_SIZE,

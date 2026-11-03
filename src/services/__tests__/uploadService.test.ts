@@ -1,5 +1,5 @@
 /**
- * Upload ảnh: xin chữ ký qua apiClient, gửi file lên Cloudinary bằng axios gốc (không kèm Bearer token).
+ * Image upload: request the signature through apiClient, send the file to Cloudinary with plain axios (no Bearer token).
  */
 
 import axios, { AxiosError, type AxiosResponse } from 'axios';

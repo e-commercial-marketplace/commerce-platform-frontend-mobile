@@ -39,7 +39,7 @@ export type AuthContextValue = {
   logout: () => Promise<void>;
   /** Changes password, rotates session tokens, and keeps the user signed in. */
   changePassword: (data: ChangePasswordRequest) => Promise<void>;
-  /** Cập nhật tên trong phiên sau khi sửa hồ sơ, để màn hình đọc user.name không hiện tên cũ. */
+  /** Update the name in the session after editing the profile so screens reading user.name do not show the old name. */
   updateUserName: (name: string) => void;
 };
 

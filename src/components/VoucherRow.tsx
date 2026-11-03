@@ -1,6 +1,6 @@
 /**
- * Một voucher: mã, phần trăm giảm, mô tả, hạn dùng và nút sao chép mã.
- * Có `onApply` thì chạm vào phần thông tin để áp dụng; vùng chạm này tách khỏi nút Copy.
+ * A voucher: code, discount percentage, description, expiry and a copy-code button.
+ * If given `onApply` then tap the info area to apply; this tap zone is separate from the Copy button.
  */
 
 import * as Clipboard from 'expo-clipboard';
@@ -14,11 +14,11 @@ const COPIED_MS = 2000;
 
 type VoucherRowProps = {
   voucher: VoucherSummary;
-  /** Chạm vào phần thông tin để áp dụng; không truyền thì dòng chỉ để xem. */
+  /** Tap the info area to apply; when not passed, the row is view-only. */
   onApply?: () => void;
-  /** Nhãn nổi bật phía trên mã. */
+  /** Highlight label above the code. */
   badge?: string;
-  /** Khoá thao tác áp dụng khi màn hình đang bận. */
+  /** Lock the apply action while the screen is busy. */
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 };
@@ -27,7 +27,7 @@ export default function VoucherRow({ voucher, onApply, badge, disabled = false, 
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Dọn timer khi rời màn hình để không cập nhật state sau khi đã unmount.
+  // Clear the timer when leaving the screen so state is not updated after unmount.
   useEffect(
     () => () => {
       if (timer.current != null) {
@@ -41,7 +41,7 @@ export default function VoucherRow({ voucher, onApply, badge, disabled = false, 
     try {
       await Clipboard.setStringAsync(voucher.code);
     } catch {
-      return; // Chép lỗi thì giữ nguyên nút; người dùng vẫn đọc được mã trên màn hình.
+      return; // If copying fails the button stays as is; the user can still read the code on screen.
     }
     setCopied(true);
     if (timer.current != null) {

@@ -8,10 +8,10 @@
  * - Rich product recommendation cards for assistant search turns.
  * - Active session tracking for authenticated CUSTOMER.
  * - Session history drawer / resume previous conversation.
- * - "Đoạn chat mới" action to start a fresh conversation.
+ * - "New chat" action to start a fresh conversation.
  * - Session cache invalidation on first new authenticated turn.
  * - Race-safe session switching and defensive error handling (400, 401, 403, 404, 429, network, timeout).
- * - Per-turn failure state with explicit single-tap "Thử lại" action (without duplicating user turns).
+ * - Per-turn failure state with explicit single-tap "Retry" action (without duplicating user turns).
  * - Stale response guard preventing late AI responses from contaminating switched/reset chats.
  * - Subtle character counter (near 900/1000 limit) keeping composer uncluttered.
  * - Stateless guest access: requests omit sessionId; conversations remain local.
@@ -46,10 +46,10 @@ import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { AiAskRequest, AiProductResponse } from '../types/aiApi';
 
 const SUGGESTED_PROMPTS = [
-  'Tìm tai nghe chống ồn dưới 2 triệu',
-  'Gợi ý laptop có đánh giá tốt',
-  'Có những hình thức thanh toán nào?',
-  'Chính sách hủy đơn như thế nào?',
+  'Find noise-cancelling headphones under 2 million',
+  'Suggest well-rated laptops',
+  'What payment methods are available?',
+  'What is the order cancellation policy?',
 ];
 
 export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProps<'AiAssistant'>) {
@@ -115,15 +115,15 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
       setSelectedSessionId(null);
     } else if (sessionMessagesQuery.isError) {
       const apiError = toApiError(sessionMessagesQuery.error);
-      let errorMsg = 'Không thể tải nội dung cuộc trò chuyện. Vui lòng thử lại.';
+      let errorMsg = 'Could not load the conversation. Please try again.';
 
       if (apiError.status === 404 || apiError.code === 'RESOURCE_NOT_FOUND') {
-        errorMsg = 'Cuộc trò chuyện này không còn tồn tại.';
+        errorMsg = 'This conversation no longer exists.';
         if (activeSessionId === selectedSessionId) {
           setActiveSessionId(null);
         }
       } else if (apiError.status === 403) {
-        errorMsg = 'Bạn không có quyền xem cuộc trò chuyện này.';
+        errorMsg = 'You do not have permission to view this conversation.';
       } else if (apiError.message && !apiError.message.includes('status code')) {
         errorMsg = apiError.message;
       }
@@ -222,7 +222,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
     }
 
     if (trimmedText.length > 1000) {
-      setErrorBanner('Câu hỏi không được vượt quá 1000 ký tự.');
+      setErrorBanner('The question must not exceed 1000 characters.');
       return;
     }
 
@@ -295,26 +295,26 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
       );
 
       const apiError = toApiError(err);
-      let userFacingError = 'Không thể nhận câu trả lời lúc này. Vui lòng thử lại.';
+      let userFacingError = 'Could not get an answer right now. Please try again.';
 
       if (apiError.status === 400 || apiError.code === 'VALIDATION_ERROR') {
-        userFacingError = 'Vui lòng kiểm tra lại câu hỏi.';
+        userFacingError = 'Please check the question again.';
       } else if (apiError.status === 429 || apiError.code === 'RATE_LIMITED') {
         userFacingError =
-          'Bạn đã hỏi quá nhiều câu trong 1 phút. Vui lòng chờ một chút rồi thử lại.';
+          'You have asked too many questions in 1 minute. Please wait a moment and try again.';
       } else if (apiError.status === 404 || apiError.code === 'RESOURCE_NOT_FOUND') {
         // Stale or deleted session: reset local activeSessionId so next turn creates a fresh session
         setActiveSessionId(null);
         userFacingError =
-          'Phiên trò chuyện trước đó đã kết thúc. Câu hỏi tiếp theo sẽ bắt đầu cuộc trò chuyện mới.';
+          'The previous conversation session has ended. The next question will start a new conversation.';
       } else if (apiError.status === 403) {
-        userFacingError = 'Bạn không có quyền thực hiện thao tác này.';
+        userFacingError = 'You do not have permission to perform this action.';
       } else if (
         apiError.code === 'NETWORK_ERROR' ||
         apiError.code === 'TIMEOUT_ERROR' ||
         apiError.status === null
       ) {
-        userFacingError = 'Không thể kết nối tới trợ lý lúc này. Vui lòng thử lại.';
+        userFacingError = 'Could not connect to the assistant right now. Please try again.';
       } else if (apiError.message && !apiError.message.includes('status code')) {
         userFacingError = apiError.message;
       }
@@ -350,13 +350,13 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.blockedState}>
           <Text style={styles.blockedIcon}>ℹ️</Text>
-          <Text style={styles.blockedTitle}>Trợ lý mua sắm AI</Text>
+          <Text style={styles.blockedTitle}>AI shopping assistant</Text>
           <Text style={styles.blockedMessage}>
-            Trợ lý AI chỉ khả dụng cho Khách hàng và Khách vãng lai để tìm kiếm sản phẩm và giải đáp
-            chính sách.
+            The AI assistant is only available to Customers and Guests for searching products and answering
+            policy questions.
           </Text>
           <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -385,10 +385,10 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
                 setHistoryDrawerVisible(true);
               }}
               accessibilityRole="button"
-              accessibilityLabel="Lịch sử"
+              accessibilityLabel="History"
             >
               <Text style={styles.topBarButtonIcon}>🕒</Text>
-              <Text style={styles.topBarButtonText}>Lịch sử</Text>
+              <Text style={styles.topBarButtonText}>History</Text>
             </Pressable>
           ) : null}
 
@@ -397,10 +397,10 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
               style={[styles.topBarButton, styles.newChatButton]}
               onPress={handleNewChat}
               accessibilityRole="button"
-              accessibilityLabel="Đoạn chat mới"
+              accessibilityLabel="New chat"
             >
               <Text style={styles.newChatButtonIcon}>＋</Text>
-              <Text style={styles.newChatButtonText}>Đoạn chat mới</Text>
+              <Text style={styles.newChatButtonText}>New chat</Text>
             </Pressable>
           ) : null}
         </View>
@@ -411,14 +411,14 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
               <View style={styles.avatarWrap}>
                 <Text style={styles.avatarIcon}>✨</Text>
               </View>
-              <Text style={styles.emptyTitle}>Xin chào! Mình là trợ lý mua sắm.</Text>
+              <Text style={styles.emptyTitle}>Hello! I am your shopping assistant.</Text>
               <Text style={styles.emptySubtitle}>
-                Bạn muốn tìm sản phẩm hoặc hỏi gì về cửa hàng?
+                Do you want to find a product or ask something about the store?
               </Text>
             </View>
 
             <View style={styles.suggestionsWrap}>
-              <Text style={styles.suggestionsHeading}>Gợi ý câu hỏi:</Text>
+              <Text style={styles.suggestionsHeading}>Suggested questions:</Text>
               {SUGGESTED_PROMPTS.map((prompt, index) => (
                 <Pressable
                   key={index}
@@ -452,7 +452,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
               askAiMutation.isPending ? (
                 <View style={styles.typingIndicator}>
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.typingText}>Trợ lý đang suy nghĩ...</Text>
+                  <Text style={styles.typingText}>The assistant is thinking...</Text>
                 </View>
               ) : undefined
             }
@@ -465,7 +465,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
             <Pressable
               onPress={() => setErrorBanner(null)}
               accessibilityRole="button"
-              accessibilityLabel="Đóng thông báo lỗi"
+              accessibilityLabel="Close error notice"
             >
               <Text style={styles.errorBannerClose}>✕</Text>
             </Pressable>
@@ -477,12 +477,12 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
             style={styles.composerInput}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Hỏi về sản phẩm, chính sách..."
+            placeholder="Ask about products, policies..."
             placeholderTextColor={colors.textSecondary}
             multiline
             maxLength={1000}
             editable={!askAiMutation.isPending}
-            accessibilityLabel="Nhập câu hỏi cho trợ lý AI"
+            accessibilityLabel="Enter a question for the AI assistant"
           />
 
           {inputText.length >= 900 ? (
@@ -496,7 +496,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
             onPress={() => handleSend()}
             disabled={isSendDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Gửi câu hỏi"
+            accessibilityLabel="Send question"
           >
             <Text style={[styles.sendButtonIcon, isSendDisabled && styles.sendButtonIconDisabled]}>
               ↑

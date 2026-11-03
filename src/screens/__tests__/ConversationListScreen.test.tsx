@@ -64,12 +64,12 @@ describe('ConversationListScreen', () => {
         <ConversationListScreen navigation={navigation} route={{} as any} />,
       );
 
-      expect(getByText('Yêu cầu đăng nhập')).toBeTruthy();
+      expect(getByText('Sign-in required')).toBeTruthy();
       expect(
-        getByText('Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để xem tin nhắn.'),
+        getByText('You need to sign in with a Buyer or Seller account to view messages.'),
       ).toBeTruthy();
 
-      fireEvent.press(getByText('Đăng nhập'));
+      fireEvent.press(getByText('Sign in'));
       expect(mockNavigate).toHaveBeenCalledWith('Login');
     });
 
@@ -91,7 +91,7 @@ describe('ConversationListScreen', () => {
         <ConversationListScreen navigation={navigation} route={{} as any} />,
       );
 
-      expect(getByText('Yêu cầu đăng nhập')).toBeTruthy();
+      expect(getByText('Sign-in required')).toBeTruthy();
     });
   });
 
@@ -114,7 +114,7 @@ describe('ConversationListScreen', () => {
         <ConversationListScreen navigation={navigation} route={{} as any} />,
       );
 
-      expect(getByText('Đang tải tin nhắn…')).toBeTruthy();
+      expect(getByText('Loading messages…')).toBeTruthy();
     });
 
     it('renders error state and retries on press', () => {
@@ -135,9 +135,9 @@ describe('ConversationListScreen', () => {
         <ConversationListScreen navigation={navigation} route={{} as any} />,
       );
 
-      expect(getByText('Không thể tải tin nhắn')).toBeTruthy();
+      expect(getByText('Could not load messages')).toBeTruthy();
 
-      fireEvent.press(getByText('Thử lại'));
+      fireEvent.press(getByText('Retry'));
       expect(mockRefetch).toHaveBeenCalledTimes(1);
     });
   });
@@ -161,8 +161,8 @@ describe('ConversationListScreen', () => {
         <ConversationListScreen navigation={navigation} route={{} as any} />,
       );
 
-      expect(getByText('Chưa có cuộc trò chuyện nào')).toBeTruthy();
-      expect(getByText('Tin nhắn giữa bạn và các shop sẽ xuất hiện ở đây.')).toBeTruthy();
+      expect(getByText('No conversations yet')).toBeTruthy();
+      expect(getByText('Messages between you and shops will appear here.')).toBeTruthy();
     });
 
     it('renders seller-tailored empty state when Seller has no conversations', () => {
@@ -183,8 +183,8 @@ describe('ConversationListScreen', () => {
         <ConversationListScreen navigation={navigation} route={{} as any} />,
       );
 
-      expect(getByText('Chưa có tin nhắn từ khách hàng')).toBeTruthy();
-      expect(getByText('Các cuộc hội thoại từ khách hàng sẽ xuất hiện ở đây.')).toBeTruthy();
+      expect(getByText('No messages from customers yet')).toBeTruthy();
+      expect(getByText('Conversations from customers will appear here.')).toBeTruthy();
     });
   });
 

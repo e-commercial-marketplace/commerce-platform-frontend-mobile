@@ -33,6 +33,7 @@ import type {
   PageResponse,
   SendMessageRequest,
 } from '../types/chatApi';
+import { addTempMessage, settleTempMessage, tempMessageId } from '../utils/chatCacheUpdates';
 
 export type UseConversationsOptions = {
   enabled?: boolean;
@@ -47,6 +48,8 @@ export type SendMessageVariables = {
   conversationId: string;
   request: SendMessageRequest;
   idempotencyKey: string;
+  /** Sender, so the temporary message shows on the correct side while waiting for the server. */
+  senderId: string;
 };
 
 /**
@@ -124,7 +127,8 @@ export function useOpenConversation() {
  * Mutation hook for sending a message.
  *
  * Expects caller-supplied `idempotencyKey` so retries can reuse the exact same key.
- * Invalidates message history and conversation list (due to lastMessageAt update).
+ * Optimistic update: the temporary message shows immediately, is replaced by the real one on success and removed on error so the screen creates
+ * a retry bubble. Invalidates message history and conversation list (due to lastMessageAt update).
  */
 export function useSendMessage() {
   const queryClient = useQueryClient();
@@ -132,7 +136,25 @@ export function useSendMessage() {
   return useMutation<MessageResponse, Error, SendMessageVariables>({
     mutationFn: ({ conversationId, request, idempotencyKey }: SendMessageVariables) =>
       sendMessage(conversationId, request, idempotencyKey),
-    onSuccess: (_data, variables) => {
+    onMutate: async ({ conversationId, request, idempotencyKey, senderId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.chat.messages(conversationId) });
+      addTempMessage(queryClient, {
+        id: tempMessageId(idempotencyKey),
+        conversationId,
+        senderId,
+        content: request.content ?? '',
+        imageUrl: request.imageUrl ?? null,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+    },
+    onSuccess: (message, { conversationId, idempotencyKey }) => {
+      settleTempMessage(queryClient, conversationId, tempMessageId(idempotencyKey), message);
+    },
+    onError: (_error, { conversationId, idempotencyKey }) => {
+      settleTempMessage(queryClient, conversationId, tempMessageId(idempotencyKey));
+    },
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.chat.messages(variables.conversationId),
       });

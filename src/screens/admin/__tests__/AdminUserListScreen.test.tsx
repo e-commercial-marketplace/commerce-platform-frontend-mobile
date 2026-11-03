@@ -97,7 +97,7 @@ describe('AdminUserListScreen', () => {
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
     });
 
-    it('navigates back when Quay lại is pressed on unauthorized guard', () => {
+    it('navigates back when Go back is pressed on unauthorized guard', () => {
       mockedUseAuth.mockReturnValue({
         user: mockCustomerUser,
         isAuthenticated: true,
@@ -107,7 +107,7 @@ describe('AdminUserListScreen', () => {
         <AdminUserListScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      fireEvent.press(getByRole('button', { name: 'Quay lại' }));
+      fireEvent.press(getByRole('button', { name: 'Go back' }));
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
@@ -148,7 +148,7 @@ describe('AdminUserListScreen', () => {
       });
     });
 
-    it('navigates to AdminUserCreate when + Thêm mới button is pressed', () => {
+    it('navigates to AdminUserCreate when + Add new button is pressed', () => {
       const { getByTestId } = render(
         <AdminUserListScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -171,7 +171,7 @@ describe('AdminUserListScreen', () => {
         <AdminUserListScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Đang tải danh sách người dùng…')).toBeTruthy();
+      expect(getByText('Loading users…')).toBeTruthy();
     });
 
     it('renders error state and retries on press', () => {
@@ -188,7 +188,7 @@ describe('AdminUserListScreen', () => {
         <AdminUserListScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Không thể tải danh sách')).toBeTruthy();
+      expect(getByText('Could not load the list')).toBeTruthy();
       expect(getByText('Failed to load')).toBeTruthy();
 
       fireEvent.press(getByTestId('retry-button'));
@@ -215,7 +215,7 @@ describe('AdminUserListScreen', () => {
         <AdminUserListScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Không tìm thấy người dùng nào')).toBeTruthy();
+      expect(getByText('No users found')).toBeTruthy();
     });
   });
 

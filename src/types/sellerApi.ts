@@ -26,13 +26,13 @@ export type SellerShopDto = {
 // ============================================================================
 
 /**
- * Trạng thái xử lý của từng dòng hàng (OrderItem.status) - do seller xác nhận.
+ * Processing status of each order item (OrderItem.status) - confirmed by the seller.
  * Backend enum: com.marketplace.enums.OrderItemStatus
  */
 export type OrderItemStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 
 /**
- * Tiến độ giao hàng (Shipment.status) - theo com.marketplace.enums.ShipmentStatus
+ * Delivery progress (Shipment.status) - per com.marketplace.enums.ShipmentStatus
  */
 export type ShipmentStatus =
   | 'PENDING'
@@ -44,16 +44,16 @@ export type ShipmentStatus =
   | 'CANCELLED';
 
 /**
- * Hình thức giao hàng của shipment (do seller chọn).
+ * Delivery method of the shipment (chosen by the seller).
  * Backend enum: com.marketplace.enums.DeliveryMethod
  */
 export type DeliveryMethod = 'PLATFORM_DELIVERY' | 'SELF_DELIVERY';
 
 /**
- * Dòng hàng seller quản lý (OrderItemResponse.java).
- * Giá trị unitPrice là chuỗi thập phân VND chụp lúc checkout (@JsonFormat(shape = STRING)).
- * Chú ý: Seller chỉ thấy các trường thuộc dòng hàng của mình, không có thông tin
- * cá nhân khách hàng (tên, SĐT, địa chỉ giao hàng) theo đúng phân quyền backend.
+ * Order item managed by the seller (OrderItemResponse.java).
+ * unitPrice is a VND decimal string captured at checkout (@JsonFormat(shape = STRING)).
+ * Note: a seller only sees the fields of their own order items, with no
+ * personal data of the customer (name, phone, shipping address), as per backend permissions.
  */
 export type SellerOrderItem = {
   id: string;
@@ -70,8 +70,8 @@ export type SellerOrderItem = {
 export type OrderItemResponse = SellerOrderItem;
 
 /**
- * Đơn vị vận chuyển (CarrierResponse.java).
- * Seller chỉ nhận các đơn vị có active = true.
+ * Carrier (CarrierResponse.java).
+ * Sellers only receive carriers with active = true.
  */
 export type Carrier = {
   id: string;
@@ -83,7 +83,7 @@ export type Carrier = {
 export type CarrierResponse = Carrier;
 
 /**
- * Đơn vị vận chuyển gọn trong shipment: chỉ id và tên.
+ * Compact carrier inside a shipment: id and name only.
  * (ShipmentResponse.ShipmentCarrierResponse)
  */
 export type ShipmentCarrierResponse = {
@@ -92,7 +92,7 @@ export type ShipmentCarrierResponse = {
 };
 
 /**
- * Một dòng hàng trong shipment.
+ * An item line in the shipment.
  * (ShipmentResponse.ShipmentItemResponse)
  */
 export type ShipmentItemResponse = {
@@ -101,8 +101,8 @@ export type ShipmentItemResponse = {
 };
 
 /**
- * Một shipment của seller (ShipmentResponse.java).
- * Tiền shippingFee là chuỗi thập phân VND (@JsonFormat(shape = STRING)).
+ * A seller shipment (ShipmentResponse.java).
+ * shippingFee is a VND decimal string (@JsonFormat(shape = STRING)).
  */
 export type SellerShipment = {
   id: string;
@@ -133,7 +133,7 @@ export type PageResponse<T> = {
 };
 
 /**
- * Tham số lọc và phân trang cho danh sách dòng hàng của seller (GET /seller/order-items).
+ * Filter and pagination parameters for the seller order item list (GET /seller/order-items).
  */
 export type SellerOrderItemFilterParams = {
   status?: OrderItemStatus;
@@ -143,7 +143,7 @@ export type SellerOrderItemFilterParams = {
 };
 
 /**
- * Tham số lọc và phân trang cho danh sách shipments của seller (GET /seller/shipments).
+ * Filter and pagination parameters for the seller shipment list (GET /seller/shipments).
  */
 export type SellerShipmentFilterParams = {
   status?: ShipmentStatus;
@@ -153,16 +153,16 @@ export type SellerShipmentFilterParams = {
 };
 
 /**
- * Body tuỳ chọn của PATCH /seller/order-items/{id}/cancel (OrderItemCancelRequest.java).
- * cancelReason tối đa 1000 ký tự.
+ * Optional body of PATCH /seller/order-items/{id}/cancel (OrderItemCancelRequest.java).
+ * cancelReason is at most 1000 characters.
  */
 export type OrderItemCancelRequest = {
   cancelReason?: string;
 };
 
 /**
- * Body của POST /seller/shipments (ShipmentCreateRequest.java).
- * carrierId bắt buộc khi PLATFORM_DELIVERY, phải trống/null khi SELF_DELIVERY.
+ * Body of POST /seller/shipments (ShipmentCreateRequest.java).
+ * carrierId is required for PLATFORM_DELIVERY and must be empty/null for SELF_DELIVERY.
  */
 export type ShipmentCreateRequest = {
   orderId: string;
@@ -172,8 +172,8 @@ export type ShipmentCreateRequest = {
 };
 
 /**
- * Body của PATCH /seller/shipments/{id}/status (ShipmentStatusUpdateRequest.java).
- * trackingCode bắt buộc khi chuyển sang SHIPPED, bỏ qua với trạng thái khác.
+ * Body of PATCH /seller/shipments/{id}/status (ShipmentStatusUpdateRequest.java).
+ * trackingCode is required when moving to SHIPPED and ignored for other statuses.
  */
 export type ShipmentStatusUpdateRequest = {
   status: ShipmentStatus;

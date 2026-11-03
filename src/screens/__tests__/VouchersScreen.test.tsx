@@ -1,5 +1,5 @@
 /**
- * Màn tất cả voucher: danh sách, tải thêm, lỗi và thử lại, rỗng, lời nhắc đăng nhập cho Guest.
+ * All-vouchers screen: list, load more, error and retry, empty state, sign-in reminder for Guests.
  */
 
 import React from 'react';

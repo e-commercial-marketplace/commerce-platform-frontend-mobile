@@ -72,7 +72,7 @@ describe('SellerShopScreen - Human Chat Integration', () => {
     } as any);
   });
 
-  it('renders "Nhắn tin với shop" button for authenticated Customer', () => {
+  it('renders "Message the shop" button for authenticated Customer', () => {
     mockedUseAuth.mockReturnValue({
       user: { id: 'cust-1', role: 'CUSTOMER', name: 'Buyer', email: 'buyer@test.com' },
       isAuthenticated: true,
@@ -82,8 +82,8 @@ describe('SellerShopScreen - Human Chat Integration', () => {
       <SellerShopScreen navigation={navigation} route={route} />,
     );
 
-    expect(getByLabelText('Nhắn tin với shop')).toBeTruthy();
-    expect(getByText('Nhắn tin với shop')).toBeTruthy();
+    expect(getByLabelText('Message the shop')).toBeTruthy();
+    expect(getByText('Message the shop')).toBeTruthy();
   });
 
   it('calls openConversation with sellerId (no customerId) and navigates to ChatRoom on success', async () => {
@@ -106,7 +106,7 @@ describe('SellerShopScreen - Human Chat Integration', () => {
       <SellerShopScreen navigation={navigation} route={route} />,
     );
 
-    fireEvent.press(getByLabelText('Nhắn tin với shop'));
+    fireEvent.press(getByLabelText('Message the shop'));
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
@@ -121,7 +121,7 @@ describe('SellerShopScreen - Human Chat Integration', () => {
     });
   });
 
-  it('redirects unauthenticated Guest to Login when "Nhắn tin với shop" is pressed', () => {
+  it('redirects unauthenticated Guest to Login when "Message the shop" is pressed', () => {
     mockedUseAuth.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -131,13 +131,13 @@ describe('SellerShopScreen - Human Chat Integration', () => {
       <SellerShopScreen navigation={navigation} route={route} />,
     );
 
-    fireEvent.press(getByLabelText('Nhắn tin với shop'));
+    fireEvent.press(getByLabelText('Message the shop'));
 
     expect(mockMutateAsync).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('Login');
   });
 
-  it('hides "Nhắn tin với shop" button for SELLER role', () => {
+  it('hides "Message the shop" button for SELLER role', () => {
     mockedUseAuth.mockReturnValue({
       user: { id: 'seller-2', role: 'SELLER', name: 'Other Seller', email: 'seller@test.com' },
       isAuthenticated: true,
@@ -147,10 +147,10 @@ describe('SellerShopScreen - Human Chat Integration', () => {
       <SellerShopScreen navigation={navigation} route={route} />,
     );
 
-    expect(queryByLabelText('Nhắn tin với shop')).toBeNull();
+    expect(queryByLabelText('Message the shop')).toBeNull();
   });
 
-  it('hides "Nhắn tin với shop" button for ADMIN role', () => {
+  it('hides "Message the shop" button for ADMIN role', () => {
     mockedUseAuth.mockReturnValue({
       user: { id: 'admin-1', role: 'ADMIN', name: 'Admin', email: 'admin@test.com' },
       isAuthenticated: true,
@@ -160,7 +160,7 @@ describe('SellerShopScreen - Human Chat Integration', () => {
       <SellerShopScreen navigation={navigation} route={route} />,
     );
 
-    expect(queryByLabelText('Nhắn tin với shop')).toBeNull();
+    expect(queryByLabelText('Message the shop')).toBeNull();
   });
 
   it('displays error message and does not navigate when openConversation fails', async () => {
@@ -170,16 +170,16 @@ describe('SellerShopScreen - Human Chat Integration', () => {
     } as any);
 
     mockMutateAsync.mockRejectedValueOnce(
-      new ApiError('Lỗi kết nối máy chủ', 'SERVER_ERROR', 500),
+      new ApiError('Server connection error', 'SERVER_ERROR', 500),
     );
 
     const { getByLabelText, findByText } = render(
       <SellerShopScreen navigation={navigation} route={route} />,
     );
 
-    fireEvent.press(getByLabelText('Nhắn tin với shop'));
+    fireEvent.press(getByLabelText('Message the shop'));
 
-    const errorText = await findByText('Lỗi kết nối máy chủ');
+    const errorText = await findByText('Server connection error');
     expect(errorText).toBeTruthy();
     expect(mockNavigate).not.toHaveBeenCalled();
   });

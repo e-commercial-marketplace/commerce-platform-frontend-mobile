@@ -30,11 +30,11 @@ describe('AiProductCard', () => {
     expect(getByText('6.490.000 ₫')).toBeTruthy();
     expect(getByText('4.8')).toBeTruthy();
     expect(getByText('(38 reviews)')).toBeTruthy();
-    expect(getByText('Còn hàng')).toBeTruthy();
+    expect(getByText('In stock')).toBeTruthy();
   });
 
   describe('Stock status badges', () => {
-    it('renders "Hết hàng" when stock is 0', () => {
+    it('renders "Out of stock" when stock is 0', () => {
       const productOutOfStock: AiProductResponse = {
         ...baseProduct,
         stock: 0,
@@ -43,10 +43,10 @@ describe('AiProductCard', () => {
         <AiProductCard product={productOutOfStock} onPress={jest.fn()} />,
       );
 
-      expect(getByText('Hết hàng')).toBeTruthy();
+      expect(getByText('Out of stock')).toBeTruthy();
     });
 
-    it('renders "Chỉ còn X" when stock is between 1 and 5', () => {
+    it('renders "X left" when stock is between 1 and 5', () => {
       const productLowStock: AiProductResponse = {
         ...baseProduct,
         stock: 3,
@@ -55,10 +55,10 @@ describe('AiProductCard', () => {
         <AiProductCard product={productLowStock} onPress={jest.fn()} />,
       );
 
-      expect(getByText('Chỉ còn 3')).toBeTruthy();
+      expect(getByText('3 left')).toBeTruthy();
     });
 
-    it('renders "Còn hàng" when stock is greater than 5', () => {
+    it('renders "In stock" when stock is greater than 5', () => {
       const productInStock: AiProductResponse = {
         ...baseProduct,
         stock: 8,
@@ -67,22 +67,22 @@ describe('AiProductCard', () => {
         <AiProductCard product={productInStock} onPress={jest.fn()} />,
       );
 
-      expect(getByText('Còn hàng')).toBeTruthy();
+      expect(getByText('In stock')).toBeTruthy();
     });
 
     it('getStockStatus helper returns correct styles and labels', () => {
       expect(getStockStatus(0)).toEqual({
-        label: 'Hết hàng',
+        label: 'Out of stock',
         bg: '#FEE2E2',
         text: '#DC2626',
       });
       expect(getStockStatus(4)).toEqual({
-        label: 'Chỉ còn 4',
+        label: '4 left',
         bg: '#FEF3C7',
         text: '#D97706',
       });
       expect(getStockStatus(15)).toEqual({
-        label: 'Còn hàng',
+        label: 'In stock',
         bg: '#ECFDF5',
         text: '#059669',
       });

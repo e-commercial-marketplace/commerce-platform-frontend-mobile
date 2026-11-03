@@ -16,6 +16,71 @@ import type {
   PageResponse,
 } from '../types/chatApi';
 
+type MessagesCache = InfiniteData<PageResponse<MessageResponse>>;
+
+const TEMP_MESSAGE_PREFIX = 'temp_';
+
+/** Id of the temporary message derived from the Idempotency-Key, so resending yields the same id. */
+export function tempMessageId(idempotencyKey: string): string {
+  return `${TEMP_MESSAGE_PREFIX}${idempotencyKey}`;
+}
+
+export function isTempMessage(id: string): boolean {
+  return id.startsWith(TEMP_MESSAGE_PREFIX);
+}
+
+/** Add the message to the top of the newest page if this id is not there yet. */
+function prependUnique(data: MessagesCache, message: MessageResponse): MessagesCache {
+  if (data.pages.some((page) => page.content.some((m) => m.id === message.id))) {
+    return data;
+  }
+  const [first, ...rest] = data.pages;
+  return {
+    ...data,
+    pages: [
+      { ...first, content: [message, ...first.content], totalElements: first.totalElements + 1 },
+      ...rest,
+    ],
+  };
+}
+
+/** Show the message being sent right in the list. Skipped if the cache is not loaded. */
+export function addTempMessage(queryClient: QueryClient, temp: MessageResponse): void {
+  queryClient.setQueryData<MessagesCache>(queryKeys.chat.messages(temp.conversationId), (data) =>
+    data?.pages?.length ? prependUnique(data, temp) : data,
+  );
+}
+
+/**
+ * Removes the temporary message; if `real` is given, it inserts the real message. The WebSocket may already have inserted the real message,
+ * so `prependUnique` checks the id so it is not duplicated.
+ */
+export function settleTempMessage(
+  queryClient: QueryClient,
+  conversationId: string,
+  tempId: string,
+  real?: MessageResponse,
+): void {
+  queryClient.setQueryData<MessagesCache>(queryKeys.chat.messages(conversationId), (data) => {
+    if (!data?.pages?.length) {
+      return data;
+    }
+    const withoutTemp: MessagesCache = {
+      ...data,
+      pages: data.pages.map((page) =>
+        page.content.some((m) => m.id === tempId)
+          ? {
+              ...page,
+              content: page.content.filter((m) => m.id !== tempId),
+              totalElements: page.totalElements - 1,
+            }
+          : page,
+      ),
+    };
+    return real != null ? prependUnique(withoutTemp, real) : withoutTemp;
+  });
+}
+
 /**
  * Handles incoming `MESSAGE_CREATED` WebSocket event.
  *
@@ -43,27 +108,7 @@ export function handleChatMessageCreated(
         return oldData;
       }
 
-      // Check if message is already in any page
-      const alreadyExists = oldData.pages.some((page) =>
-        page.content.some((m) => m.id === message.id),
-      );
-
-      if (alreadyExists) {
-        return oldData;
-      }
-
-      // Prepend to newest page (page 0)
-      const firstPage = oldData.pages[0];
-      const updatedFirstPage: PageResponse<MessageResponse> = {
-        ...firstPage,
-        content: [message, ...firstPage.content],
-        totalElements: firstPage.totalElements + 1,
-      };
-
-      return {
-        ...oldData,
-        pages: [updatedFirstPage, ...oldData.pages.slice(1)],
-      };
+      return prependUnique(oldData, message);
     },
   );
 

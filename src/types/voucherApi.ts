@@ -16,7 +16,7 @@ export interface VoucherResponse {
   timesUsed: number;
 }
 
-/** Voucher hiển thị công khai (VoucherSummaryResponse): không có số lượt dùng. */
+/** Publicly shown voucher (VoucherSummaryResponse): has no usage count. */
 export interface VoucherSummary {
   code: string;
   description: string;
@@ -24,7 +24,7 @@ export interface VoucherSummary {
   validTo: string;
 }
 
-/** Một trang voucher đang dùng được, `page` bắt đầu từ 0. */
+/** A page of usable vouchers, `page` starts from 0. */
 export interface VoucherSummaryPage {
   content: VoucherSummary[];
   page: number;

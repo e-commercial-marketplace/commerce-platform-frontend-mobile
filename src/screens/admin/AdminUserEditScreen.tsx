@@ -46,16 +46,16 @@ import type { AdminUserUpdateRequest, SellerStatus } from '../../types/adminApi'
 type Props = AppNavigatorScreenProps<'AdminUserEdit'>;
 
 const ROLE_OPTIONS: { role: Role; label: string }[] = [
-  { role: 'CUSTOMER', label: 'Khách hàng' },
-  { role: 'SELLER', label: 'Người bán' },
-  { role: 'ADMIN', label: 'Quản trị viên' },
+  { role: 'CUSTOMER', label: 'Customer' },
+  { role: 'SELLER', label: 'Seller' },
+  { role: 'ADMIN', label: 'Admin' },
 ];
 
 const SELLER_STATUS_OPTIONS: { status: SellerStatus; label: string }[] = [
-  { status: 'PENDING', label: 'Chờ duyệt (PENDING)' },
-  { status: 'APPROVED', label: 'Đã duyệt (APPROVED)' },
-  { status: 'SUSPENDED', label: 'Tạm ngưng (SUSPENDED)' },
-  { status: 'REJECTED', label: 'Từ chối (REJECTED)' },
+  { status: 'PENDING', label: 'Pending (PENDING)' },
+  { status: 'APPROVED', label: 'Approved (APPROVED)' },
+  { status: 'SUSPENDED', label: 'Suspended (SUSPENDED)' },
+  { status: 'REJECTED', label: 'Rejected (REJECTED)' },
 ];
 
 const VIETNAMESE_PHONE_REGEX = /^(0|\+84)[35789]\d{8}$/;
@@ -102,17 +102,17 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền chỉnh sửa thông tin người dùng.
+            Only system administrators can edit user information.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -124,19 +124,19 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Đang tải thông tin…</Text>
+          <Text style={styles.loadingText}>Loading information…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   if (isError || !user) {
-    const errorMessage = error ? toApiError(error).message : 'Người dùng không tồn tại';
+    const errorMessage = error ? toApiError(error).message : 'User does not exist';
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải thông tin</Text>
+          <Text style={styles.errorTitle}>Could not load information</Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -144,10 +144,10 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel="Retry"
             testID="retry-button"
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -159,18 +159,18 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = 'Họ và tên không được để trống';
+      errors.name = 'Full name must not be empty';
     } else if (trimmedName.length > 255) {
-      errors.name = 'Họ và tên tối đa 255 ký tự';
+      errors.name = 'Full name must be at most 255 characters';
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
-      errors.phone = 'Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)';
+      errors.phone = 'Invalid Vietnamese mobile phone number (e.g. 0912345678)';
     }
 
     if (address.length > 500) {
-      errors.address = 'Địa chỉ tối đa 500 ký tự';
+      errors.address = 'Address must be at most 500 characters';
     }
 
     setFormErrors(errors);
@@ -209,7 +209,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
     // If nothing changed, return
     if (Object.keys(payload).length === 0) {
-      Alert.alert('Thông báo', 'Không có thông tin nào thay đổi.', [
+      Alert.alert('Notice', 'No information has changed.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
       return;
@@ -217,7 +217,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
     try {
       await updateMutation.mutateAsync({ id: user.id, payload });
-      Alert.alert('Thành công', 'Đã cập nhật thông tin người dùng thành công.', [
+      Alert.alert('Success', 'User information updated successfully.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err: unknown) {
@@ -235,11 +235,11 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
       const newRoleLabel = ROLE_OPTIONS.find((r) => r.role === role)?.label ?? role;
 
       Alert.alert(
-        'Xác nhận thay đổi vai trò',
-        `Vai trò của tài khoản sẽ thay đổi từ "${oldRoleLabel}" sang "${newRoleLabel}".\n\nBạn có chắc chắn muốn áp dụng thay đổi này không?`,
+        'Confirm role change',
+        `The account role will change from "${oldRoleLabel}" to "${newRoleLabel}".\n\nAre you sure you want to apply this change?`,
         [
-          { text: 'Huỷ', style: 'cancel' },
-          { text: 'Đồng ý', onPress: executeUpdate },
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Agree', onPress: executeUpdate },
         ],
       );
       return;
@@ -267,14 +267,14 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
             <Text style={styles.label}>Email</Text>
             <View style={styles.readOnlyContainer}>
               <Text style={styles.readOnlyText}>{user.email}</Text>
-              <Text style={styles.readOnlyHelp}>Email không thể thay đổi sau khi tạo</Text>
+              <Text style={styles.readOnlyHelp}>Email cannot be changed after creation</Text>
             </View>
           </View>
 
           {/* Full Name */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Họ và tên <Text style={styles.requiredStar}>*</Text>
+              Full name <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
@@ -291,13 +291,13 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Vai trò <Text style={styles.requiredStar}>*</Text>
+              Role <Text style={styles.requiredStar}>*</Text>
             </Text>
             {isSelf ? (
               <View style={styles.selfNoticeBox} testID="edit-self-role-notice">
                 <Text style={styles.noticeIcon}>ℹ️</Text>
                 <Text style={styles.selfNoticeText}>
-                  Bạn đang chỉnh sửa tài khoản của mình. Admin không thể tự đổi vai trò của chính mình.
+                  You are editing your own account. Admins cannot change their own role.
                 </Text>
               </View>
             ) : (
@@ -315,7 +315,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
                         }
                       }}
                       accessibilityRole="button"
-                      accessibilityLabel={`Chọn vai trò ${item.label}`}
+                      accessibilityLabel={`Select role ${item.label}`}
                       testID={`edit-role-${item.role}`}
                     >
                       <Text
@@ -333,7 +333,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Seller Status Selection (Only if role is SELLER) */}
           {role === 'SELLER' ? (
             <View style={styles.fieldGroup} testID="edit-seller-status-group">
-              <Text style={styles.label}>Trạng thái người bán (sellerStatus)</Text>
+              <Text style={styles.label}>Seller status (sellerStatus)</Text>
               <View style={styles.sellerStatusContainer}>
                 {SELLER_STATUS_OPTIONS.map((item) => {
                   const isSelected = sellerStatus === item.status;
@@ -363,10 +363,10 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
           {/* Phone */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Số điện thoại</Text>
+            <Text style={styles.label}>Phone number</Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
-              placeholder="0912345678 (để trống để xóa)"
+              placeholder="0912345678 (leave empty to clear)"
               placeholderTextColor={colors.textSecondary}
               value={phone}
               onChangeText={(text) => {
@@ -381,10 +381,10 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
           {/* Address */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Địa chỉ</Text>
+            <Text style={styles.label}>Address</Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder="Địa chỉ liên hệ (để trống để xóa)"
+              placeholder="Contact address (leave empty to clear)"
               placeholderTextColor={colors.textSecondary}
               value={address}
               onChangeText={(text) => {
@@ -409,13 +409,13 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
             onPress={handleSavePress}
             disabled={updateMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Lưu thay đổi"
+            accessibilityLabel="Save changes"
             testID="submit-edit-user-button"
           >
             {updateMutation.isPending ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
-              <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+              <Text style={styles.saveButtonText}>Save changes</Text>
             )}
           </Pressable>
         </ScrollView>

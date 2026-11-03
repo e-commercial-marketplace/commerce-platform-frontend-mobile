@@ -38,8 +38,8 @@ export const ConversationItem = React.memo(function ConversationItem({
 
   const fallbackShopName = `Shop #${item.sellerId.slice(0, 8)}`;
   const displayName = isCustomer
-    ? shop?.name ?? (shopLoading ? 'Đang tải...' : fallbackShopName)
-    : `Khách hàng #${item.customerId.slice(0, 8)}`;
+    ? shop?.name ?? (shopLoading ? 'Loading...' : fallbackShopName)
+    : `Customer #${item.customerId.slice(0, 8)}`;
 
   const avatarInitial = displayName.trim().charAt(0).toUpperCase() || (isCustomer ? 'S' : 'K');
   const timestamp = formatChatTimestamp(item.lastMessageAt || item.createdAt);
@@ -49,8 +49,8 @@ export const ConversationItem = React.memo(function ConversationItem({
       style={({ pressed }) => [styles.container, pressed && styles.containerPressed]}
       onPress={() => onPress?.(item)}
       accessibilityRole="button"
-      accessibilityLabel={`Cuộc trò chuyện với ${displayName}`}
-      accessibilityHint="Xem chi tiết cuộc trò chuyện"
+      accessibilityLabel={`Conversation with ${displayName}`}
+      accessibilityHint="View conversation details"
     >
       {/* Avatar Initial Circle */}
       <View style={[styles.avatar, isCustomer ? styles.shopAvatar : styles.customerAvatar]}>
@@ -70,20 +70,20 @@ export const ConversationItem = React.memo(function ConversationItem({
         <View style={styles.contextRow}>
           {item.productId ? (
             <View style={styles.contextBadge}>
-              <Text style={styles.contextBadgeText}>Sản phẩm</Text>
+              <Text style={styles.contextBadgeText}>Product</Text>
             </View>
           ) : null}
 
           {item.orderId ? (
             <View style={[styles.contextBadge, styles.orderBadge]}>
               <Text style={styles.contextBadgeText} numberOfLines={1}>
-                Đơn #{item.orderId.slice(0, 8)}
+                Order #{item.orderId.slice(0, 8)}
               </Text>
             </View>
           ) : null}
 
           {!item.productId && !item.orderId ? (
-            <Text style={styles.idleHint}>Trò chuyện trực tiếp</Text>
+            <Text style={styles.idleHint}>Direct chat</Text>
           ) : null}
         </View>
       </View>

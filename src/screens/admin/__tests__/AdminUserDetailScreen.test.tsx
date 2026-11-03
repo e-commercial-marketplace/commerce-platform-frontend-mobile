@@ -122,7 +122,7 @@ describe('AdminUserDetailScreen', () => {
       expect(getByTestId('detail-status-badge')).toBeTruthy();
     });
 
-    it('navigates to AdminUserEdit when Chỉnh sửa thông tin is pressed', () => {
+    it('navigates to AdminUserEdit when Edit information is pressed', () => {
       const { getByTestId } = render(
         <AdminUserDetailScreen
           navigation={mockNavigation as any}
@@ -190,16 +190,16 @@ describe('AdminUserDetailScreen', () => {
       fireEvent.press(getByTestId('disable-user-button'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Vô hiệu hóa tài khoản',
+        'Disable account',
         expect.stringContaining('Target Customer'),
         expect.arrayContaining([
-          expect.objectContaining({ text: 'Huỷ', style: 'cancel' }),
-          expect.objectContaining({ text: 'Vô hiệu hóa', style: 'destructive' }),
+          expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
+          expect.objectContaining({ text: 'Disable', style: 'destructive' }),
         ]),
       );
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const disableAction = alertButtons.find((b: any) => b.text === 'Vô hiệu hóa');
+      const disableAction = alertButtons.find((b: any) => b.text === 'Disable');
 
       await act(async () => {
         await disableAction.onPress();
@@ -208,8 +208,8 @@ describe('AdminUserDetailScreen', () => {
       expect(mockMutateDisable).toHaveBeenCalledWith('user-2');
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Thành công',
-          'Tài khoản đã được vô hiệu hóa.',
+          'Success',
+          'The account has been disabled.',
         );
       });
     });
@@ -235,13 +235,13 @@ describe('AdminUserDetailScreen', () => {
       fireEvent.press(getByTestId('enable-user-button'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Kích hoạt lại tài khoản',
+        'Reactivate account',
         expect.stringContaining('Target Customer'),
         expect.any(Array),
       );
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const enableAction = alertButtons.find((b: any) => b.text === 'Kích hoạt');
+      const enableAction = alertButtons.find((b: any) => b.text === 'Activate');
 
       await act(async () => {
         await enableAction.onPress();
@@ -253,8 +253,8 @@ describe('AdminUserDetailScreen', () => {
       });
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Thành công',
-          'Tài khoản đã được kích hoạt lại.',
+          'Success',
+          'The account has been reactivated.',
         );
       });
     });

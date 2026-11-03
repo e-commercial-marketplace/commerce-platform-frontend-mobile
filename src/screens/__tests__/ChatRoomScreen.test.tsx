@@ -60,7 +60,7 @@ describe('ChatRoomScreen', () => {
     id: 'msg-1',
     conversationId: 'conv-123',
     senderId: 'user-seller',
-    content: 'Dạ chào bạn, shop có thể giúp gì cho bạn?',
+    content: 'Hello, how can the shop help you?',
     imageUrl: null,
     isRead: false,
     createdAt: '2026-10-30T10:00:00Z',
@@ -136,22 +136,22 @@ describe('ChatRoomScreen', () => {
       mockSendMessageMutateAsync.mockResolvedValueOnce({});
       const { getByLabelText } = renderRoom();
 
-      fireEvent.changeText(getByLabelText('Nhập tin nhắn'), 'chưa gửi');
-      fireEvent.press(getByLabelText('Gửi ảnh'));
+      fireEvent.changeText(getByLabelText('Enter a message'), 'not sent yet');
+      fireEvent.press(getByLabelText('Send image'));
 
       await waitFor(() => {
         expect(mockSendMessageMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({ conversationId: 'conv-123', request: { imageUrl: url } }),
         );
       });
-      expect(getByLabelText('Nhập tin nhắn').props.value).toBe('chưa gửi');
+      expect(getByLabelText('Enter a message').props.value).toBe('not sent yet');
     });
 
     it('does nothing when the picker is cancelled', async () => {
       (pickImage as jest.Mock).mockResolvedValueOnce(null);
       const { getByLabelText } = renderRoom();
 
-      fireEvent.press(getByLabelText('Gửi ảnh'));
+      fireEvent.press(getByLabelText('Send image'));
 
       await waitFor(() => expect(pickImage).toHaveBeenCalled());
       expect(mockUploadMutateAsync).not.toHaveBeenCalled();
@@ -164,7 +164,7 @@ describe('ChatRoomScreen', () => {
       mockUploadMutateAsync.mockRejectedValueOnce(new Error('boom'));
       const { getByLabelText } = renderRoom();
 
-      fireEvent.press(getByLabelText('Gửi ảnh'));
+      fireEvent.press(getByLabelText('Send image'));
 
       await waitFor(() => expect(alert).toHaveBeenCalled());
       expect(mockSendMessageMutateAsync).not.toHaveBeenCalled();
@@ -176,8 +176,8 @@ describe('ChatRoomScreen', () => {
       mockSendMessageMutateAsync.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({});
       const { getByLabelText, findByLabelText } = renderRoom();
 
-      fireEvent.press(getByLabelText('Gửi ảnh'));
-      fireEvent.press(await findByLabelText('Thử lại gửi tin nhắn'));
+      fireEvent.press(getByLabelText('Send image'));
+      fireEvent.press(await findByLabelText('Retry sending message'));
 
       await waitFor(() => expect(mockSendMessageMutateAsync).toHaveBeenCalledTimes(2));
       const [first, second] = mockSendMessageMutateAsync.mock.calls.map((call) => call[0]);
@@ -208,8 +208,8 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Yêu cầu đăng nhập')).toBeTruthy();
-      fireEvent.press(getByText('Đăng nhập'));
+      expect(getByText('Sign-in required')).toBeTruthy();
+      fireEvent.press(getByText('Sign in'));
       expect(mockNavigate).toHaveBeenCalledWith('Login');
     });
 
@@ -233,7 +233,7 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Yêu cầu đăng nhập')).toBeTruthy();
+      expect(getByText('Sign-in required')).toBeTruthy();
     });
   });
 
@@ -277,7 +277,7 @@ describe('ChatRoomScreen', () => {
 
       render(<ChatRoomScreen navigation={navigation} route={baseRoute} />);
 
-      expect(mockSetOptions).toHaveBeenCalledWith({ title: 'Khách hàng #cust-456' });
+      expect(mockSetOptions).toHaveBeenCalledWith({ title: 'Customer #cust-456' });
     });
   });
 
@@ -308,7 +308,7 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Đang kết nối lại thời gian thực…')).toBeTruthy();
+      expect(getByText('Reconnecting in real time…')).toBeTruthy();
     });
 
     it('renders disconnected banner with reconnect button when connectionState is disconnected', () => {
@@ -337,8 +337,8 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Mất kết nối thời gian thực')).toBeTruthy();
-      const reconnectBtn = getByText('Kết nối lại');
+      expect(getByText('Real-time connection lost')).toBeTruthy();
+      const reconnectBtn = getByText('Reconnect');
       fireEvent.press(reconnectBtn);
       expect(mockReconnect).toHaveBeenCalledTimes(1);
     });
@@ -367,7 +367,7 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Đang tải tin nhắn…')).toBeTruthy();
+      expect(getByText('Loading messages…')).toBeTruthy();
     });
 
     it('renders error state with retry button when initial fetch fails', () => {
@@ -385,8 +385,8 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Không thể tải tin nhắn')).toBeTruthy();
-      fireEvent.press(getByText('Thử lại'));
+      expect(getByText('Could not load messages')).toBeTruthy();
+      fireEvent.press(getByText('Retry'));
       expect(mockRefetch).toHaveBeenCalledTimes(1);
     });
 
@@ -405,9 +405,9 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Chưa có tin nhắn')).toBeTruthy();
+      expect(getByText('No messages yet')).toBeTruthy();
       expect(
-        getByText('Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện.'),
+        getByText('Send the first message to start the conversation.'),
       ).toBeTruthy();
     });
 
@@ -426,7 +426,7 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      expect(getByText('Dạ chào bạn, shop có thể giúp gì cho bạn?')).toBeTruthy();
+      expect(getByText('Hello, how can the shop help you?')).toBeTruthy();
     });
   });
 
@@ -484,8 +484,8 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      const sendBtn = getByLabelText('Gửi tin nhắn');
-      const input = getByLabelText('Nhập tin nhắn');
+      const sendBtn = getByLabelText('Send message');
+      const input = getByLabelText('Enter a message');
 
       // Initially empty
       fireEvent.press(sendBtn);
@@ -502,7 +502,7 @@ describe('ChatRoomScreen', () => {
         id: 'msg-new',
         conversationId: 'conv-123',
         senderId: 'cust-456',
-        content: 'Cho mình hỏi về thời gian giao hàng',
+        content: 'Can I ask about the delivery time',
         imageUrl: null,
         isRead: false,
         createdAt: new Date().toISOString(),
@@ -512,10 +512,10 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      const input = getByLabelText('Nhập tin nhắn');
-      const sendBtn = getByLabelText('Gửi tin nhắn');
+      const input = getByLabelText('Enter a message');
+      const sendBtn = getByLabelText('Send message');
 
-      fireEvent.changeText(input, 'Cho mình hỏi về thời gian giao hàng');
+      fireEvent.changeText(input, 'Can I ask about the delivery time');
       fireEvent.press(sendBtn);
 
       await waitFor(() => {
@@ -524,7 +524,7 @@ describe('ChatRoomScreen', () => {
 
       const callArgs = mockSendMessageMutateAsync.mock.calls[0][0];
       expect(callArgs.conversationId).toBe('conv-123');
-      expect(callArgs.request.content).toBe('Cho mình hỏi về thời gian giao hàng');
+      expect(callArgs.request.content).toBe('Can I ask about the delivery time');
       expect(typeof callArgs.idempotencyKey).toBe('string');
       expect(callArgs.idempotencyKey.length).toBeGreaterThanOrEqual(1);
       expect(callArgs.idempotencyKey.length).toBeLessThanOrEqual(100);
@@ -538,10 +538,10 @@ describe('ChatRoomScreen', () => {
         <ChatRoomScreen navigation={navigation} route={baseRoute} />,
       );
 
-      const input = getByLabelText('Nhập tin nhắn');
-      const sendBtn = getByLabelText('Gửi tin nhắn');
+      const input = getByLabelText('Enter a message');
+      const sendBtn = getByLabelText('Send message');
 
-      fireEvent.changeText(input, 'Tin nhắn gửi lỗi');
+      fireEvent.changeText(input, 'Failed message');
       fireEvent.press(sendBtn);
 
       await waitFor(() => {
@@ -553,10 +553,10 @@ describe('ChatRoomScreen', () => {
 
       // Failed bubble with retry button should appear
       await waitFor(() => {
-        expect(getByText('⚠️ Lỗi gửi')).toBeTruthy();
+        expect(getByText('⚠️ Send failed')).toBeTruthy();
       });
 
-      const retryBtn = getByText('Thử lại');
+      const retryBtn = getByText('Retry');
       expect(retryBtn).toBeTruthy();
 
       // Second attempt succeeds on retry
@@ -564,7 +564,7 @@ describe('ChatRoomScreen', () => {
         id: 'msg-success',
         conversationId: 'conv-123',
         senderId: 'cust-456',
-        content: 'Tin nhắn gửi lỗi',
+        content: 'Failed message',
         imageUrl: null,
         isRead: false,
         createdAt: new Date().toISOString(),

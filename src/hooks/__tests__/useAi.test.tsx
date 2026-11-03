@@ -44,10 +44,10 @@ function wrapper(client: QueryClient) {
 }
 
 const mockAiResponse: AiProductSearchResponse = {
-  answer: 'Dưới đây là các gợi ý sản phẩm phù hợp:',
+  answer: 'Here are some matching product suggestions:',
   query: {
     text: 'laptop',
-    category: 'Máy tính',
+    category: 'Computers',
     minPrice: null,
     maxPrice: '15000000.00',
     minRating: null,
@@ -56,7 +56,7 @@ const mockAiResponse: AiProductSearchResponse = {
   products: [
     {
       id: 'prod-1',
-      name: 'Laptop Văn Phòng 14 inch',
+      name: '14-inch Office Laptop',
       imageUrl: null,
       price: '12500000.00',
       stock: 5,
@@ -70,7 +70,7 @@ const mockAiResponse: AiProductSearchResponse = {
 };
 
 const mockRulesResponse: AiProductSearchResponse = {
-  answer: 'Chính sách hoàn tiền của marketplace theo quy định sau...',
+  answer: 'The marketplace refund policy is as follows...',
   query: null,
   products: [],
   sessionId: 'session-1',
@@ -90,7 +90,7 @@ const mockMessages: AiMessageResponse[] = [
     id: 'msg-1',
     sessionId: 'session-1',
     role: 'USER',
-    content: 'Chính sách hoàn tiền?',
+    content: 'Refund policy?',
     confidence: null,
     createdAt: '2026-10-30T08:00:00Z',
   },
@@ -98,7 +98,7 @@ const mockMessages: AiMessageResponse[] = [
     id: 'msg-2',
     sessionId: 'session-1',
     role: 'ASSISTANT',
-    content: 'Chính sách hoàn tiền của marketplace...',
+    content: 'The marketplace refund policy...',
     confidence: null,
     createdAt: '2026-10-30T08:00:02Z',
   },
@@ -116,7 +116,7 @@ describe('useAskAi', () => {
     const { result } = renderHook(() => useAskAi(), { wrapper: wrapper(client) });
 
     const request: AiAskRequest = {
-      message: 'Tìm laptop dưới 15 triệu',
+      message: 'Find laptops under 15 million',
       sessionId: 'session-1',
     };
 
@@ -139,7 +139,7 @@ describe('useAskAi', () => {
     const { result } = renderHook(() => useAskAi(), { wrapper: wrapper(client) });
 
     const request: AiAskRequest = {
-      message: 'Chính sách hoàn tiền?',
+      message: 'Refund policy?',
     };
 
     let data: AiProductSearchResponse | undefined;
@@ -151,7 +151,7 @@ describe('useAskAi', () => {
     expect(result.current.isSuccess).toBe(true);
     expect(result.current.isError).toBe(false);
     expect(data?.answeredBy).toBe('RULES');
-    expect(data?.answer).toContain('Chính sách hoàn tiền');
+    expect(data?.answer).toContain('refund policy');
   });
 });
 

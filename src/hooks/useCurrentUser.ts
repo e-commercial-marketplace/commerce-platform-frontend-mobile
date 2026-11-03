@@ -20,7 +20,7 @@ export function useCurrentUser(enabled = true) {
   });
 }
 
-/** Sửa hồ sơ: lưu response vào cache để màn Profile hiện ngay giá trị mới, không tự thử lại. */
+/** Edit profile: store the response in the cache so the Profile screen shows the new values immediately; no automatic retry. */
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation<UserProfile, Error, UpdateProfileRequest>({

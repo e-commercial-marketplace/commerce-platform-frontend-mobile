@@ -6,7 +6,7 @@
  * - Real-time sync via useChatWebSocket() triggers instant query updates.
  * - Adheres strictly to backend data contracts:
  *   - Customer resolves shop names via useSellerShop.
- *   - Seller displays neutral customer identifier (Khách hàng #...).
+ *   - Seller displays neutral customer identifier (Customer #...).
  *   - No fake unread badges or last message previews.
  * - Row tap opens ChatRoom for the selected conversation.
  */
@@ -75,17 +75,17 @@ export default function ConversationListScreen({
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>🔒</Text>
-          <Text style={styles.emptyTitle}>Yêu cầu đăng nhập</Text>
+          <Text style={styles.emptyTitle}>Sign-in required</Text>
           <Text style={styles.subtitle}>
-            Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để xem tin nhắn.
+            You need to sign in with a Buyer or Seller account to view messages.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel="Đăng nhập"
+            accessibilityLabel="Sign in"
           >
-            <Text style={styles.primaryButtonText}>Đăng nhập</Text>
+            <Text style={styles.primaryButtonText}>Sign in</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -98,7 +98,7 @@ export default function ConversationListScreen({
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.subtitle}>Đang tải tin nhắn…</Text>
+          <Text style={styles.subtitle}>Loading messages…</Text>
         </View>
       </SafeAreaView>
     );
@@ -110,15 +110,15 @@ export default function ConversationListScreen({
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerState}>
           <Text style={styles.errorEmoji}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải tin nhắn</Text>
-          <Text style={styles.subtitle}>Vui lòng kiểm tra kết nối mạng và thử lại.</Text>
+          <Text style={styles.errorTitle}>Could not load messages</Text>
+          <Text style={styles.subtitle}>Please check your network connection and try again.</Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
             onPress={() => refetch()}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel="Retry"
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -132,20 +132,20 @@ export default function ConversationListScreen({
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>💬</Text>
           <Text style={styles.emptyTitle}>
-            {isCustomer ? 'Chưa có cuộc trò chuyện nào' : 'Chưa có tin nhắn từ khách hàng'}
+            {isCustomer ? 'No conversations yet' : 'No messages from customers yet'}
           </Text>
           <Text style={styles.subtitle}>
             {isCustomer
-              ? 'Tin nhắn giữa bạn và các shop sẽ xuất hiện ở đây.'
-              : 'Các cuộc hội thoại từ khách hàng sẽ xuất hiện ở đây.'}
+              ? 'Messages between you and shops will appear here.'
+              : 'Conversations from customers will appear here.'}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.outlineButton, pressed && styles.buttonPressed]}
             onPress={() => refetch()}
             accessibilityRole="button"
-            accessibilityLabel="Làm mới danh sách tin nhắn"
+            accessibilityLabel="Refresh message list"
           >
-            <Text style={styles.outlineButtonText}>Làm mới</Text>
+            <Text style={styles.outlineButtonText}>Refresh</Text>
           </Pressable>
         </View>
       </SafeAreaView>

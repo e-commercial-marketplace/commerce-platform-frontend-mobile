@@ -21,7 +21,7 @@ const mockedClient = apiClient as jest.Mocked<typeof apiClient>;
 
 const mockVoucher: VoucherResponse = {
   code: 'WELCOME10',
-  description: 'Giảm 10% cho đơn đầu tiên',
+  description: '10% off your first order',
   discountPercent: 10,
   validFrom: '2026-10-24T00:00:00Z',
   validTo: '2027-01-23T00:00:00Z',

@@ -349,4 +349,131 @@ describe('useCart', () => {
     expect(result.current.items[0].id).toBe('b');
     expect(mockedGetCart).toHaveBeenCalledTimes(2);
   });
+
+  describe('optimistic updates', () => {
+    const deferred = <T,>() => {
+      let resolve!: (value: T) => void;
+      let reject!: (reason: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    };
+    const twoLines = (): CartDto => ({
+      ...makeCart([
+        makeLine('a', { quantity: 1, unitPrice: '100.00', lineTotal: '100.00', availableStock: 5 }),
+        makeLine('b', { quantity: 1, unitPrice: '50.00', lineTotal: '50.00', availableStock: 5 }),
+      ]),
+      subtotal: '150.00',
+    });
+
+    it('changes the quantity and subtotal before the response, then stores the server cart', async () => {
+      mockedGetCart.mockResolvedValue(twoLines());
+      const pending = deferred<CartDto>();
+      mockedUpdateCartItem.mockReturnValue(pending.promise);
+      const { result } = renderCart(USER);
+      await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+      let request!: Promise<void>;
+      act(() => {
+        request = result.current.increaseQuantity('a');
+      });
+
+      await waitFor(() => expect(result.current.items[0].quantity).toBe(2));
+      expect(result.current.subtotal).toBe(250);
+
+      await act(async () => {
+        pending.resolve({ ...twoLines(), subtotal: '999.00' });
+        await request;
+      });
+      await waitFor(() => expect(result.current.subtotal).toBe(999));
+    });
+
+    it('restores the old quantity and reports the error when the update fails', async () => {
+      mockedGetCart.mockResolvedValue(twoLines());
+      const apiError = new ApiError('Only 1 left', 'INSUFFICIENT_STOCK', 409);
+      mockedUpdateCartItem.mockRejectedValue(apiError);
+      const { result } = renderCart(USER);
+      await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+      let caught: unknown;
+      await act(async () => {
+        try {
+          await result.current.increaseQuantity('a');
+        } catch (error) {
+          caught = error;
+        }
+      });
+
+      expect(caught).toBe(apiError);
+      await waitFor(() => expect(result.current.items[0].quantity).toBe(1));
+      expect(result.current.subtotal).toBe(150);
+    });
+
+    it('removes a line before the response and brings it back on failure', async () => {
+      mockedGetCart.mockResolvedValue(twoLines());
+      const pending = deferred<CartDto>();
+      mockedDeleteCartItem.mockReturnValue(pending.promise);
+      const { result } = renderCart(USER);
+      await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+      let request!: Promise<void>;
+      act(() => {
+        request = result.current.removeItem('a');
+      });
+      await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+      await act(async () => {
+        pending.reject(new Error('offline'));
+        await request.catch(() => {});
+      });
+      await waitFor(() => expect(result.current.items).toHaveLength(2));
+    });
+
+    it('does not bring back the old cart when the cache was purged meanwhile', async () => {
+      mockedGetCart.mockResolvedValue(twoLines());
+      const pending = deferred<CartDto>();
+      mockedDeleteCartItem.mockReturnValue(pending.promise);
+      const { result, client } = renderCart(USER);
+      await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+      let request!: Promise<void>;
+      act(() => {
+        request = result.current.removeItem('a');
+      });
+      await waitFor(() => expect(result.current.items).toHaveLength(1));
+      const setSpy = jest.spyOn(client, 'setQueryData');
+      client.removeQueries({ queryKey: queryKeys.cart.current() });
+
+      await act(async () => {
+        pending.reject(new Error('offline'));
+        await request.catch(() => {});
+      });
+
+      expect(setSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not add to the cart optimistically', async () => {
+      mockedGetCart.mockResolvedValue(twoLines());
+      const pending = deferred<CartDto>();
+      mockedAddCartItem.mockReturnValue(pending.promise);
+      const { result } = renderCart(USER);
+      await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+      let request!: Promise<unknown>;
+      act(() => {
+        request = result.current.addItem('p-new', 1);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(result.current.items).toHaveLength(2);
+
+      await act(async () => {
+        pending.resolve(twoLines());
+        await request;
+      });
+    });
+  });
 });

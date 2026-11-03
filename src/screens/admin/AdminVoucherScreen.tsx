@@ -23,7 +23,7 @@
  *    - usageLimit cannot be below timesUsed.
  * 6. Expire Voucher: DELETE /api/v1/admin/vouchers/{code}
  *    - Soft expiration (sets validTo = now to preserve audit trail).
- *    - Accurately labeled "Ngừng phát hành" / "Hết hạn ngay".
+ *    - Accurately labeled "Stop issuing" / "Expire now".
  * 7. Multi-cache Synchronization:
  *    - Invalidates admin voucher list and customer checkout voucher cache.
  */
@@ -92,25 +92,25 @@ const VOUCHER_STATUS_CONFIG: Record<
   { label: string; backgroundColor: string; textColor: string; icon: string }
 > = {
   ACTIVE: {
-    label: 'Đang hoạt động',
+    label: 'Active',
     backgroundColor: '#D1FADF',
     textColor: '#027A48',
     icon: '🟢',
   },
   NOT_YET_VALID: {
-    label: 'Chưa bắt đầu',
+    label: 'Not started',
     backgroundColor: '#EFF8FF',
     textColor: '#175CD3',
     icon: '⏳',
   },
   EXPIRED: {
-    label: 'Đã hết hạn',
+    label: 'Expired',
     backgroundColor: '#F2F4F7',
     textColor: '#344054',
     icon: '⏹️',
   },
   USAGE_LIMIT_REACHED: {
-    label: 'Hết lượt dùng',
+    label: 'Usage exhausted',
     backgroundColor: '#FEF0C7',
     textColor: '#B54708',
     icon: '⚠️',
@@ -181,17 +181,17 @@ export default function AdminVoucherScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền quản lý mã giảm giá toàn sàn.
+            Only system administrators can manage platform-wide vouchers.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -236,34 +236,34 @@ export default function AdminVoucherScreen({ navigation }: Props) {
   const handleSubmitCreate = async () => {
     const trimmedCode = createCode.trim().toUpperCase();
     if (!trimmedCode) {
-      setCreateError('Vui lòng nhập mã voucher.');
+      setCreateError('Please enter the voucher code.');
       return;
     }
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(trimmedCode)) {
-      setCreateError('Mã voucher chỉ được chứa chữ cái, số, gạch ngang (-) và gạch dưới (_), tối đa 64 ký tự.');
+      setCreateError('The voucher code may only contain letters, digits, hyphens (-) and underscores (_), up to 64 characters.');
       return;
     }
 
     const discountNum = parseInt(createDiscountPercent, 10);
     if (isNaN(discountNum) || discountNum < 1 || discountNum > 100) {
-      setCreateError('Tỷ lệ giảm giá phải là số nguyên từ 1% đến 100%.');
+      setCreateError('The discount rate must be an integer from 1% to 100%.');
       return;
     }
 
     const usageLimitNum = parseInt(createUsageLimit, 10);
     if (isNaN(usageLimitNum) || usageLimitNum < 1) {
-      setCreateError('Giới hạn lượt dùng phải từ 1 trở lên.');
+      setCreateError('The usage limit must be 1 or more.');
       return;
     }
 
     const fromDate = new Date(createValidFrom);
     const toDate = new Date(createValidTo);
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      setCreateError('Thời gian hiệu lực không hợp lệ.');
+      setCreateError('The validity period is invalid.');
       return;
     }
     if (fromDate >= toDate) {
-      setCreateError('Thời gian bắt đầu (validFrom) phải trước thời gian kết thúc (validTo).');
+      setCreateError('The start time (validFrom) must be before the end time (validTo).');
       return;
     }
 
@@ -279,16 +279,16 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
       setIsCreateModalOpen(false);
       setCreateError(null);
-      Alert.alert('Thành công', `Đã tạo mã giảm giá "${trimmedCode}" thành công.`);
+      Alert.alert('Success', `Created voucher "${trimmedCode}" successfully.`);
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
       const combined = `${apiError.message} ${rawMsg}`.toLowerCase();
 
-      if (combined.includes('already exists') || combined.includes('trùng')) {
-        setCreateError(`Mã voucher "${trimmedCode}" đã tồn tại. Vui lòng chọn mã khác.`);
+      if (combined.includes('already exists')) {
+        setCreateError(`Voucher code "${trimmedCode}" already exists. Please choose another code.`);
       } else {
-        setCreateError(rawMsg || apiError.message || 'Không thể tạo voucher. Vui lòng thử lại.');
+        setCreateError(rawMsg || apiError.message || 'Could not create the voucher. Please try again.');
       }
     }
   };
@@ -315,34 +315,34 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
     const discountNum = parseInt(editDiscountPercent, 10);
     if (isNaN(discountNum) || discountNum < 1 || discountNum > 100) {
-      setEditError('Tỷ lệ giảm giá phải từ 1% đến 100%.');
+      setEditError('The discount rate must be from 1% to 100%.');
       return;
     }
 
     // Backend constraint: if timesUsed > 0, discountPercent cannot change
     if (editingVoucher.timesUsed > 0 && discountNum !== editingVoucher.discountPercent) {
-      setEditError('Mã này đã được sử dụng nên không thể thay đổi % giảm giá theo quy định hệ thống.');
+      setEditError('This code has already been used, so the discount percentage cannot be changed according to system rules.');
       return;
     }
 
     const usageLimitNum = parseInt(editUsageLimit, 10);
     if (isNaN(usageLimitNum) || usageLimitNum < 1) {
-      setEditError('Giới hạn lượt dùng phải từ 1 trở lên.');
+      setEditError('The usage limit must be 1 or more.');
       return;
     }
     if (usageLimitNum < editingVoucher.timesUsed) {
-      setEditError(`Giới hạn lượt dùng không được nhỏ hơn số lượt đã dùng (${editingVoucher.timesUsed}).`);
+      setEditError(`The usage limit cannot be lower than the number of uses so far (${editingVoucher.timesUsed}).`);
       return;
     }
 
     const fromDate = new Date(editValidFrom);
     const toDate = new Date(editValidTo);
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      setEditError('Thời gian hiệu lực không hợp lệ.');
+      setEditError('The validity period is invalid.');
       return;
     }
     if (fromDate >= toDate) {
-      setEditError('Thời gian bắt đầu (validFrom) phải trước thời gian kết thúc (validTo).');
+      setEditError('The start time (validFrom) must be before the end time (validTo).');
       return;
     }
 
@@ -360,32 +360,32 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
       setEditingVoucher(null);
       setEditError(null);
-      Alert.alert('Thành công', `Đã cập nhật mã giảm giá "${editingVoucher.code}".`);
+      Alert.alert('Success', `Updated voucher "${editingVoucher.code}".`);
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
-      setEditError(rawMsg || apiError.message || 'Không thể cập nhật voucher. Vui lòng thử lại.');
+      setEditError(rawMsg || apiError.message || 'Could not update the voucher. Please try again.');
     }
   };
 
   // Handle Expire / Deactivate
   const handleExpirePress = (voucher: VoucherResponse) => {
     Alert.alert(
-      'Ngừng phát hành voucher',
-      `Bạn có chắc chắn muốn ngừng phát hành voucher "${voucher.code}" ngay lập tức? Voucher sẽ chuyển sang trạng thái hết hạn và khách hàng không thể tiếp tục áp dụng cho đơn hàng mới.`,
+      'Stop issuing voucher',
+      `Are you sure you want to stop issuing voucher "${voucher.code}" right away? The voucher will expire and customers can no longer apply it to new orders.`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xác nhận ngừng',
+          text: 'Confirm stop',
           style: 'destructive',
           onPress: async () => {
             try {
               await expireMutation.mutateAsync(voucher.code);
-              Alert.alert('Thành công', `Đã ngừng phát hành voucher "${voucher.code}".`);
+              Alert.alert('Success', `Stopped issuing voucher "${voucher.code}".`);
             } catch (err: unknown) {
               const rawMsg = err instanceof Error ? err.message : '';
               const apiError = toApiError(err);
-              Alert.alert('Lỗi', rawMsg || apiError.message || 'Không thể ngừng phát hành voucher.');
+              Alert.alert('Error', rawMsg || apiError.message || 'Could not stop issuing the voucher.');
             }
           },
         },
@@ -419,7 +419,7 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
         {/* Discount Tag */}
         <View style={styles.discountRow}>
-          <Text style={styles.discountTagText}>🏷️ Giảm {item.discountPercent}%</Text>
+          <Text style={styles.discountTagText}>🏷️ Discount {item.discountPercent}%</Text>
         </View>
 
         {/* Description */}
@@ -431,15 +431,15 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
         {/* Usage Stats */}
         <View style={styles.infoRow} testID={`admin-voucher-usage-${item.code}`}>
-          <Text style={styles.infoLabel}>Lượt sử dụng:</Text>
+          <Text style={styles.infoLabel}>Usage:</Text>
           <Text style={styles.infoValue}>
-            {item.timesUsed} / {item.usageLimit} lượt ({Math.min(100, Math.round((item.timesUsed / item.usageLimit) * 100))}%)
+            {item.timesUsed} / {item.usageLimit} uses ({Math.min(100, Math.round((item.timesUsed / item.usageLimit) * 100))}%)
           </Text>
         </View>
 
         {/* Validity Period */}
         <View style={styles.infoRow} testID={`admin-voucher-validity-${item.code}`}>
-          <Text style={styles.infoLabel}>Thời gian hiệu lực:</Text>
+          <Text style={styles.infoLabel}>Validity period:</Text>
           <Text style={styles.infoValue}>
             {formatDateTimeDisplay(item.validFrom)} - {formatDateTimeDisplay(item.validTo)}
           </Text>
@@ -451,10 +451,10 @@ export default function AdminVoucherScreen({ navigation }: Props) {
             style={({ pressed }) => [styles.actionButton, styles.editButton, pressed && styles.buttonPressed]}
             onPress={() => handleOpenEditModal(item)}
             accessibilityRole="button"
-            accessibilityLabel={`Chỉnh sửa voucher ${item.code}`}
+            accessibilityLabel={`Edit voucher ${item.code}`}
             testID={`admin-voucher-edit-btn-${item.code}`}
           >
-            <Text style={styles.editButtonText}>✏️ Chỉnh sửa</Text>
+            <Text style={styles.editButtonText}>✏️ Edit</Text>
           </Pressable>
 
           {!isExpired ? (
@@ -462,14 +462,14 @@ export default function AdminVoucherScreen({ navigation }: Props) {
               style={({ pressed }) => [styles.actionButton, styles.expireButton, pressed && styles.buttonPressed]}
               onPress={() => handleExpirePress(item)}
               accessibilityRole="button"
-              accessibilityLabel={`Ngừng phát hành voucher ${item.code}`}
+              accessibilityLabel={`Stop issuing voucher ${item.code}`}
               testID={`admin-voucher-expire-btn-${item.code}`}
             >
-              <Text style={styles.expireButtonText}>⏹️ Ngừng phát hành</Text>
+              <Text style={styles.expireButtonText}>⏹️ Stop issuing</Text>
             </Pressable>
           ) : (
             <View style={styles.expiredBadge}>
-              <Text style={styles.expiredBadgeText}>Đã kết thúc</Text>
+              <Text style={styles.expiredBadgeText}>Ended</Text>
             </View>
           )}
         </View>
@@ -486,19 +486,19 @@ export default function AdminVoucherScreen({ navigation }: Props) {
       {/* Top Bar */}
       <View style={styles.topContainer}>
         <View style={styles.topTextGroup}>
-          <Text style={styles.topTitle}>Mã giảm giá toàn sàn</Text>
+          <Text style={styles.topTitle}>Platform-wide vouchers</Text>
           <Text style={styles.topSubtitle}>
-            {totalElements} mã giảm giá • Áp dụng cho đơn hàng toàn nền tảng
+            {totalElements} vouchers • Applies to orders across the whole platform
           </Text>
         </View>
         <Pressable
           style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
           onPress={handleOpenCreateModal}
           accessibilityRole="button"
-          accessibilityLabel="Tạo mã giảm giá mới"
+          accessibilityLabel="Create new voucher"
           testID="admin-voucher-create-btn"
         >
-          <Text style={styles.createButtonText}>＋ Tạo voucher</Text>
+          <Text style={styles.createButtonText}>＋ Create voucher</Text>
         </Pressable>
       </View>
 
@@ -506,14 +506,14 @@ export default function AdminVoucherScreen({ navigation }: Props) {
       {isLoading ? (
         <View style={styles.centerContainer} testID="admin-voucher-loading">
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Đang tải danh sách mã giảm giá...</Text>
+          <Text style={styles.loadingText}>Loading vouchers...</Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer} testID="admin-voucher-error">
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải danh sách voucher</Text>
+          <Text style={styles.errorTitle}>Could not load the voucher list</Text>
           <Text style={styles.errorMessage}>
-            Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại.
+            An error occurred while connecting to the server. Please try again.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -521,18 +521,18 @@ export default function AdminVoucherScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel="Retry"
             testID="admin-voucher-retry-btn"
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
         </View>
       ) : vouchersList.length === 0 ? (
         <View style={styles.centerContainer} testID="admin-voucher-empty">
           <Text style={styles.emptyIcon}>🎟️</Text>
-          <Text style={styles.emptyTitle}>Chưa có mã giảm giá nào</Text>
+          <Text style={styles.emptyTitle}>No vouchers yet</Text>
           <Text style={styles.emptyMessage}>
-            Chưa có voucher nào được phát hành. Nhấn &quot;Tạo voucher&quot; để thiết lập mã giảm giá đầu tiên.
+            No vouchers have been issued yet. Tap &quot;Create voucher&quot; to set up the first voucher.
           </Text>
         </View>
       ) : (
@@ -564,10 +564,10 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   onPress={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                   accessibilityRole="button"
-                  accessibilityLabel="Trang trước"
+                  accessibilityLabel="Previous page"
                   testID="admin-voucher-prev-page-btn"
                 >
-                  <Text style={styles.pageButtonText}>‹ Trang trước</Text>
+                  <Text style={styles.pageButtonText}>‹ Previous page</Text>
                 </Pressable>
 
                 <Text style={styles.pageInfoText} testID="admin-voucher-page-info">
@@ -610,28 +610,28 @@ export default function AdminVoucherScreen({ navigation }: Props) {
           <View style={styles.modalCard}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>Tạo mã giảm giá mới</Text>
+                <Text style={styles.modalTitle}>Create new voucher</Text>
                 <Pressable
                   onPress={handleCloseCreateModal}
                   disabled={createMutation.isPending}
                   style={styles.modalCloseButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Đóng"
+                  accessibilityLabel="Close"
                 >
                   <Text style={styles.modalCloseButtonText}>✕</Text>
                 </Pressable>
               </View>
 
               <Text style={styles.modalSubtitle}>
-                Voucher áp dụng toàn sàn. Khách hàng nhập mã này khi thanh toán đơn hàng.
+                Platform-wide voucher. Customers enter this code when paying for an order.
               </Text>
 
               {/* Code */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Mã giảm giá (Code) *</Text>
+                <Text style={styles.inputLabel}>Voucher code (Code) *</Text>
                 <TextInput
                   style={[styles.textInput, styles.codeFormatInput]}
-                  placeholder="Ví dụ: SALE2026, FREESHIP..."
+                  placeholder="e.g. SALE2026, FREESHIP..."
                   placeholderTextColor={colors.textSecondary}
                   value={createCode}
                   onChangeText={(val) => {
@@ -643,14 +643,14 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   testID="admin-voucher-code-input"
                 />
                 <Text style={styles.helperText}>
-                  Tự động chuyển thành chữ hoa. Chỉ gồm chữ cái, số, - và _ (tối đa 64 ký tự).
+                  Automatically converted to uppercase. Letters, digits, - and _ only (up to 64 characters).
                 </Text>
               </View>
 
               {/* Discount Percent & Usage Limit */}
               <View style={styles.twoColumnRow}>
                 <View style={[styles.inputGroup, styles.flex1]}>
-                  <Text style={styles.inputLabel}>Mức giảm (%) *</Text>
+                  <Text style={styles.inputLabel}>Discount (%) *</Text>
                   <TextInput
                     style={styles.textInput}
                     placeholder="1 - 100"
@@ -667,10 +667,10 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                 </View>
 
                 <View style={[styles.inputGroup, styles.flex1]}>
-                  <Text style={styles.inputLabel}>Giới hạn lượt dùng *</Text>
+                  <Text style={styles.inputLabel}>Usage limit *</Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Tối thiểu 1"
+                    placeholder="Minimum 1"
                     placeholderTextColor={colors.textSecondary}
                     value={createUsageLimit}
                     onChangeText={(val) => {
@@ -685,32 +685,32 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Validity Presets */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Thời gian hiệu lực nhanh:</Text>
+                <Text style={styles.inputLabel}>Quick validity period:</Text>
                 <View style={styles.presetsRow}>
                   <Pressable
                     style={styles.presetChip}
                     onPress={() => applyDatePreset(7, setCreateValidFrom, setCreateValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+7 ngày</Text>
+                    <Text style={styles.presetChipText}>+7 days</Text>
                   </Pressable>
                   <Pressable
                     style={styles.presetChip}
                     onPress={() => applyDatePreset(30, setCreateValidFrom, setCreateValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+30 ngày</Text>
+                    <Text style={styles.presetChipText}>+30 days</Text>
                   </Pressable>
                   <Pressable
                     style={styles.presetChip}
                     onPress={() => applyDatePreset(90, setCreateValidFrom, setCreateValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+90 ngày</Text>
+                    <Text style={styles.presetChipText}>+90 days</Text>
                   </Pressable>
                 </View>
               </View>
 
               {/* Valid From & Valid To inputs */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Bắt đầu (validFrom) *</Text>
+                <Text style={styles.inputLabel}>Start (validFrom) *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={createValidFrom}
@@ -720,12 +720,12 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   testID="admin-voucher-from-input"
                 />
                 <Text style={styles.datePreviewText}>
-                  Hiển thị: {formatDateTimeDisplay(createValidFrom)}
+                  Shown as: {formatDateTimeDisplay(createValidFrom)}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Kết thúc (validTo) *</Text>
+                <Text style={styles.inputLabel}>End (validTo) *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={createValidTo}
@@ -735,16 +735,16 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   testID="admin-voucher-to-input"
                 />
                 <Text style={styles.datePreviewText}>
-                  Hiển thị: {formatDateTimeDisplay(createValidTo)}
+                  Shown as: {formatDateTimeDisplay(createValidTo)}
                 </Text>
               </View>
 
               {/* Description */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Mô tả voucher (Tùy chọn)</Text>
+                <Text style={styles.inputLabel}>Voucher description (Optional)</Text>
                 <TextInput
                   style={[styles.textInput, styles.textArea]}
-                  placeholder="Ví dụ: Giảm 10% mừng đại lễ mua sắm..."
+                  placeholder="e.g. 10% off for the big shopping festival..."
                   placeholderTextColor={colors.textSecondary}
                   value={createDescription}
                   onChangeText={setCreateDescription}
@@ -770,7 +770,7 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   disabled={createMutation.isPending}
                   testID="admin-voucher-cancel-create-btn"
                 >
-                  <Text style={styles.modalCancelBtnText}>Hủy</Text>
+                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -785,7 +785,7 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   {createMutation.isPending ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Tạo voucher</Text>
+                    <Text style={styles.modalSubmitBtnText}>Create voucher</Text>
                   )}
                 </Pressable>
               </View>
@@ -810,13 +810,13 @@ export default function AdminVoucherScreen({ navigation }: Props) {
           <View style={styles.modalCard}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>Chỉnh sửa mã giảm giá</Text>
+                <Text style={styles.modalTitle}>Edit voucher</Text>
                 <Pressable
                   onPress={handleCloseEditModal}
                   disabled={updateMutation.isPending}
                   style={styles.modalCloseButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Đóng"
+                  accessibilityLabel="Close"
                 >
                   <Text style={styles.modalCloseButtonText}>✕</Text>
                 </Pressable>
@@ -824,23 +824,23 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Readonly Code */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Mã giảm giá (Cố định)</Text>
+                <Text style={styles.inputLabel}>Voucher code (Fixed)</Text>
                 <View style={styles.readonlyCodeBox} testID="admin-voucher-code-readonly">
                   <Text style={styles.readonlyCodeText}>{editingVoucher?.code}</Text>
                 </View>
                 <Text style={styles.helperText}>
-                  Mã voucher là khóa định danh chính và không thể thay đổi sau khi tạo.
+                  The voucher code is the primary identifier and cannot be changed after creation.
                 </Text>
               </View>
 
               {/* Discount Percent */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Mức giảm (%) *</Text>
+                <Text style={styles.inputLabel}>Discount (%) *</Text>
                 {editingVoucher && editingVoucher.timesUsed > 0 ? (
                   <View style={styles.readonlyBox}>
                     <Text style={styles.readonlyBoxText}>{editingVoucher.discountPercent}%</Text>
                     <Text style={styles.restrictionNote}>
-                      ⚠️ Mã này đã được dùng {editingVoucher.timesUsed} lần nên không thể đổi % giảm giá theo quy định hệ thống.
+                      ⚠️ This code has been used {editingVoucher.timesUsed} times so the discount percentage cannot be changed according to system rules.
                     </Text>
                   </View>
                 ) : (
@@ -860,7 +860,7 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Usage Limit */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Giới hạn lượt dùng *</Text>
+                <Text style={styles.inputLabel}>Usage limit *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={editUsageLimit}
@@ -872,38 +872,38 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   testID="admin-voucher-edit-limit-input"
                 />
                 <Text style={styles.helperText}>
-                  Đã sử dụng: {editingVoucher?.timesUsed} lượt. Giới hạn mới phải ≥ {editingVoucher?.timesUsed}.
+                  Already used: {editingVoucher?.timesUsed} uses. The new limit must be ≥ {editingVoucher?.timesUsed}.
                 </Text>
               </View>
 
               {/* Validity Presets */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Gia hạn thời gian:</Text>
+                <Text style={styles.inputLabel}>Extend validity:</Text>
                 <View style={styles.presetsRow}>
                   <Pressable
                     style={styles.presetChip}
                     onPress={() => applyDatePreset(7, setEditValidFrom, setEditValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+7 ngày</Text>
+                    <Text style={styles.presetChipText}>+7 days</Text>
                   </Pressable>
                   <Pressable
                     style={styles.presetChip}
                     onPress={() => applyDatePreset(30, setEditValidFrom, setEditValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+30 ngày</Text>
+                    <Text style={styles.presetChipText}>+30 days</Text>
                   </Pressable>
                   <Pressable
                     style={styles.presetChip}
                     onPress={() => applyDatePreset(90, setEditValidFrom, setEditValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+90 ngày</Text>
+                    <Text style={styles.presetChipText}>+90 days</Text>
                   </Pressable>
                 </View>
               </View>
 
               {/* Valid From & Valid To inputs */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Bắt đầu (validFrom) *</Text>
+                <Text style={styles.inputLabel}>Start (validFrom) *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={editValidFrom}
@@ -913,12 +913,12 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   testID="admin-voucher-edit-from-input"
                 />
                 <Text style={styles.datePreviewText}>
-                  Hiển thị: {formatDateTimeDisplay(editValidFrom)}
+                  Shown as: {formatDateTimeDisplay(editValidFrom)}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Kết thúc (validTo) *</Text>
+                <Text style={styles.inputLabel}>End (validTo) *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={editValidTo}
@@ -928,16 +928,16 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   testID="admin-voucher-edit-to-input"
                 />
                 <Text style={styles.datePreviewText}>
-                  Hiển thị: {formatDateTimeDisplay(editValidTo)}
+                  Shown as: {formatDateTimeDisplay(editValidTo)}
                 </Text>
               </View>
 
               {/* Description */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Mô tả voucher (Tùy chọn)</Text>
+                <Text style={styles.inputLabel}>Voucher description (Optional)</Text>
                 <TextInput
                   style={[styles.textInput, styles.textArea]}
-                  placeholder="Mô tả voucher..."
+                  placeholder="Voucher description..."
                   placeholderTextColor={colors.textSecondary}
                   value={editDescription}
                   onChangeText={setEditDescription}
@@ -963,7 +963,7 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   disabled={updateMutation.isPending}
                   testID="admin-voucher-cancel-edit-btn"
                 >
-                  <Text style={styles.modalCancelBtnText}>Hủy</Text>
+                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -978,7 +978,7 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   {updateMutation.isPending ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Lưu thay đổi</Text>
+                    <Text style={styles.modalSubmitBtnText}>Save changes</Text>
                   )}
                 </Pressable>
               </View>

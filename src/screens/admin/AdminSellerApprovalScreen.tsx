@@ -9,8 +9,8 @@
  * 5. Pull-to-refresh and authoritative refetch.
  * 6. Seller status presentation (PENDING, APPROVED, SUSPENDED, REJECTED).
  * 7. Action flows with native confirmation dialogs:
- *    - Phê duyệt (PATCH /api/v1/admin/sellers/{id}/approve) for PENDING/SUSPENDED/REJECTED.
- *    - Tạm ngưng (PATCH /api/v1/admin/sellers/{id}/suspend) for APPROVED.
+ *    - Approve (PATCH /api/v1/admin/sellers/{id}/approve) for PENDING/SUSPENDED/REJECTED.
+ *    - Suspend (PATCH /api/v1/admin/sellers/{id}/suspend) for APPROVED.
  * 8. Comprehensive accessibility labels and resilient error handling.
  */
 
@@ -44,22 +44,22 @@ const SELLER_STATUS_CONFIG: Record<
   { label: string; backgroundColor: string; textColor: string }
 > = {
   PENDING: {
-    label: 'Chờ duyệt',
+    label: 'Pending',
     backgroundColor: '#FEF0C7',
     textColor: '#B54708',
   },
   APPROVED: {
-    label: 'Đã duyệt',
+    label: 'Approved',
     backgroundColor: '#D1FADF',
     textColor: '#027A48',
   },
   SUSPENDED: {
-    label: 'Tạm ngưng',
+    label: 'Suspended',
     backgroundColor: '#FEE4E2',
     textColor: '#B42318',
   },
   REJECTED: {
-    label: 'Từ chối',
+    label: 'Rejected',
     backgroundColor: '#F2F4F7',
     textColor: '#344054',
   },
@@ -132,27 +132,27 @@ export default function AdminSellerApprovalScreen({
               onPress={() => navigation.goBack()}
               style={styles.backButton}
               accessibilityRole="button"
-              accessibilityLabel="Quay lại"
+              accessibilityLabel="Go back"
             >
               <Text style={styles.backButtonText}>←</Text>
             </Pressable>
           ) : null}
-          <Text style={styles.headerTitle}>Quản lý người bán</Text>
+          <Text style={styles.headerTitle}>Seller management</Text>
         </View>
         <View style={styles.centerState}>
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.errorTitle}>Yêu cầu quyền Quản trị viên</Text>
+          <Text style={styles.errorTitle}>Admin permission required</Text>
           <Text style={styles.subtitle}>
-            Chỉ tài khoản Quản trị viên (ADMIN) mới có quyền truy cập trang quản lý người bán.
+            Only Admin (ADMIN) accounts can access the seller management page.
           </Text>
           {navigation.canGoBack?.() ? (
             <Pressable
               onPress={() => navigation.goBack()}
               style={styles.primaryActionButton}
               accessibilityRole="button"
-              accessibilityLabel="Quay lại trang trước"
+              accessibilityLabel="Go back to the previous page"
             >
-              <Text style={styles.primaryActionButtonText}>Quay lại</Text>
+              <Text style={styles.primaryActionButtonText}>Go back</Text>
             </Pressable>
           ) : null}
         </View>
@@ -185,21 +185,21 @@ export default function AdminSellerApprovalScreen({
     }
 
     Alert.alert(
-      'Phê duyệt người bán',
-      `Bạn có chắc chắn muốn phê duyệt tài khoản người bán "${seller.name}" (${seller.email})?`,
+      'Approve seller',
+      `Are you sure you want to approve the seller account "${seller.name}" (${seller.email})?`,
       [
-        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Phê duyệt',
+          text: 'Approve',
           style: 'default',
           onPress: async () => {
             setProcessingSellerId(seller.id);
             try {
               await approveMutation.mutateAsync(seller.id);
-              Alert.alert('Thành công', `Đã phê duyệt người bán "${seller.name}".`);
+              Alert.alert('Success', `Approved seller "${seller.name}".`);
             } catch (err: unknown) {
               const apiError = toApiError(err);
-              Alert.alert('Không thể phê duyệt', apiError.message);
+              Alert.alert('Cannot approve', apiError.message);
             } finally {
               setProcessingSellerId(null);
             }
@@ -216,21 +216,21 @@ export default function AdminSellerApprovalScreen({
     }
 
     Alert.alert(
-      'Tạm ngưng người bán',
-      `Bạn có chắc chắn muốn tạm ngưng tài khoản người bán "${seller.name}" (${seller.email})? Người bán này sẽ không thể thực hiện các thao tác bán hàng.`,
+      'Suspend seller',
+      `Are you sure you want to suspend the seller account "${seller.name}" (${seller.email})? This seller will not be able to perform selling actions.`,
       [
-        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Tạm ngưng',
+          text: 'Suspend',
           style: 'destructive',
           onPress: async () => {
             setProcessingSellerId(seller.id);
             try {
               await suspendMutation.mutateAsync(seller.id);
-              Alert.alert('Thành công', `Đã tạm ngưng người bán "${seller.name}".`);
+              Alert.alert('Success', `Suspended seller "${seller.name}".`);
             } catch (err: unknown) {
               const apiError = toApiError(err);
-              Alert.alert('Không thể tạm ngưng', apiError.message);
+              Alert.alert('Cannot suspend', apiError.message);
             } finally {
               setProcessingSellerId(null);
             }
@@ -283,29 +283,29 @@ export default function AdminSellerApprovalScreen({
 
         <View style={styles.cardDetails}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Số điện thoại:</Text>
-            <Text style={styles.detailValue}>{item.phone || 'Chưa cập nhật'}</Text>
+            <Text style={styles.detailLabel}>Phone number:</Text>
+            <Text style={styles.detailValue}>{item.phone || 'Not updated'}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Địa chỉ:</Text>
+            <Text style={styles.detailLabel}>Address:</Text>
             <Text style={styles.detailValue} numberOfLines={2}>
-              {item.address || 'Chưa cập nhật'}
+              {item.address || 'Not updated'}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Trạng thái tài khoản:</Text>
+            <Text style={styles.detailLabel}>Account status:</Text>
             <Text
               style={[
                 styles.detailValue,
                 { color: item.enabled ? '#027A48' : colors.danger },
               ]}
             >
-              {item.enabled ? 'Hoạt động' : 'Đã khoá'}
+              {item.enabled ? 'Active' : 'Locked'}
             </Text>
           </View>
           {item.createdAt ? (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Ngày đăng ký:</Text>
+              <Text style={styles.detailLabel}>Registered on:</Text>
               <Text style={styles.detailValue}>{formatCreatedDate(item.createdAt)}</Text>
             </View>
           ) : null}
@@ -323,13 +323,13 @@ export default function AdminSellerApprovalScreen({
                 isAnyActionPending && styles.actionButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Phê duyệt người bán ${item.name}`}
+              accessibilityLabel={`Approve seller ${item.name}`}
               testID={`approve-btn-${item.id}`}
             >
               {isProcessingThisItem ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.approveButtonText}>Phê duyệt</Text>
+                <Text style={styles.approveButtonText}>Approve</Text>
               )}
             </Pressable>
           ) : null}
@@ -345,13 +345,13 @@ export default function AdminSellerApprovalScreen({
                 isAnyActionPending && styles.actionButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Tạm ngưng người bán ${item.name}`}
+              accessibilityLabel={`Suspend seller ${item.name}`}
               testID={`suspend-btn-${item.id}`}
             >
               {isProcessingThisItem ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.suspendButtonText}>Tạm ngưng</Text>
+                <Text style={styles.suspendButtonText}>Suspend</Text>
               )}
             </Pressable>
           ) : null}
@@ -366,7 +366,7 @@ export default function AdminSellerApprovalScreen({
       return (
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Đang tải danh sách người bán…</Text>
+          <Text style={styles.loadingText}>Loading sellers…</Text>
         </View>
       );
     }
@@ -376,16 +376,16 @@ export default function AdminSellerApprovalScreen({
       return (
         <View style={styles.centerState}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải danh sách người bán</Text>
+          <Text style={styles.errorTitle}>Could not load the seller list</Text>
           <Text style={styles.subtitle}>{apiError.message}</Text>
           <Pressable
             onPress={() => void refetch()}
             style={styles.primaryActionButton}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại tải danh sách người bán"
+            accessibilityLabel="Retry loading seller list"
             testID="retry-button"
           >
-            <Text style={styles.primaryActionButtonText}>Thử lại</Text>
+            <Text style={styles.primaryActionButtonText}>Retry</Text>
           </Pressable>
         </View>
       );
@@ -394,11 +394,11 @@ export default function AdminSellerApprovalScreen({
     return (
       <View style={styles.centerState}>
         <Text style={styles.stateIcon}>🔍</Text>
-        <Text style={styles.emptyTitle}>Không tìm thấy người bán nào</Text>
+        <Text style={styles.emptyTitle}>No sellers found</Text>
         <Text style={styles.subtitle}>
           {debouncedSearch
-            ? 'Không có tài khoản người bán nào khớp với từ khoá tìm kiếm.'
-            : 'Hiện chưa có tài khoản người bán nào trong hệ thống.'}
+            ? 'No seller account matches the search keyword.'
+            : 'There are no seller accounts in the system yet.'}
         </Text>
       </View>
     );
@@ -413,13 +413,13 @@ export default function AdminSellerApprovalScreen({
           <TextInput
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="Tìm theo email hoặc tên người bán..."
+            placeholder="Search by email or seller name..."
             placeholderTextColor={colors.textSecondary}
             style={styles.searchInput}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
-            accessibilityLabel="Tìm kiếm người bán"
+            accessibilityLabel="Search sellers"
             testID="search-input"
           />
           {searchInput.length > 0 ? (
@@ -427,7 +427,7 @@ export default function AdminSellerApprovalScreen({
               onPress={() => setSearchInput('')}
               style={styles.clearSearchButton}
               accessibilityRole="button"
-              accessibilityLabel="Xoá tìm kiếm"
+              accessibilityLabel="Clear search"
               testID="clear-search-button"
             >
               <Text style={styles.clearSearchText}>✕</Text>
@@ -468,7 +468,7 @@ export default function AdminSellerApprovalScreen({
               pressed && styles.buttonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Trang trước"
+            accessibilityLabel="Previous page"
             testID="prev-page-button"
           >
             <Text
@@ -477,7 +477,7 @@ export default function AdminSellerApprovalScreen({
                 (page === 0 || isFetching) && styles.pageButtonTextDisabled,
               ]}
             >
-              ← Trước
+              ← Previous
             </Text>
           </Pressable>
 
@@ -485,7 +485,7 @@ export default function AdminSellerApprovalScreen({
             <Text style={styles.pageInfoText}>
               Trang {page + 1} / {totalPages || 1}
             </Text>
-            <Text style={styles.pageCountText}>{totalElements} người bán</Text>
+            <Text style={styles.pageCountText}>{totalElements} sellers</Text>
           </View>
 
           <Pressable

@@ -5,7 +5,7 @@ import SearchScreen from '../SearchScreen';
 import { useCategories, useProductList } from '../../hooks/useProducts';
 
 jest.mock('../../hooks/useProducts');
-// Bỏ độ trễ debounce để từ khoá vừa gõ đi thẳng vào filter của request.
+// Skip the debounce delay so the typed keyword goes straight into the request filters.
 jest.mock('../../hooks/useDebouncedValue', () => ({
   useDebouncedValue: (value: unknown) => value,
 }));
@@ -13,7 +13,7 @@ jest.mock('../../hooks/useDebouncedValue', () => ({
 const mockedUseCategories = useCategories as jest.MockedFunction<typeof useCategories>;
 const mockedUseProductList = useProductList as jest.MockedFunction<typeof useProductList>;
 
-/** Giả lập kết quả của backend với số trang cho trước. */
+/** Mock the backend result for a given number of pages. */
 function mockTotalPages(totalPages: number) {
   mockedUseProductList.mockReturnValue({
     data: { products: [], page: 0, size: 20, totalElements: totalPages * 20, totalPages },
@@ -23,7 +23,7 @@ function mockTotalPages(totalPages: number) {
   } as any);
 }
 
-/** Filter của lần gọi `useProductList` gần nhất. */
+/** Filters of the latest `useProductList` call. */
 function lastFilters() {
   return mockedUseProductList.mock.lastCall?.[0];
 }
@@ -32,14 +32,14 @@ function renderScreen() {
   return render(<SearchScreen navigation={{ navigate: jest.fn() } as any} route={{} as any} />);
 }
 
-describe('SearchScreen - phân trang', () => {
+describe('SearchScreen - pagination', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseCategories.mockReturnValue({ data: [{ id: 'c1', name: 'Shoes' }] } as any);
     mockTotalPages(3);
   });
 
-  it('gửi đúng page khi bấm Next rồi Previous', () => {
+  it('sends the correct page when pressing Next then Previous', () => {
     const screen = renderScreen();
     fireEvent.changeText(screen.getByPlaceholderText('Search for product'), 'ao');
     expect(lastFilters()).toEqual(expect.objectContaining({ q: 'ao', page: 0, size: 20 }));
@@ -53,7 +53,7 @@ describe('SearchScreen - phân trang', () => {
     expect(lastFilters()).toEqual(expect.objectContaining({ q: 'ao', page: 0 }));
   });
 
-  it('không vượt quá trang cuối', () => {
+  it('does not go past the last page', () => {
     mockTotalPages(2);
     const screen = renderScreen();
     fireEvent.changeText(screen.getByPlaceholderText('Search for product'), 'ao');
@@ -64,7 +64,7 @@ describe('SearchScreen - phân trang', () => {
     expect(lastFilters()).toEqual(expect.objectContaining({ page: 1 }));
   });
 
-  it('về trang 0 khi đổi từ khoá và không gửi từ khoá mới kèm trang cũ', () => {
+  it('goes back to page 0 when the keyword changes and never sends the new keyword with the old page', () => {
     const screen = renderScreen();
     const input = screen.getByPlaceholderText('Search for product');
     fireEvent.changeText(input, 'ao');
@@ -80,7 +80,7 @@ describe('SearchScreen - phân trang', () => {
     }
   });
 
-  it('về trang 0 khi đổi danh mục', () => {
+  it('goes back to page 0 when the category changes', () => {
     const screen = renderScreen();
     fireEvent.changeText(screen.getByPlaceholderText('Search for product'), 'ao');
     fireEvent.press(screen.getByLabelText('Next page'));
@@ -90,7 +90,7 @@ describe('SearchScreen - phân trang', () => {
     expect(lastFilters()).toEqual(expect.objectContaining({ q: 'ao', categoryId: 'c1', page: 0 }));
   });
 
-  it('ẩn điều khiển phân trang khi chỉ có một trang', () => {
+  it('hides the pagination controls when there is only one page', () => {
     mockTotalPages(1);
     const screen = renderScreen();
     fireEvent.changeText(screen.getByPlaceholderText('Search for product'), 'ao');

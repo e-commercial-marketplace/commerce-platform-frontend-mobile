@@ -187,14 +187,14 @@ function OrderSellerGroup({
                 pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Nhắn tin với shop"
+              accessibilityLabel="Message the shop"
             >
               {isOpeningChat ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <>
                   <Text style={styles.chatWithShopIcon}>💬</Text>
-                  <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
+                  <Text style={styles.chatWithShopText}>Message the shop</Text>
                 </>
               )}
             </Pressable>
@@ -264,7 +264,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
     if (!sellerId || sellerId === 'unknown') {
       setChatError({
         sellerId: sellerId || '',
-        message: 'Không tìm thấy thông tin người bán.',
+        message: 'Seller information not found.',
       });
       return;
     }
@@ -288,7 +288,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
       const apiErr = toApiError(err);
       setChatError({
         sellerId,
-        message: apiErr.message || 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.',
+        message: apiErr.message || 'Could not open the conversation. Please try again.',
       });
     } finally {
       isOpeningChatRef.current = false;

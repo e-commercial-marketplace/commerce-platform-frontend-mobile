@@ -1,18 +1,18 @@
-/** Kiểu dữ liệu của luồng upload ảnh trực tiếp lên Cloudinary (features/upload/API_CONTRACT.md). */
+/** Types for the direct image upload flow to Cloudinary (features/upload/API_CONTRACT.md). */
 
-/** Mục đích upload: backend dựa vào đây để kiểm tra quyền và chọn thư mục. */
+/** Upload purpose: the backend uses it to check permissions and choose the folder. */
 export type UploadPurpose = 'PRODUCT' | 'CHAT';
 
-/** Body của POST /uploads/signature. */
+/** Body of POST /uploads/signature. */
 export type UploadSignatureRequest = {
   purpose: UploadPurpose;
 };
 
-/** UploadSignatureResponse: mọi thứ client cần để gửi file thẳng lên Cloudinary. */
+/** UploadSignatureResponse: everything the client needs to send the file straight to Cloudinary. */
 export type UploadSignature = {
   uploadUrl: string;
   apiKey: string;
-  /** Giây Unix mà chữ ký đã dùng; phải gửi lại đúng giá trị này. */
+  /** Unix seconds used by the signature; this exact value must be sent back. */
   timestamp: number;
   publicId: string;
   allowedFormats: string;
@@ -20,10 +20,10 @@ export type UploadSignature = {
   signature: string;
 };
 
-/** Ảnh đã chọn trên máy, sẵn sàng để upload. */
+/** Image picked on the device, ready to upload. */
 export type PickedImage = {
   uri: string;
   name: string;
-  /** MIME type, ví dụ image/jpeg. */
+  /** MIME type, e.g. image/jpeg. */
   type: string;
 };

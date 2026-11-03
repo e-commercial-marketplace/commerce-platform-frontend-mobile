@@ -448,7 +448,7 @@ describe('adminService', () => {
   describe('fetchAdminVouchers', () => {
     const mockVoucher: VoucherResponse = {
       code: 'SALE20',
-      description: 'Giảm 20%',
+      description: '20% off',
       discountPercent: 20,
       validFrom: '2026-11-01T00:00:00Z',
       validTo: '2026-12-01T00:00:00Z',
@@ -600,7 +600,7 @@ describe('adminService', () => {
   describe('Admin Carrier Service (Phase 5)', () => {
     const mockCarrier1: Carrier = {
       id: 'carrier-1',
-      name: 'Giao Hàng Nhanh',
+      name: 'Fast Delivery',
       active: true,
     };
     const mockCarrier2: Carrier = {
@@ -651,12 +651,12 @@ describe('adminService', () => {
     describe('updateAdminCarrier', () => {
       it('calls PATCH /admin/carriers/{id} with trimmed name and active state', async () => {
         const payload: AdminCarrierUpdateRequest = {
-          name: '  Giao Hàng Tiết Kiệm  ',
+          name: '  Economy Delivery  ',
           active: false,
         };
         const updatedCarrier: Carrier = {
           id: 'carrier-1',
-          name: 'Giao Hàng Tiết Kiệm',
+          name: 'Economy Delivery',
           active: false,
         };
         const mockAxiosResponse = { data: { success: true, data: updatedCarrier } };
@@ -667,7 +667,7 @@ describe('adminService', () => {
 
         expect(mockedApiClient.patch).toHaveBeenCalledTimes(1);
         expect(mockedApiClient.patch).toHaveBeenCalledWith('/admin/carriers/carrier-1', {
-          name: 'Giao Hàng Tiết Kiệm',
+          name: 'Economy Delivery',
           active: false,
         });
         expect(mockedUnwrapData).toHaveBeenCalledWith(mockAxiosResponse);

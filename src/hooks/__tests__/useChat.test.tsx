@@ -4,8 +4,9 @@
 
 import React, { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 
+import { handleChatMessageCreated } from '../../utils/chatCacheUpdates';
 import { queryKeys } from '../../api/queryKeys';
 import {
   listConversations,
@@ -80,7 +81,7 @@ const mockMessage1: MessageResponse = {
   id: 'msg-1',
   conversationId: 'conv-1111',
   senderId: 'cust-1111',
-  content: 'Tin nhắn 1',
+  content: 'Message 1',
   imageUrl: null,
   isRead: false,
   createdAt: '2026-10-30T10:05:00Z',
@@ -90,7 +91,7 @@ const mockMessage2: MessageResponse = {
   id: 'msg-2',
   conversationId: 'conv-1111',
   senderId: 'seller-2222',
-  content: 'Tin nhắn 2',
+  content: 'Message 2',
   imageUrl: null,
   isRead: true,
   createdAt: '2026-10-30T10:06:00Z',
@@ -261,15 +262,16 @@ describe('useChat hooks', () => {
 
       const variables: SendMessageVariables = {
         conversationId: 'conv-1111',
-        request: { content: 'Xin chào' },
+        request: { content: 'Hello' },
         idempotencyKey: 'caller-key-xyz-123',
+        senderId: 'cust-1111',
       };
 
       await result.current.mutateAsync(variables);
 
       expect(mockedSendMessage).toHaveBeenCalledWith(
         'conv-1111',
-        { content: 'Xin chào' },
+        { content: 'Hello' },
         'caller-key-xyz-123',
       );
 
@@ -294,15 +296,16 @@ describe('useChat hooks', () => {
 
       const variables: SendMessageVariables = {
         conversationId: 'conv-1111',
-        request: { content: 'Thử lại' },
+        request: { content: 'Retry' },
         idempotencyKey: 'same-stable-key-456',
+        senderId: 'cust-1111',
       };
 
       // First attempt fails
       await expect(result.current.mutateAsync(variables)).rejects.toThrow('Network error');
       expect(mockedSendMessage).toHaveBeenLastCalledWith(
         'conv-1111',
-        { content: 'Thử lại' },
+        { content: 'Retry' },
         'same-stable-key-456',
       );
 
@@ -310,7 +313,7 @@ describe('useChat hooks', () => {
       await result.current.mutateAsync(variables);
       expect(mockedSendMessage).toHaveBeenLastCalledWith(
         'conv-1111',
-        { content: 'Thử lại' },
+        { content: 'Retry' },
         'same-stable-key-456',
       );
       expect(mockedSendMessage).toHaveBeenCalledTimes(2);
@@ -334,6 +337,98 @@ describe('useChat hooks', () => {
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: queryKeys.chat.messages('conv-1111'),
       });
+    });
+  });
+
+  describe('useSendMessage optimistic updates', () => {
+    const KEY = 'stable-key';
+    const TEMP = `temp_${KEY}`;
+    const variables: SendMessageVariables = {
+      conversationId: 'conv-1111',
+      request: { content: 'Hello' },
+      idempotencyKey: KEY,
+      senderId: 'cust-1111',
+    };
+    const real: MessageResponse = { ...mockMessage1, id: 'msg-real', content: 'Hello' };
+
+    const seededClient = () => {
+      const client = makeClient();
+      client.setQueryData(queryKeys.chat.messages('conv-1111'), {
+        pages: [{ ...page0Response }],
+        pageParams: [0],
+      });
+      return client;
+    };
+    const ids = (client: QueryClient) =>
+      (
+        client.getQueryData(queryKeys.chat.messages('conv-1111')) as {
+          pages: PageResponse<MessageResponse>[];
+        }
+      ).pages.flatMap((page) => page.content.map((m) => m.id));
+
+    it('shows a temporary message at once and replaces it with the real one', async () => {
+      let resolve!: (value: MessageResponse) => void;
+      mockedSendMessage.mockReturnValueOnce(new Promise((res) => (resolve = res)));
+      const client = seededClient();
+      const { result } = renderHook(() => useSendMessage(), { wrapper: wrapper(client) });
+
+      act(() => {
+        result.current.mutate(variables);
+      });
+
+      await waitFor(() => expect(ids(client)[0]).toBe(TEMP));
+
+      await act(async () => {
+        resolve(real);
+      });
+      await waitFor(() => expect(ids(client)).toEqual(['msg-real', 'msg-2']));
+    });
+
+    it('does not duplicate when the WebSocket delivers the real message first', async () => {
+      let resolve!: (value: MessageResponse) => void;
+      mockedSendMessage.mockReturnValueOnce(new Promise((res) => (resolve = res)));
+      const client = seededClient();
+      const { result } = renderHook(() => useSendMessage(), { wrapper: wrapper(client) });
+
+      act(() => {
+        result.current.mutate(variables);
+      });
+      await waitFor(() => expect(ids(client)[0]).toBe(TEMP));
+      handleChatMessageCreated(client, { message: real } as never);
+
+      await act(async () => {
+        resolve(real);
+      });
+      await waitFor(() => expect(ids(client)).toEqual(['msg-real', 'msg-2']));
+    });
+
+    it('removes the temporary message on failure and can retry with the same key', async () => {
+      mockedSendMessage.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(real);
+      const client = seededClient();
+      const { result } = renderHook(() => useSendMessage(), { wrapper: wrapper(client) });
+
+      await act(async () => {
+        await result.current.mutateAsync(variables).catch(() => {});
+      });
+      expect(ids(client)).toEqual(['msg-2']);
+
+      await act(async () => {
+        await result.current.mutateAsync(variables);
+      });
+      expect(mockedSendMessage).toHaveBeenLastCalledWith('conv-1111', { content: 'Hello' }, KEY);
+      expect(ids(client)).toEqual(['msg-real', 'msg-2']);
+    });
+
+    it('does nothing to a conversation that is not cached yet', async () => {
+      mockedSendMessage.mockResolvedValueOnce(real);
+      const client = makeClient();
+      const { result } = renderHook(() => useSendMessage(), { wrapper: wrapper(client) });
+
+      await act(async () => {
+        await result.current.mutateAsync(variables);
+      });
+
+      expect(client.getQueryData(queryKeys.chat.messages('conv-1111'))).toBeUndefined();
     });
   });
 });
