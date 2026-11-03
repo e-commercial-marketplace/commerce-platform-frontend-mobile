@@ -56,3 +56,27 @@ export function mapCartDtoToCart(dto: CartDto): Cart {
     totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
   };
 }
+
+/** Cùng quy tắc với CartResponse.of ở backend: subtotal chỉ cộng các dòng mua được. */
+function withRecalculatedSubtotal(items: CartItemDto[]): CartDto {
+  const subtotal = items
+    .filter((item) => item.active && item.quantity <= item.availableStock)
+    .reduce((sum, item) => sum + parseDecimalString(item.lineTotal), 0);
+  return { items, subtotal: subtotal.toFixed(2) };
+}
+
+/** Bản giỏ dự đoán sau khi đổi số lượng; response của server sẽ thay thế bản này. */
+export function predictQuantityChange(cart: CartDto, id: string, quantity: number): CartDto {
+  return withRecalculatedSubtotal(
+    cart.items.map((item) =>
+      item.id === id
+        ? { ...item, quantity, lineTotal: (parseDecimalString(item.unitPrice) * quantity).toFixed(2) }
+        : item,
+    ),
+  );
+}
+
+/** Bản giỏ dự đoán sau khi xoá một dòng; response của server sẽ thay thế bản này. */
+export function predictLineRemoval(cart: CartDto, id: string): CartDto {
+  return withRecalculatedSubtotal(cart.items.filter((item) => item.id !== id));
+}
