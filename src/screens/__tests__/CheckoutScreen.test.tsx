@@ -18,6 +18,7 @@ import type { User } from '../../types/auth';
 import type { CartDto, CartItemDto } from '../../types/cartApi';
 import type { OrderResponse } from '../../types/orderApi';
 import type { VoucherResponse } from '../../types/voucherApi';
+import { getCurrentUser } from '../../services/authService';
 import { getCart } from '../../services/cartService';
 import { createOrder } from '../../services/orderService';
 import { getUsableVouchers, validateVoucher } from '../../services/voucherService';
@@ -26,6 +27,11 @@ import * as WebBrowser from 'expo-web-browser';
 import { queryKeys } from '../../api/queryKeys';
 import { createVnpayPayment } from '../../services/paymentService';
 import CheckoutScreen from '../CheckoutScreen';
+
+jest.mock('../../services/authService', () => ({
+  ...jest.requireActual('../../services/authService'),
+  getCurrentUser: jest.fn(),
+}));
 
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
@@ -59,6 +65,7 @@ jest.mock('../../services/voucherService', () => ({
 }));
 
 const mockedGetCart = getCart as jest.MockedFunction<typeof getCart>;
+const mockedGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
 const mockedCreateOrder = createOrder as jest.MockedFunction<typeof createOrder>;
 const mockedValidateVoucher = validateVoucher as jest.MockedFunction<typeof validateVoucher>;
 const mockedGetUsableVouchers = getUsableVouchers as jest.MockedFunction<typeof getUsableVouchers>;
@@ -238,6 +245,8 @@ async function enterVoucher(view: ReturnType<typeof renderScreen>, value: string
 describe('CheckoutScreen', () => {
   beforeEach(() => {
     mockedGetCart.mockReset();
+    mockedGetCurrentUser.mockReset();
+    mockedGetCurrentUser.mockResolvedValue({ ...CUSTOMER, phone: null, address: null });
     mockedCreateOrder.mockReset();
     mockedValidateVoucher.mockReset();
     mockedGetUsableVouchers.mockReset();
@@ -1078,6 +1087,64 @@ describe('CheckoutScreen', () => {
       fireEvent.press(view.getByLabelText('Apply voucher'));
 
       await waitFor(() => expect(mockedValidateVoucher).toHaveBeenCalledWith('WELCOME10'));
+    });
+  });
+
+  describe('saved address option', () => {
+    const SAVED = '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh';
+    const saved = () => mockedGetCurrentUser.mockResolvedValue({ ...CUSTOMER, phone: null, address: SAVED });
+
+    it('shows the full saved address but does not select it by default', async () => {
+      saved();
+      const view = await renderReady();
+
+      const option = await view.findByLabelText(`Use my saved address: ${SAVED}`);
+      expect(view.getByText(SAVED)).toBeTruthy();
+      expect(option.props.accessibilityState.checked).toBe(false);
+      expect(view.getByLabelText('Enter a different address').props.accessibilityState.checked).toBe(true);
+      expect(view.getByLabelText('Shipping address')).toBeTruthy();
+    });
+
+    it('orders to the saved address once chosen', async () => {
+      saved();
+      mockedCreateOrder.mockResolvedValue(ORDER);
+      const view = await renderReady();
+
+      fireEvent.press(await view.findByLabelText(`Use my saved address: ${SAVED}`));
+      expect(view.queryByLabelText('Shipping address')).toBeNull();
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      await waitFor(() =>
+        expect(mockedCreateOrder).toHaveBeenCalledWith(expect.objectContaining({ shippingAddress: SAVED })),
+      );
+    });
+
+    it('keeps the typed address when switching back and forth', async () => {
+      saved();
+      const view = await renderReady();
+
+      await fillAddress(view, '99 Lê Lợi, Huế');
+      fireEvent.press(await view.findByLabelText(`Use my saved address: ${SAVED}`));
+      fireEvent.press(view.getByLabelText('Enter a different address'));
+
+      expect(view.getByDisplayValue('99 Lê Lợi, Huế')).toBeTruthy();
+    });
+
+    it('has no option without a saved address', async () => {
+      const view = await renderReady();
+      await waitFor(() => expect(mockedGetCurrentUser).toHaveBeenCalled());
+
+      expect(view.queryByLabelText('Enter a different address')).toBeNull();
+      expect(view.getByLabelText('Shipping address')).toBeTruthy();
+    });
+
+    it('still allows manual entry when the profile fails to load', async () => {
+      mockedGetCurrentUser.mockRejectedValue(new Error('offline'));
+      const view = await renderReady();
+      await waitFor(() => expect(mockedGetCurrentUser).toHaveBeenCalled());
+
+      expect(view.queryByLabelText('Enter a different address')).toBeNull();
+      expect(view.getByLabelText('Shipping address')).toBeTruthy();
     });
   });
 });
