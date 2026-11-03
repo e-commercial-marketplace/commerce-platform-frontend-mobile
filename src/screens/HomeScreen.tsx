@@ -32,11 +32,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import ProductCard, { type ProductViewMode } from '../components/ProductCard';
 import ProductImage from '../components/ProductImage';
+import VoucherRow from '../components/VoucherRow';
 import SearchBar from '../components/SearchBar';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useCategories, useProductList } from '../hooks/useProducts';
+import { useUsableVouchers } from '../hooks/useVoucher';
 import type { MainTabScreenProps } from '../navigation/types';
 import type { Product } from '../types/product';
 import { formatVND } from '../utils/format';
@@ -46,6 +48,7 @@ const ALL_CATEGORY = { id: 'all', name: 'All' };
 
 /** Page size sent to the backend (its own default is 20, max 100). */
 const PAGE_SIZE = 20;
+const HOME_VOUCHER_COUNT = 5;
 
 /** Debounce for the search field so one request is not fired per keystroke. */
 const SEARCH_DEBOUNCE_MS = 350;
@@ -108,6 +111,8 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
     return next;
   }, [debouncedQuery, selectedCategoryId, page, appliedMinPrice, appliedMaxPrice, appliedMinRating]);
 
+  // Đang tải, lỗi hoặc rỗng thì danh sách rỗng và khu voucher tự ẩn, không ảnh hưởng sản phẩm.
+  const vouchers = useUsableVouchers().data?.pages[0]?.content.slice(0, HOME_VOUCHER_COUNT) ?? [];
   const { data, isPending, isError, error, refetch, isFetching } = useProductList(filters);
 
   const products = data?.products ?? [];
@@ -300,6 +305,31 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
                 </View>
                 <ProductImage source={products[0].image} style={styles.heroImage} />
               </Pressable>
+            ) : null}
+
+            {vouchers.length > 0 ? (
+              <View style={styles.vouchers}>
+                <View style={styles.vouchersHeader}>
+                  <Text style={styles.vouchersTitle}>Vouchers</Text>
+                  <Pressable
+                    style={styles.vouchersViewAll}
+                    onPress={() => navigation.navigate('Vouchers')}
+                    accessibilityRole="button"
+                    accessibilityLabel="View all vouchers"
+                  >
+                    <Text style={styles.vouchersViewAllText}>View all</Text>
+                  </Pressable>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.vouchersList}
+                >
+                  {vouchers.map((voucher) => (
+                    <VoucherRow key={voucher.code} voucher={voucher} style={styles.voucherCard} />
+                  ))}
+                </ScrollView>
+              </View>
             ) : null}
 
             <ScrollView
@@ -518,6 +548,35 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  vouchers: {
+    gap: spacing.xs,
+  },
+  vouchersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  vouchersTitle: {
+    fontSize: typography.lg,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  vouchersViewAll: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingLeft: spacing.md,
+  },
+  vouchersViewAllText: {
+    fontSize: typography.md,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  vouchersList: {
+    gap: spacing.sm,
+  },
+  voucherCard: {
+    width: 280,
   },
   categories: {
     gap: 14,

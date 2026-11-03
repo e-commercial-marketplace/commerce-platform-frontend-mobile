@@ -7,11 +7,13 @@ import { fireEvent, render } from '@testing-library/react-native';
 
 import { useAuth } from '../../hooks/useAuth';
 import { useCategories, useProductList } from '../../hooks/useProducts';
+import { useUsableVouchers } from '../../hooks/useVoucher';
 import type { User } from '../../types/auth';
 import HomeScreen from '../HomeScreen';
 
 jest.mock('../../hooks/useAuth');
 jest.mock('../../hooks/useProducts');
+jest.mock('../../hooks/useVoucher');
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockedUseCategories = useCategories as jest.MockedFunction<typeof useCategories>;
@@ -46,6 +48,8 @@ describe('HomeScreen AI Entry Point', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    (useUsableVouchers as jest.Mock).mockReturnValue({ data: undefined });
 
     mockedUseCategories.mockReturnValue({
       data: [{ id: 'cat-1', name: 'Điện tử' }],

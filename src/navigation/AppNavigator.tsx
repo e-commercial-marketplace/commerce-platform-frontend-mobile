@@ -22,6 +22,7 @@ import ConversationListScreen from '../screens/ConversationListScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MyOrdersScreen from '../screens/MyOrdersScreen';
+import VouchersScreen from '../screens/VouchersScreen';
 import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -78,6 +79,18 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: 'Shop',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '600' },
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="Vouchers"
+        component={VouchersScreen}
+        options={{
+          headerShown: true,
+          title: 'Vouchers',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

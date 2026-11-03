@@ -6,10 +6,24 @@
  * Validation does not consume the voucher.
  */
 
-import { useMutation } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 
-import { validateVoucher } from '../services/voucherService';
+import { queryKeys } from '../api/queryKeys';
+
+import { getUsableVouchers, validateVoucher } from '../services/voucherService';
 import type { VoucherResponse } from '../types/voucherApi';
+
+/** Voucher đang dùng được, tải thêm từng trang. Dữ liệu giống nhau với mọi người nên không gắn theo tài khoản. */
+export function useUsableVouchers() {
+  return useInfiniteQuery({
+    queryKey: queryKeys.vouchers.usable(),
+    queryFn: ({ pageParam }) => getUsableVouchers(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.page + 1 >= lastPage.totalPages ? undefined : lastPage.page + 1,
+    staleTime: 60_000,
+  });
+}
 
 export function useValidateVoucher() {
   return useMutation<VoucherResponse, unknown, string>({
