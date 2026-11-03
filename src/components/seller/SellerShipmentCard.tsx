@@ -16,6 +16,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { SellerShipment, ShipmentStatus } from '../../types/sellerApi';
 import { formatVND } from '../../utils/format';
 
@@ -121,6 +123,8 @@ export default function SellerShipmentCard({
   onUpdateStatus,
   disabled = false,
 }: SellerShipmentCardProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const statusTheme = STATUS_THEMES[shipment.status] ?? STATUS_THEMES.PENDING;
   const allowedNext = SHIPMENT_NEXT_STATUSES[shipment.status] ?? [];
   const isTerminal = allowedNext.length === 0;
@@ -134,103 +138,152 @@ export default function SellerShipmentCard({
   );
   const shippingFeeNum = Number.parseFloat(shipment.shippingFee) || 0;
 
+  const dynamicStatusTheme = (() => {
+    if (isDark) {
+      switch (shipment.status) {
+        case 'PREPARING':
+          return { bg: 'rgba(59, 130, 246, 0.2)', text: '#60A5FA', border: 'rgba(59, 130, 246, 0.4)' };
+        case 'SHIPPED':
+          return { bg: 'rgba(168, 85, 247, 0.2)', text: '#C084FC', border: 'rgba(168, 85, 247, 0.4)' };
+        case 'DELIVERED':
+          return { bg: 'rgba(34, 197, 94, 0.2)', text: '#4ADE80', border: 'rgba(34, 197, 94, 0.4)' };
+        case 'FAILED':
+        case 'CANCELLED':
+          return { bg: 'rgba(239, 68, 68, 0.2)', text: '#F87171', border: 'rgba(239, 68, 68, 0.4)' };
+        case 'RETURNED':
+          return { bg: 'rgba(148, 163, 184, 0.2)', text: '#94A3B8', border: 'rgba(148, 163, 184, 0.4)' };
+        default:
+          return { bg: 'rgba(245, 158, 11, 0.2)', text: '#FBBF24', border: 'rgba(245, 158, 11, 0.4)' };
+      }
+    }
+    return statusTheme;
+  })();
+
   return (
-    <View style={styles.card} testID={`shipment-card-${shipment.id}`}>
+    <View
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      testID={`shipment-card-${shipment.id}`}
+    >
       {/* Top Header: Order & Shipment refs + Status Badge */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.refRow}>
-            <Text style={styles.refLabel}>Order</Text>
-            <Text style={styles.refValue}>#{shipment.orderId.slice(0, 8)}</Text>
+            <Text style={[styles.refLabel, { color: theme.textSecondary }]}>
+              {t('orders.order', 'Order')}
+            </Text>
+            <Text style={[styles.refValue, { color: theme.text }]}>
+              #{shipment.orderId.slice(0, 8)}
+            </Text>
           </View>
           <View style={styles.refRow}>
-            <Text style={styles.refLabel}>Shipment</Text>
-            <Text style={styles.refValue}>#{shipment.id.slice(0, 8)}</Text>
+            <Text style={[styles.refLabel, { color: theme.textSecondary }]}>
+              {t('orders.shipmentTracking', 'Shipment')}
+            </Text>
+            <Text style={[styles.refValue, { color: theme.text }]}>
+              #{shipment.id.slice(0, 8)}
+            </Text>
           </View>
         </View>
 
         <View
           style={[
             styles.badge,
-            { backgroundColor: statusTheme.bg, borderColor: statusTheme.border },
+            { backgroundColor: dynamicStatusTheme.bg, borderColor: dynamicStatusTheme.border },
           ]}
         >
-          <Text style={[styles.badgeText, { color: statusTheme.text }]}>
-            {statusTheme.label}
+          <Text style={[styles.badgeText, { color: dynamicStatusTheme.text }]}>
+            {t(`seller.shipmentStatus_${shipment.status}`, statusTheme.label)}
           </Text>
         </View>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
       {/* Delivery & Carrier Info */}
       <View style={styles.metaSection}>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Delivery Method:</Text>
-          <Text style={styles.metaValue}>
+          <Text style={[styles.metaLabel, { color: theme.textSecondary }]}>
+            {t('orders.method', 'Delivery Method:')}
+          </Text>
+          <Text style={[styles.metaValue, { color: theme.text }]}>
             {shipment.deliveryMethod === 'PLATFORM_DELIVERY'
-              ? 'Platform Delivery'
-              : 'Shop Self Delivery'}
+              ? t('seller.deliveryMethod_PLATFORM_DELIVERY', 'Platform Delivery')
+              : t('seller.deliveryMethod_SELF_DELIVERY', 'Shop Self Delivery')}
           </Text>
         </View>
 
         {shipment.deliveryMethod === 'PLATFORM_DELIVERY' && shipment.carrier ? (
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Carrier:</Text>
-            <Text style={styles.metaValue}>{shipment.carrier.name}</Text>
+            <Text style={[styles.metaLabel, { color: theme.textSecondary }]}>
+              {t('orders.carrier', 'Carrier:')}
+            </Text>
+            <Text style={[styles.metaValue, { color: theme.text }]}>{shipment.carrier.name}</Text>
           </View>
         ) : null}
 
         {shipment.trackingCode ? (
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Tracking Code:</Text>
-            <Text style={[styles.metaValue, styles.trackingCode]}>
+            <Text style={[styles.metaLabel, { color: theme.textSecondary }]}>
+              {t('orders.trackingCode', 'Tracking Code:')}
+            </Text>
+            <Text style={[styles.metaValue, styles.trackingCode, { color: theme.text }]}>
               {shipment.trackingCode}
             </Text>
           </View>
         ) : null}
 
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Shipping Fee:</Text>
-          <Text style={styles.metaValue}>{formatVND(shippingFeeNum)}</Text>
+          <Text style={[styles.metaLabel, { color: theme.textSecondary }]}>
+            {t('orders.shippingFee', 'Shipping Fee:')}
+          </Text>
+          <Text style={[styles.metaValue, { color: theme.text }]}>{formatVND(shippingFeeNum)}</Text>
         </View>
 
         {shippedTime ? (
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Shipped At:</Text>
-            <Text style={styles.metaValue}>{shippedTime}</Text>
+            <Text style={[styles.metaLabel, { color: theme.textSecondary }]}>
+              {t('orders.shippedAt', 'Shipped At:')}
+            </Text>
+            <Text style={[styles.metaValue, { color: theme.text }]}>{shippedTime}</Text>
           </View>
         ) : null}
 
         {deliveredTime ? (
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Delivered At:</Text>
-            <Text style={styles.metaValue}>{deliveredTime}</Text>
+            <Text style={[styles.metaLabel, { color: theme.textSecondary }]}>
+              {t('orders.deliveredAt', 'Delivered At:')}
+            </Text>
+            <Text style={[styles.metaValue, { color: theme.text }]}>{deliveredTime}</Text>
           </View>
         ) : null}
       </View>
 
       {/* Bundled Items List */}
-      <View style={styles.itemsSection}>
+      <View
+        style={[
+          styles.itemsSection,
+          { backgroundColor: theme.background, borderColor: theme.border },
+        ]}
+      >
         <View style={styles.itemsHeader}>
-          <Text style={styles.itemsCountText}>
+          <Text style={[styles.itemsCountText, { color: theme.textSecondary }]}>
             Bundled Items ({shipment.items?.length ?? 0} line{shipment.items?.length === 1 ? '' : 's'}, {totalQuantity} pcs)
           </Text>
         </View>
 
         {(shipment.items ?? []).map((item) => (
           <View key={item.orderItemId} style={styles.itemRow}>
-            <Text style={styles.itemRef}>
+            <Text style={[styles.itemRef, { color: theme.text }]}>
               Item #{item.orderItemId.slice(0, 8)}
             </Text>
-            <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
+            <Text style={[styles.itemQty, { color: theme.textSecondary }]}>Qty: {item.quantity}</Text>
           </View>
         ))}
       </View>
 
       {/* Status Transition Action Buttons (Hidden for terminal states) */}
       {!isTerminal ? (
-        <View style={styles.actionsFooter}>
+        <View style={[styles.actionsFooter, { borderTopColor: theme.border }]}>
           {allowedNext.map((target) => {
             const config = ACTION_CONFIGS[target] ?? { label: target };
             return (
@@ -240,8 +293,15 @@ export default function SellerShipmentCard({
                 disabled={disabled}
                 style={({ pressed }) => [
                   styles.actionBtn,
-                  config.isPrimary && styles.actionBtnPrimary,
-                  config.isDanger && styles.actionBtnDanger,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  config.isPrimary && [styles.actionBtnPrimary, { backgroundColor: theme.primary }],
+                  config.isDanger && [
+                    styles.actionBtnDanger,
+                    isDark && {
+                      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                      borderColor: 'rgba(239, 68, 68, 0.4)',
+                    },
+                  ],
                   pressed && !disabled && styles.btnPressed,
                   disabled && styles.btnDisabled,
                 ]}
@@ -251,8 +311,9 @@ export default function SellerShipmentCard({
                 <Text
                   style={[
                     styles.actionBtnText,
-                    config.isPrimary && styles.actionBtnTextPrimary,
-                    config.isDanger && styles.actionBtnTextDanger,
+                    { color: theme.text },
+                    config.isPrimary && [styles.actionBtnTextPrimary, { color: theme.onPrimary }],
+                    config.isDanger && [styles.actionBtnTextDanger, { color: theme.danger }],
                   ]}
                 >
                   {config.label}

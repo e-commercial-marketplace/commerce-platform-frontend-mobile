@@ -25,6 +25,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ConversationItem } from '../components/chat/ConversationItem';
 import { colors } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import { useConversations } from '../hooks/useChat';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
@@ -34,6 +36,8 @@ import type { ConversationResponse } from '../types/chatApi';
 export default function ConversationListScreen({
   navigation,
 }: AppNavigatorScreenProps<'ConversationList'>) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const { user, isAuthenticated } = useAuth();
   const isCustomer = user?.role === 'CUSTOMER';
   const isSeller = user?.role === 'SELLER';
@@ -72,20 +76,35 @@ export default function ConversationListScreen({
   // 1. Guard against unauthenticated or unauthorized roles (Admin/Guest)
   if (!isAuthenticated || !isAuthorizedRole) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="conversation-list-screen"
+      >
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>🔒</Text>
-          <Text style={styles.emptyTitle}>Yêu cầu đăng nhập</Text>
-          <Text style={styles.subtitle}>
-            Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để xem tin nhắn.
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('chat.loginRequiredTitle', 'Yêu cầu đăng nhập')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t(
+              'chat.loginRequiredDescList',
+              'Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để xem tin nhắn.',
+            )}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel="Đăng nhập"
+            accessibilityLabel={t('chat.loginButton', 'Đăng nhập')}
           >
-            <Text style={styles.primaryButtonText}>Đăng nhập</Text>
+            <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
+              {t('chat.loginButton', 'Đăng nhập')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -95,10 +114,16 @@ export default function ConversationListScreen({
   // 2. Loading state
   if (isLoading && conversations.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="conversation-list-screen"
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.subtitle}>Đang tải tin nhắn…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t('chat.loadingMessages', 'Đang tải tin nhắn…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -107,18 +132,35 @@ export default function ConversationListScreen({
   // 3. Error state with retry
   if (isError) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="conversation-list-screen"
+      >
         <View style={styles.centerState}>
           <Text style={styles.errorEmoji}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải tin nhắn</Text>
-          <Text style={styles.subtitle}>Vui lòng kiểm tra kết nối mạng và thử lại.</Text>
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('chat.loadFailedTitle', 'Không thể tải tin nhắn')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t(
+              'chat.networkFailedDesc',
+              'Vui lòng kiểm tra kết nối mạng và thử lại.',
+            )}
+          </Text>
           <Pressable
-            style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => refetch()}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel={t('chat.retry', 'Thử lại')}
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+              {t('chat.retry', 'Thử lại')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -128,24 +170,42 @@ export default function ConversationListScreen({
   // 4. Empty state tailored to Customer vs Seller
   if (conversations.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="conversation-list-screen"
+      >
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={styles.emptyTitle}>
-            {isCustomer ? 'Chưa có cuộc trò chuyện nào' : 'Chưa có tin nhắn từ khách hàng'}
-          </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
             {isCustomer
-              ? 'Tin nhắn giữa bạn và các shop sẽ xuất hiện ở đây.'
-              : 'Các cuộc hội thoại từ khách hàng sẽ xuất hiện ở đây.'}
+              ? t('chat.emptyCustomerTitle', 'Chưa có cuộc trò chuyện nào')
+              : t('chat.emptySellerTitle', 'Chưa có tin nhắn từ khách hàng')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {isCustomer
+              ? t(
+                  'chat.emptyCustomerDesc',
+                  'Tin nhắn giữa bạn và các shop sẽ xuất hiện ở đây.',
+                )
+              : t(
+                  'chat.emptySellerDesc',
+                  'Các cuộc hội thoại từ khách hàng sẽ xuất hiện ở đây.',
+                )}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.outlineButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.outlineButton,
+              { borderColor: theme.border },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => refetch()}
             accessibilityRole="button"
-            accessibilityLabel="Làm mới danh sách tin nhắn"
+            accessibilityLabel={t('chat.refreshA11y', 'Làm mới danh sách tin nhắn')}
           >
-            <Text style={styles.outlineButtonText}>Làm mới</Text>
+            <Text style={[styles.outlineButtonText, { color: theme.text }]}>
+              {t('chat.refresh', 'Làm mới')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -154,7 +214,11 @@ export default function ConversationListScreen({
 
   // 5. Populated conversation list
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+      testID="conversation-list-screen"
+    >
       <FlatList
         data={conversations}
         renderItem={renderItem}
@@ -166,7 +230,7 @@ export default function ConversationListScreen({
             onRefresh={() => {
               void refetch();
             }}
-            tintColor={colors.primary}
+            tintColor={theme.primary}
           />
         }
       />

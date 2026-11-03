@@ -28,6 +28,8 @@ import {
 
 import { toApiError } from '../../api/errors';
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import {
   useCreateSellerShipment,
   useSellerCarriers,
@@ -57,6 +59,8 @@ export default function CreateShipmentModal({
   onSuccess,
   onSubmitShipment,
 }: CreateShipmentModalProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const [deliveryMethod, setDeliveryMethod] =
     useState<DeliveryMethod>('PLATFORM_DELIVERY');
   const [selectedCarrierId, setSelectedCarrierId] = useState<string | null>(null);
@@ -105,7 +109,7 @@ export default function CreateShipmentModal({
     }
 
     if (deliveryMethod === 'PLATFORM_DELIVERY' && !selectedCarrierId) {
-      setErrorMessage('Please select a carrier for platform delivery.');
+      setErrorMessage(t('seller.selectCarrierPrompt', 'Please select a carrier for platform delivery.'));
       return;
     }
 
@@ -134,8 +138,10 @@ export default function CreateShipmentModal({
       onClose();
 
       Alert.alert(
-        'Shipment Created',
-        `Shipment for Order #${orderId.slice(0, 8)} has been created successfully.`,
+        t('seller.createShipment', 'Shipment Created'),
+        t('seller.shipmentCreatedMsg', `Shipment for Order #${orderId.slice(0, 8)} has been created successfully.`, {
+          id: orderId.slice(0, 8),
+        }),
       );
     } catch (err) {
       const apiError = toApiError(err);
@@ -180,12 +186,14 @@ export default function CreateShipmentModal({
           style={styles.outsidePress}
           onPress={isSubmitting ? undefined : handleClose}
         />
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View>
-              <Text style={styles.title}>Create Shipment</Text>
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.title, { color: theme.text }]}>
+                {t('seller.createShipment', 'Create Shipment')}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
                 Order #{orderId.slice(0, 8)} • {items.length} item{items.length === 1 ? '' : 's'}
               </Text>
             </View>
@@ -196,80 +204,116 @@ export default function CreateShipmentModal({
               accessibilityRole="button"
               accessibilityLabel="Close shipment creation dialog"
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>✕</Text>
             </Pressable>
           </View>
 
           <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
             {/* One Shipment Policy Banner */}
-            <View style={styles.policyNotice} testID="one-shipment-policy-banner">
-              <Text style={styles.policyTitle}>One Shipment Policy</Text>
-              <Text style={styles.policyText}>
-                All {items.length} confirmed items in this order will be bundled into
-                one shipment. Backend policy permits exactly ONE shipment per order.
+            <View
+              style={[
+                styles.policyNotice,
+                {
+                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                  borderColor: isDark ? 'rgba(59, 130, 246, 0.4)' : '#BFDBFE',
+                },
+              ]}
+              testID="one-shipment-policy-banner"
+            >
+              <Text style={[styles.policyTitle, { color: isDark ? '#60A5FA' : '#1E40AF' }]}>
+                {t('seller.oneShipmentPolicy', 'One Shipment Policy')}
+              </Text>
+              <Text style={[styles.policyText, { color: theme.textSecondary }]}>
+                {t(
+                  'seller.bundleShipmentPrompt',
+                  `All ${items.length} confirmed items in this order will be bundled into one shipment. Backend policy permits exactly ONE shipment per order.`,
+                  { count: items.length },
+                )}
               </Text>
             </View>
 
             {/* Bundled Items Summary */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Bundled Items ({items.length})
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                {t('orders.shipmentItems', `Bundled Items (${items.length})`)}
               </Text>
-              <View style={styles.itemsBox}>
+              <View
+                style={[
+                  styles.itemsBox,
+                  { backgroundColor: theme.background, borderColor: theme.border },
+                ]}
+              >
                 {items.map((item) => {
                   const unitPriceNum = Number.parseFloat(item.unitPrice) || 0;
                   const lineTotal = unitPriceNum * item.quantity;
                   return (
                     <View key={item.id} style={styles.itemRow}>
                       <View style={styles.itemInfo}>
-                        <Text style={styles.itemName} numberOfLines={1}>
+                        <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>
                           {item.productName}
                         </Text>
-                        <Text style={styles.itemMeta}>
+                        <Text style={[styles.itemMeta, { color: theme.textSecondary }]}>
                           Qty: {item.quantity} • {formatVND(unitPriceNum)}
                         </Text>
                       </View>
-                      <Text style={styles.itemTotal}>{formatVND(lineTotal)}</Text>
+                      <Text style={[styles.itemTotal, { color: theme.text }]}>{formatVND(lineTotal)}</Text>
                     </View>
                   );
                 })}
                 <View style={styles.bundleTotalRow}>
-                  <Text style={styles.bundleTotalLabel}>Bundle Total:</Text>
-                  <Text style={styles.bundleTotalValue}>{formatVND(totalAmount)}</Text>
+                  <Text style={[styles.bundleTotalLabel, { color: theme.text }]}>
+                    {t('orders.total', 'Bundle Total:')}
+                  </Text>
+                  <Text style={[styles.bundleTotalValue, { color: theme.primary }]}>
+                    {formatVND(totalAmount)}
+                  </Text>
                 </View>
               </View>
             </View>
 
             {/* Delivery Method Selection */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Delivery Method</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                {t('orders.method', 'Delivery Method')}
+              </Text>
               <View style={styles.methodSelector}>
                 <Pressable
                   onPress={() => handleSelectDeliveryMethod('PLATFORM_DELIVERY')}
                   disabled={isSubmitting}
                   style={[
                     styles.methodOption,
-                    deliveryMethod === 'PLATFORM_DELIVERY' && styles.methodOptionSelected,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                    deliveryMethod === 'PLATFORM_DELIVERY' && [
+                      styles.methodOptionSelected,
+                      {
+                        borderColor: theme.primary,
+                        backgroundColor: isDark ? 'rgba(13, 148, 136, 0.15)' : '#F0FDFA',
+                      },
+                    ],
                   ]}
                   accessibilityRole="radio"
                   accessibilityLabel="Platform Delivery"
                   accessibilityState={{ checked: deliveryMethod === 'PLATFORM_DELIVERY' }}
                 >
-                  <View style={styles.radioDot}>
+                  <View style={[styles.radioDot, { borderColor: theme.border }]}>
                     {deliveryMethod === 'PLATFORM_DELIVERY' && (
-                      <View style={styles.radioDotInner} />
+                      <View style={[styles.radioDotInner, { backgroundColor: theme.primary }]} />
                     )}
                   </View>
                   <View style={styles.methodOptionText}>
                     <Text
                       style={[
                         styles.methodTitle,
-                        deliveryMethod === 'PLATFORM_DELIVERY' && styles.methodTitleSelected,
+                        { color: theme.text },
+                        deliveryMethod === 'PLATFORM_DELIVERY' && [
+                          styles.methodTitleSelected,
+                          { color: theme.primary },
+                        ],
                       ]}
                     >
-                      Platform Delivery
+                      {t('seller.deliveryMethod_PLATFORM_DELIVERY', 'Platform Delivery')}
                     </Text>
-                    <Text style={styles.methodDesc}>
+                    <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>
                       Ship via integrated carrier
                     </Text>
                   </View>
@@ -280,27 +324,38 @@ export default function CreateShipmentModal({
                   disabled={isSubmitting}
                   style={[
                     styles.methodOption,
-                    deliveryMethod === 'SELF_DELIVERY' && styles.methodOptionSelected,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                    deliveryMethod === 'SELF_DELIVERY' && [
+                      styles.methodOptionSelected,
+                      {
+                        borderColor: theme.primary,
+                        backgroundColor: isDark ? 'rgba(13, 148, 136, 0.15)' : '#F0FDFA',
+                      },
+                    ],
                   ]}
                   accessibilityRole="radio"
                   accessibilityLabel="Self Delivery"
                   accessibilityState={{ checked: deliveryMethod === 'SELF_DELIVERY' }}
                 >
-                  <View style={styles.radioDot}>
+                  <View style={[styles.radioDot, { borderColor: theme.border }]}>
                     {deliveryMethod === 'SELF_DELIVERY' && (
-                      <View style={styles.radioDotInner} />
+                      <View style={[styles.radioDotInner, { backgroundColor: theme.primary }]} />
                     )}
                   </View>
                   <View style={styles.methodOptionText}>
                     <Text
                       style={[
                         styles.methodTitle,
-                        deliveryMethod === 'SELF_DELIVERY' && styles.methodTitleSelected,
+                        { color: theme.text },
+                        deliveryMethod === 'SELF_DELIVERY' && [
+                          styles.methodTitleSelected,
+                          { color: theme.primary },
+                        ],
                       ]}
                     >
-                      Self Delivery
+                      {t('seller.deliveryMethod_SELF_DELIVERY', 'Self Delivery')}
                     </Text>
-                    <Text style={styles.methodDesc}>
+                    <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>
                       Delivered directly by shop
                     </Text>
                   </View>
@@ -311,16 +366,20 @@ export default function CreateShipmentModal({
             {/* Carrier Selection (PLATFORM_DELIVERY only) */}
             {deliveryMethod === 'PLATFORM_DELIVERY' ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Select Carrier *</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  {t('seller.selectCarrierTitle', 'Select Carrier *')}
+                </Text>
                 {isLoadingCarriers ? (
                   <View style={styles.loadingCarriersBox}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.loadingCarriersText}>Loading active carriers…</Text>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text style={[styles.loadingCarriersText, { color: theme.textSecondary }]}>
+                      {t('seller.loadingCarriers', 'Loading active carriers…')}
+                    </Text>
                   </View>
                 ) : isCarriersError ? (
                   <View style={styles.carriersErrorBox}>
-                    <Text style={styles.carriersErrorText}>
-                      Failed to load active carriers.
+                    <Text style={[styles.carriersErrorText, { color: theme.danger }]}>
+                      {t('seller.loadCarriersFailed', 'Failed to load active carriers.')}
                     </Text>
                     <Pressable
                       onPress={() => {
@@ -328,16 +387,21 @@ export default function CreateShipmentModal({
                           void refetchCarriers();
                         }
                       }}
-                      style={styles.retryCarriersBtn}
+                      style={[
+                        styles.retryCarriersBtn,
+                        { backgroundColor: theme.surface, borderColor: theme.border },
+                      ]}
                       accessibilityRole="button"
                       accessibilityLabel="Retry loading carriers"
                     >
-                      <Text style={styles.retryCarriersBtnText}>Retry</Text>
+                      <Text style={[styles.retryCarriersBtnText, { color: theme.primary }]}>
+                        {t('seller.retry', 'Retry')}
+                      </Text>
                     </Pressable>
                   </View>
                 ) : !carriers || carriers.length === 0 ? (
                   <View style={styles.emptyCarriersBox}>
-                    <Text style={styles.emptyCarriersText}>
+                    <Text style={[styles.emptyCarriersText, { color: theme.textSecondary }]}>
                       No active shipping carriers available. Please switch to Self Delivery.
                     </Text>
                   </View>
@@ -357,7 +421,14 @@ export default function CreateShipmentModal({
                           disabled={isSubmitting}
                           style={[
                             styles.carrierItem,
-                            isSelected && styles.carrierItemSelected,
+                            { backgroundColor: theme.background, borderColor: theme.border },
+                            isSelected && [
+                              styles.carrierItemSelected,
+                              {
+                                borderColor: theme.primary,
+                                backgroundColor: isDark ? 'rgba(13, 148, 136, 0.15)' : '#F0FDFA',
+                              },
+                            ],
                           ]}
                           accessibilityRole="radio"
                           accessibilityLabel={carrier.name}
@@ -367,15 +438,24 @@ export default function CreateShipmentModal({
                           <View
                             style={[
                               styles.radioCircle,
-                              isSelected && styles.radioCircleSelected,
+                              { borderColor: theme.border },
+                              isSelected && [styles.radioCircleSelected, { borderColor: theme.primary }],
                             ]}
                           >
-                            {isSelected && <View style={styles.radioCircleDot} />}
+                            {isSelected && (
+                              <View
+                                style={[
+                                  styles.radioCircleDot,
+                                  { backgroundColor: theme.primary },
+                                ]}
+                              />
+                            )}
                           </View>
                           <Text
                             style={[
                               styles.carrierName,
-                              isSelected && styles.carrierNameSelected,
+                              { color: theme.text },
+                              isSelected && [styles.carrierNameSelected, { color: theme.primary }],
                             ]}
                           >
                             {carrier.name}
@@ -388,13 +468,24 @@ export default function CreateShipmentModal({
               </View>
             ) : (
               /* Self Delivery Explanatory Card */
-              <View style={styles.selfDeliveryBox} testID="self-delivery-notice">
-                <Text style={styles.selfDeliveryTitle}>Direct Shop Fulfillment</Text>
-                <Text style={styles.selfDeliveryText}>
+              <View
+                style={[
+                  styles.selfDeliveryBox,
+                  {
+                    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7',
+                    borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A',
+                  },
+                ]}
+                testID="self-delivery-notice"
+              >
+                <Text style={[styles.selfDeliveryTitle, { color: isDark ? '#FBBF24' : '#92400E' }]}>
+                  Direct Shop Fulfillment
+                </Text>
+                <Text style={[styles.selfDeliveryText, { color: theme.textSecondary }]}>
                   Your shop is directly responsible for delivering these items to the
                   customer. No third-party carrier will be assigned.
                 </Text>
-                <Text style={styles.selfDeliverySubtext}>
+                <Text style={[styles.selfDeliverySubtext, { color: theme.textSecondary }]}>
                   Ensure your fulfillment team coordinates delivery according to your shop's schedule.
                 </Text>
               </View>
@@ -402,26 +493,38 @@ export default function CreateShipmentModal({
 
             {/* Error Message */}
             {errorMessage != null ? (
-              <View style={styles.errorBox} testID="shipment-error-box">
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                    borderColor: theme.danger,
+                  },
+                ]}
+                testID="shipment-error-box"
+              >
+                <Text style={[styles.errorText, { color: theme.danger }]}>{errorMessage}</Text>
               </View>
             ) : null}
           </ScrollView>
 
           {/* Footer Actions */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: theme.border }]}>
             <Pressable
               onPress={handleClose}
               disabled={isSubmitting}
               style={({ pressed }) => [
                 styles.cancelBtn,
+                { backgroundColor: theme.surface, borderColor: theme.border },
                 pressed && !isSubmitting && styles.btnPressed,
                 isSubmitting && styles.btnDisabled,
               ]}
               accessibilityRole="button"
               accessibilityLabel="Cancel shipment creation"
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={[styles.cancelBtnText, { color: theme.text }]}>
+                {t('seller.cancel', 'Cancel')}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -429,6 +532,7 @@ export default function CreateShipmentModal({
               disabled={isSubmitDisabled}
               style={({ pressed }) => [
                 styles.submitBtn,
+                { backgroundColor: theme.primary },
                 pressed && !isSubmitDisabled && styles.btnPressed,
                 isSubmitDisabled && styles.btnDisabled,
               ]}
@@ -437,11 +541,15 @@ export default function CreateShipmentModal({
             >
               {isSubmitting ? (
                 <View style={styles.btnInnerRow}>
-                  <ActivityIndicator size="small" color={colors.onPrimary} />
-                  <Text style={styles.submitBtnText}>Creating…</Text>
+                  <ActivityIndicator size="small" color={theme.onPrimary} />
+                  <Text style={[styles.submitBtnText, { color: theme.onPrimary }]}>
+                    {t('seller.saving', 'Creating…')}
+                  </Text>
                 </View>
               ) : (
-                <Text style={styles.submitBtnText}>Create Shipment</Text>
+                <Text style={[styles.submitBtnText, { color: theme.onPrimary }]}>
+                  {t('seller.createShipment', 'Create Shipment')}
+                </Text>
               )}
             </Pressable>
           </View>

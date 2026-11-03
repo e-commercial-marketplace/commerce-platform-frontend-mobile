@@ -1,22 +1,7 @@
 /**
  * Seller / Shop screen - the public shop page of a seller.
- *
- * Two independent backend calls feed this screen:
- * - GET /api/v1/sellers/{id}              -> the shop (name + listed product count);
- * - GET /api/v1/products?sellerId={id}    -> the seller's listed products.
- *
- * Both endpoints are public, so a guest can open a shop. The shop payload is
- * the only source for the shop identity: the backend exposes no rating,
- * description, avatar/logo, address, join date, follower count or shop
- * status, so none of those are displayed here.
- *
- * Server state comes from TanStack Query (`useSellerShop` / `useProductList`);
- * the screen owns only UI state (current page, layout mode). The four
- * outcomes are kept strictly separate:
- * - LOADING : the request is in flight and nothing has been received yet;
- * - ERROR   : the request failed - the real message and a Retry action;
- * - EMPTY   : the request succeeded and the seller really has no product;
- * - SUCCESS : the request succeeded and the products are rendered.
+ * Customer-facing discovery screen.
+ * Fully theme-aware with dynamic semantic tokens and localized strings.
  */
 
 import { useMemo, useRef, useState } from 'react';
@@ -34,18 +19,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, toApiError } from '../api/errors';
 import ProductCard, { type ProductViewMode } from '../components/ProductCard';
 import ShopAvatar from '../components/ShopAvatar';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useOpenConversation } from '../hooks/useChat';
 import { useProductList } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 import type { Product } from '../types/product';
 
-/** Page size sent to the backend (its own default is 20, max 100). */
 const PAGE_SIZE = 20;
 
-export default function SellerShopScreen({ route, navigation }: AppNavigatorScreenProps<'SellerShop'>) {
+export default function SellerShopScreen({
+  route,
+  navigation,
+}: AppNavigatorScreenProps<'SellerShop'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { sellerId } = route.params;
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<ProductViewMode>('grid');
@@ -106,8 +97,6 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
     refetch: refetchShop,
   } = useSellerShop(sellerId);
 
-  // The seller's products come from the public catalog endpoint, filtered by
-  // the same seller id; the existing product query convention is reused.
   const filters = useMemo(() => ({ sellerId, page, size: PAGE_SIZE }), [sellerId, page]);
 
   const {
@@ -122,19 +111,18 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
   const products = productData?.products ?? [];
   const totalPages = productData?.totalPages ?? 0;
 
-  // A 404 means the shop does not exist (unknown id, not a seller, or the
-  // seller is not approved) - a different outcome from a transport failure.
-  // A route without a seller id can never resolve a shop either.
   const hasSellerId = sellerId.length > 0;
   const isShopNotFound =
     !hasSellerId || (isShopError && shopError instanceof ApiError && shopError.status === 404);
 
   const shopErrorMessage =
-    shopError instanceof Error ? shopError.message : 'Failed to load this shop. Please try again.';
+    shopError instanceof Error
+      ? shopError.message
+      : t('catalog.couldNotLoadShop', 'Failed to load this shop. Please try again.');
   const productsErrorMessage =
     productsError instanceof Error
       ? productsError.message
-      : 'Failed to load products. Please try again.';
+      : t('catalog.couldNotLoad', 'Failed to load products. Please try again.');
 
   function handleProductPress(product: Product) {
     navigation.navigate('ProductDetail', { productId: product.id });
@@ -161,13 +149,18 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
     void refetchShop();
   }
 
-  // First load: nothing has been received yet - show a real loading state.
   if (hasSellerId && isShopPending && shop === undefined) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+        testID="seller-shop-screen"
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.centerText}>Loading shop…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.centerText, { color: theme.textSecondary }]}>
+            {t('catalog.loadingProducts', 'Loading shop…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -178,8 +171,12 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
       return (
         <View style={styles.stateBlock}>
           <Text style={styles.stateIcon}>🔍</Text>
-          <Text style={styles.stateTitle}>Shop not found</Text>
-          <Text style={styles.stateText}>This shop is not available anymore.</Text>
+          <Text style={[styles.stateTitle, { color: theme.text }]}>
+            {t('catalog.shopNotFound', 'Shop not found')}
+          </Text>
+          <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+            {t('catalog.shopNotFoundHint', 'This shop is not available anymore.')}
+          </Text>
         </View>
       );
     }
@@ -188,30 +185,41 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
       return (
         <View style={styles.stateBlock}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.stateTitle}>Couldn&apos;t load this shop</Text>
-          <Text style={styles.stateText}>{shopErrorMessage}</Text>
+          <Text style={[styles.stateTitle, { color: theme.text }]}>
+            {t('catalog.couldNotLoadShop', "Couldn't load this shop")}
+          </Text>
+          <Text style={[styles.stateText, { color: theme.textSecondary }]}>{shopErrorMessage}</Text>
           <Pressable
             onPress={() => refetchShop()}
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
             accessibilityRole="button"
-            accessibilityLabel="Retry loading shop"
+            accessibilityLabel={t('catalog.retryLoadingShop', 'Retry loading shop')}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{t('catalog.retry', 'Retry')}</Text>
           </Pressable>
         </View>
       );
     }
 
     return (
-      <View style={styles.shopHeader}>
+      <View
+        style={[
+          styles.shopHeader,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <ShopAvatar name={shop?.name} size={64} />
         <View style={styles.shopInfo}>
-          <Text style={styles.shopName} numberOfLines={2}>
+          <Text style={[styles.shopName, { color: theme.text }]} numberOfLines={2}>
             {shop?.name ?? 'Shop'}
           </Text>
-          <Text style={styles.shopMeta}>
+          <Text style={[styles.shopMeta, { color: theme.textSecondary }]}>
             {shop != null
-              ? `${shop.productCount} ${shop.productCount === 1 ? 'product' : 'products'} for sale`
+              ? t(
+                  'catalog.productsForSale',
+                  `${shop.productCount} ${shop.productCount === 1 ? 'product' : 'products'} for sale`,
+                  { count: shop.productCount },
+                )
               : ' '}
           </Text>
         </View>
@@ -221,23 +229,28 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
             disabled={isOpeningChat}
             style={({ pressed }) => [
               styles.chatWithShopButton,
+              { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
               isOpeningChat && styles.chatWithShopButtonDisabled,
               pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Nhắn tin với shop"
+            accessibilityLabel={t('catalog.chatWithShop', 'Nhắn tin với shop')}
           >
             {isOpeningChat ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={theme.primary} />
             ) : (
               <>
                 <Text style={styles.chatWithShopIcon}>💬</Text>
-                <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
+                <Text style={[styles.chatWithShopText, { color: theme.primary }]}>
+                  {t('catalog.chatWithShop', 'Nhắn tin với shop')}
+                </Text>
               </>
             )}
           </Pressable>
         )}
-        {chatError != null && <Text style={styles.chatErrorText}>{chatError}</Text>}
+        {chatError != null && (
+          <Text style={[styles.chatErrorText, { color: theme.danger }]}>{chatError}</Text>
+        )}
       </View>
     );
   }
@@ -245,26 +258,51 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
   function renderProductsToolbar() {
     return (
       <View style={styles.toolbar}>
-        <Text style={styles.sectionTitle}>Products</Text>
-        <View style={styles.viewToggle}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          {t('catalog.products', 'Products')}
+        </Text>
+        <View
+          style={[
+            styles.viewToggle,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
           <Pressable
             onPress={() => setViewMode('grid')}
-            style={[styles.toggleButton, viewMode === 'grid' && styles.toggleButtonActive]}
+            style={[
+              styles.toggleButton,
+              viewMode === 'grid' && { backgroundColor: theme.primary },
+            ]}
             accessibilityRole="button"
             accessibilityState={{ selected: viewMode === 'grid' }}
           >
-            <Text style={[styles.toggleText, viewMode === 'grid' && styles.toggleTextActive]}>
-              Grid
+            <Text
+              style={[
+                styles.toggleText,
+                { color: viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary },
+                viewMode === 'grid' && styles.toggleTextActive,
+              ]}
+            >
+              {t('catalog.grid', 'Grid')}
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setViewMode('list')}
-            style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+            style={[
+              styles.toggleButton,
+              viewMode === 'list' && { backgroundColor: theme.primary },
+            ]}
             accessibilityRole="button"
             accessibilityState={{ selected: viewMode === 'list' }}
           >
-            <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-              List
+            <Text
+              style={[
+                styles.toggleText,
+                { color: viewMode === 'list' ? '#FFFFFF' : theme.textSecondary },
+                viewMode === 'list' && styles.toggleTextActive,
+              ]}
+            >
+              {t('catalog.list', 'List')}
             </Text>
           </Pressable>
         </View>
@@ -273,7 +311,11 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="seller-shop-screen"
+    >
       <FlatList
         key={viewMode}
         data={products}
@@ -283,7 +325,7 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
         columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         contentContainerStyle={styles.listContent}
         onRefresh={handleRefresh}
-        refreshing={isFetching && !areProductsPending}
+        refreshing={Boolean(isFetching && !areProductsPending)}
         ListHeaderComponent={
           <View>
             {renderShopHeader()}
@@ -292,32 +334,38 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
         }
         ListEmptyComponent={
           areProductsError ? (
-            // A failed request is NOT an empty catalog: show the reason and a
-            // retry action instead of an empty-state message.
             <View style={styles.stateBlock}>
               <Text style={styles.stateIcon}>⚠️</Text>
-              <Text style={styles.stateTitle}>Couldn&apos;t load products</Text>
-              <Text style={styles.stateText}>{productsErrorMessage}</Text>
+              <Text style={[styles.stateTitle, { color: theme.text }]}>
+                {t('catalog.couldNotLoad', "Couldn't load products")}
+              </Text>
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {productsErrorMessage}
+              </Text>
               <Pressable
                 onPress={() => refetchProducts()}
-                style={styles.retryButton}
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
                 accessibilityRole="button"
-                accessibilityLabel="Retry loading products"
+                accessibilityLabel={t('catalog.retryLoadingProducts', 'Retry loading products')}
               >
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>{t('catalog.retry', 'Retry')}</Text>
               </Pressable>
             </View>
           ) : areProductsPending ? (
             <View style={styles.stateBlock}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.stateText}>Loading products…</Text>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {t('catalog.loadingProducts', 'Loading products…')}
+              </Text>
             </View>
           ) : (
             <View style={styles.stateBlock}>
-              <Text style={styles.stateIcon}>🏬</Text>
-              <Text style={styles.stateTitle}>This shop has no products yet</Text>
-              <Text style={styles.stateText}>
-                Products this seller puts on sale will show up here.
+              <Text style={styles.stateIcon}>📦</Text>
+              <Text style={[styles.stateTitle, { color: theme.text }]}>
+                {t('catalog.noProductsFound', 'No products found')}
+              </Text>
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {t('catalog.noShopProducts', 'This shop has no products listed yet.')}
               </Text>
             </View>
           )
@@ -328,31 +376,59 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
               <Pressable
                 onPress={goToPreviousPage}
                 disabled={page === 0}
-                style={[styles.pageButton, page === 0 && styles.pageButtonDisabled]}
+                style={[
+                  styles.pageButton,
+                  { backgroundColor: theme.primary },
+                  page === 0 && [
+                    styles.pageButtonDisabled,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ],
+                ]}
                 accessibilityRole="button"
-                accessibilityLabel="Previous page"
-              >
-                <Text style={[styles.pageButtonText, page === 0 && styles.pageButtonTextDisabled]}>
-                  Previous
-                </Text>
-              </Pressable>
-              <Text style={styles.pageInfo}>
-                Page {page + 1} / {totalPages}
-              </Text>
-              <Pressable
-                onPress={goToNextPage}
-                disabled={page >= totalPages - 1}
-                style={[styles.pageButton, page >= totalPages - 1 && styles.pageButtonDisabled]}
-                accessibilityRole="button"
-                accessibilityLabel="Next page"
+                accessibilityLabel={t('catalog.previousPage', 'Previous page')}
               >
                 <Text
                   style={[
                     styles.pageButtonText,
-                    page >= totalPages - 1 && styles.pageButtonTextDisabled,
+                    page === 0 && [
+                      styles.pageButtonTextDisabled,
+                      { color: theme.textSecondary },
+                    ],
                   ]}
                 >
-                  Next
+                  {t('catalog.previous', 'Previous')}
+                </Text>
+              </Pressable>
+              <Text style={[styles.pageInfo, { color: theme.textSecondary }]}>
+                {t('catalog.pageInfo', `Page ${page + 1} / ${totalPages}`, {
+                  page: page + 1,
+                  totalPages,
+                })}
+              </Text>
+              <Pressable
+                onPress={goToNextPage}
+                disabled={page >= totalPages - 1}
+                style={[
+                  styles.pageButton,
+                  { backgroundColor: theme.primary },
+                  page >= totalPages - 1 && [
+                    styles.pageButtonDisabled,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ],
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('catalog.nextPage', 'Next page')}
+              >
+                <Text
+                  style={[
+                    styles.pageButtonText,
+                    page >= totalPages - 1 && [
+                      styles.pageButtonTextDisabled,
+                      { color: theme.textSecondary },
+                    ],
+                  ]}
+                >
+                  {t('catalog.next', 'Next')}
                 </Text>
               </Pressable>
             </View>
@@ -366,75 +442,72 @@ export default function SellerShopScreen({ route, navigation }: AppNavigatorScre
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  centerState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  centerText: {
+    fontSize: 14,
   },
   listContent: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xl,
     gap: spacing.sm,
   },
-  centerState: {
-    flex: 1,
+  shopHeader: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    flexWrap: 'wrap',
   },
-  centerText: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  shopInfo: {
+    flex: 1,
+    minWidth: 140,
+  },
+  shopName: {
+    fontSize: typography.xl,
+    fontWeight: '700',
+  },
+  shopMeta: {
+    fontSize: 13,
+    marginTop: 2,
   },
   chatWithShopButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    gap: spacing.xs + 2,
-    marginTop: spacing.sm,
   },
   chatWithShopButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   chatWithShopButtonPressed: {
-    backgroundColor: '#E6F8FA',
+    opacity: 0.8,
   },
   chatWithShopIcon: {
     fontSize: 16,
   },
   chatWithShopText: {
-    fontSize: typography.sm,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.primary,
   },
   chatErrorText: {
-    fontSize: typography.xs,
-    color: colors.danger,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  shopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  shopInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  shopName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  shopMeta: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    width: '100%',
+    fontSize: 12,
+    marginTop: 2,
   },
   toolbar: {
     flexDirection: 'row',
@@ -443,16 +516,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: typography.base,
+    fontWeight: '700',
   },
   viewToggle: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.xs,
     gap: spacing.xs,
   },
@@ -461,16 +531,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radii.sm - 2,
   },
-  toggleButtonActive: {
-    backgroundColor: colors.primary,
-  },
   toggleText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.textSecondary,
   },
   toggleTextActive: {
-    color: colors.onPrimary,
     fontWeight: '600',
   },
   gridRow: {
@@ -488,23 +553,19 @@ const styles = StyleSheet.create({
   stateTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
   },
   stateText: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.sm,
   },
   retryButtonText: {
-    color: colors.onPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -518,23 +579,19 @@ const styles = StyleSheet.create({
   pageButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.sm,
   },
   pageButtonDisabled: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   pageButtonText: {
-    color: colors.onPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   pageButtonTextDisabled: {
-    color: colors.textSecondary,
+    fontWeight: '500',
   },
   pageInfo: {
     fontSize: 13,
-    color: colors.textSecondary,
   },
 });

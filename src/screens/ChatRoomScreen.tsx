@@ -30,6 +30,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatMessageBubble } from '../components/chat/ChatMessageBubble';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import {
   useConversationMessages,
@@ -58,6 +60,8 @@ export default function ChatRoomScreen({
   route,
   navigation,
 }: AppNavigatorScreenProps<'ChatRoom'>) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const { conversationId, counterpartName } = route.params;
 
   const { user, isAuthenticated } = useAuth();
@@ -84,16 +88,16 @@ export default function ChatRoomScreen({
       if (currentConversation?.sellerId) {
         return `Shop #${currentConversation.sellerId.slice(0, 8)}`;
       }
-      return 'Cửa hàng';
+      return t('chat.shopCounterpart', 'Cửa hàng');
     }
     if (isSeller) {
       if (currentConversation?.customerId) {
         return `Khách hàng #${currentConversation.customerId.slice(0, 8)}`;
       }
-      return 'Khách hàng';
+      return t('chat.customerCounterpart', 'Khách hàng');
     }
-    return 'Trò chuyện';
-  }, [counterpartName, isCustomer, isSeller, shop?.name, currentConversation]);
+    return t('chat.defaultTitle', 'Trò chuyện');
+  }, [counterpartName, isCustomer, isSeller, shop?.name, currentConversation, t]);
 
   // Synchronize screen title with resolved counterpart name
   useEffect(() => {
@@ -233,20 +237,35 @@ export default function ChatRoomScreen({
   // 1. Gating against unauthenticated or unauthorized roles (Admin/Guest)
   if (!isAuthenticated || !isAuthorizedRole) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="chat-room-screen"
+      >
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>🔒</Text>
-          <Text style={styles.emptyTitle}>Yêu cầu đăng nhập</Text>
-          <Text style={styles.subtitle}>
-            Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để tham gia trò chuyện.
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('chat.loginRequiredTitle', 'Yêu cầu đăng nhập')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t(
+              'chat.loginRequiredDescRoom',
+              'Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để tham gia trò chuyện.',
+            )}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel="Đăng nhập"
+            accessibilityLabel={t('chat.loginButton', 'Đăng nhập')}
           >
-            <Text style={styles.primaryButtonText}>Đăng nhập</Text>
+            <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
+              {t('chat.loginButton', 'Đăng nhập')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -256,7 +275,11 @@ export default function ChatRoomScreen({
   const isSendDisabled = inputText.trim().length === 0 || sendMessageMutation.isPending;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="chat-room-screen"
+    >
       <KeyboardAvoidingView
         style={[
           styles.keyboardContainer,
@@ -267,19 +290,35 @@ export default function ChatRoomScreen({
       >
         {/* Real-time Connection Status Notice */}
         {connectionState === 'disconnected' || connectionState === 'reconnecting' ? (
-          <View style={styles.connectionBanner} accessibilityRole="alert">
-            <Text style={styles.connectionText}>
+          <View
+            style={[
+              styles.connectionBanner,
+              {
+                backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7',
+                borderBottomColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A',
+              },
+            ]}
+            accessibilityRole="alert"
+          >
+            <Text
+              style={[
+                styles.connectionText,
+                { color: isDark ? '#FCD34D' : '#92400E' },
+              ]}
+            >
               {connectionState === 'reconnecting'
-                ? 'Đang kết nối lại thời gian thực…'
-                : 'Mất kết nối thời gian thực'}
+                ? t('chat.reconnecting', 'Đang kết nối lại thời gian thực…')
+                : t('chat.disconnected', 'Mất kết nối thời gian thực')}
             </Text>
             {connectionState === 'disconnected' ? (
               <Pressable
                 onPress={reconnect}
                 accessibilityRole="button"
-                accessibilityLabel="Kết nối lại"
+                accessibilityLabel={t('chat.reconnectAction', 'Kết nối lại')}
               >
-                <Text style={styles.reconnectButtonText}>Kết nối lại</Text>
+                <Text style={[styles.reconnectButtonText, { color: theme.primary }]}>
+                  {t('chat.reconnectAction', 'Kết nối lại')}
+                </Text>
               </Pressable>
             ) : null}
           </View>
@@ -289,28 +328,43 @@ export default function ChatRoomScreen({
         <View style={styles.listContainer}>
           {isLoading && displayItems.length === 0 ? (
             <View style={styles.centerState}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.subtitle}>Đang tải tin nhắn…</Text>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                {t('chat.loadingMessages', 'Đang tải tin nhắn…')}
+              </Text>
             </View>
           ) : isError && displayItems.length === 0 ? (
             <View style={styles.centerState}>
               <Text style={styles.emptyEmoji}>⚠️</Text>
-              <Text style={styles.emptyTitle}>Không thể tải tin nhắn</Text>
+              <Text style={[styles.emptyTitle, { color: theme.danger }]}>
+                {t('chat.loadFailedTitle', 'Không thể tải tin nhắn')}
+              </Text>
               <Pressable
-                style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  { backgroundColor: theme.primary },
+                  pressed && styles.buttonPressed,
+                ]}
                 onPress={() => refetch()}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại"
+                accessibilityLabel={t('chat.retry', 'Thử lại')}
               >
-                <Text style={styles.primaryButtonText}>Thử lại</Text>
+                <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
+                  {t('chat.retry', 'Thử lại')}
+                </Text>
               </Pressable>
             </View>
           ) : displayItems.length === 0 ? (
             <View style={styles.centerState}>
               <Text style={styles.emptyEmoji}>💬</Text>
-              <Text style={styles.emptyTitle}>Chưa có tin nhắn</Text>
-              <Text style={styles.subtitle}>
-                Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện.
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                {t('chat.emptyRoomTitle', 'Chưa có tin nhắn')}
+              </Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                {t(
+                  'chat.emptyRoomDesc',
+                  'Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện.',
+                )}
               </Text>
             </View>
           ) : (
@@ -345,8 +399,12 @@ export default function ChatRoomScreen({
               ListFooterComponent={
                 isFetchingNextPage ? (
                   <View style={styles.loadingOlderContainer}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.loadingOlderText}>Đang tải tin nhắn cũ hơn…</Text>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text
+                      style={[styles.loadingOlderText, { color: theme.textSecondary }]}
+                    >
+                      {t('chat.loadingOlder', 'Đang tải tin nhắn cũ hơn…')}
+                    </Text>
                   </View>
                 ) : undefined
               }
@@ -357,33 +415,56 @@ export default function ChatRoomScreen({
         </View>
 
         {/* Text Composer */}
-        <View style={styles.composerWrapper}>
+        <View
+          style={[
+            styles.composerWrapper,
+            { backgroundColor: theme.background, borderTopColor: theme.border },
+          ]}
+        >
           <TextInput
-            style={styles.composerInput}
+            style={[
+              styles.composerInput,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor={colors.textSecondary}
+            placeholder={t('chat.composerPlaceholder', 'Nhập tin nhắn...')}
+            placeholderTextColor={theme.textSecondary}
             multiline
             maxLength={2000}
             editable={!sendMessageMutation.isPending}
-            accessibilityLabel="Nhập tin nhắn"
+            accessibilityLabel={t('chat.composerA11y', 'Nhập tin nhắn')}
           />
 
           <Pressable
-            style={[styles.sendButton, isSendDisabled && styles.sendButtonDisabled]}
+            style={[
+              styles.sendButton,
+              { backgroundColor: theme.primary },
+              isSendDisabled && [
+                styles.sendButtonDisabled,
+                { backgroundColor: isDark ? theme.border : colors.border },
+              ],
+            ]}
             onPress={() => handleSendMessage()}
             disabled={isSendDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Gửi tin nhắn"
+            accessibilityLabel={t('chat.sendA11y', 'Gửi tin nhắn')}
           >
             {sendMessageMutation.isPending ? (
-              <ActivityIndicator size="small" color={colors.onPrimary} />
+              <ActivityIndicator size="small" color={theme.onPrimary} />
             ) : (
               <Text
                 style={[
                   styles.sendButtonIcon,
-                  isSendDisabled && styles.sendButtonIconDisabled,
+                  { color: theme.onPrimary },
+                  isSendDisabled && [
+                    styles.sendButtonIconDisabled,
+                    { color: theme.textSecondary },
+                  ],
                 ]}
               >
                 ↑

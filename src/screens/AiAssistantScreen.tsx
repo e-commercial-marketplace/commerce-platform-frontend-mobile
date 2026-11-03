@@ -19,7 +19,7 @@
  * - Graceful access restriction for SELLER and ADMIN roles.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -40,22 +40,29 @@ import { queryKeys } from '../api/queryKeys';
 import AiMessageBubble, { type ChatUiMessage } from '../components/ai/AiMessageBubble';
 import AiSessionDrawer from '../components/ai/AiSessionDrawer';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import { useAiSessionMessages, useAskAi } from '../hooks/useAi';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { AiAskRequest, AiProductResponse } from '../types/aiApi';
 
-const SUGGESTED_PROMPTS = [
-  'Tìm tai nghe chống ồn dưới 2 triệu',
-  'Gợi ý laptop có đánh giá tốt',
-  'Có những hình thức thanh toán nào?',
-  'Chính sách hủy đơn như thế nào?',
-];
-
 export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProps<'AiAssistant'>) {
+  const { theme, isDark } = useAppTheme();
+  const { language, t } = useAppLanguage();
   const { user, isAuthenticated } = useAuth();
   const isCustomer = isAuthenticated && user?.role === 'CUSTOMER';
   const isSellerOrAdmin = user?.role === 'SELLER' || user?.role === 'ADMIN';
+
+  const suggestedPrompts = useMemo(
+    () => [
+      t('ai.prompt_headphones', 'Tìm tai nghe chống ồn dưới 2 triệu'),
+      t('ai.prompt_laptop', 'Gợi ý laptop có đánh giá tốt'),
+      t('ai.prompt_payment', 'Có những hình thức thanh toán nào?'),
+      t('ai.prompt_cancellation', 'Chính sách hủy đơn như thế nào?'),
+    ],
+    [t],
+  );
 
   let queryClient: ReturnType<typeof useQueryClient> | undefined;
   try {
@@ -96,7 +103,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
     if (sessionMessagesQuery.isSuccess && sessionMessagesQuery.data) {
       // Sort messages chronologically
       const sorted = [...sessionMessagesQuery.data].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
 
       // Map to ChatUiMessage: historical messages have no answeredBy and no products
@@ -115,15 +122,21 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
       setSelectedSessionId(null);
     } else if (sessionMessagesQuery.isError) {
       const apiError = toApiError(sessionMessagesQuery.error);
-      let errorMsg = 'Không thể tải nội dung cuộc trò chuyện. Vui lòng thử lại.';
+      let errorMsg = t(
+        'ai.sessionLoadError',
+        'Không thể tải nội dung cuộc trò chuyện. Vui lòng thử lại.',
+      );
 
       if (apiError.status === 404 || apiError.code === 'RESOURCE_NOT_FOUND') {
-        errorMsg = 'Cuộc trò chuyện này không còn tồn tại.';
+        errorMsg = t('ai.sessionNotFoundError', 'Cuộc trò chuyện này không còn tồn tại.');
         if (activeSessionId === selectedSessionId) {
           setActiveSessionId(null);
         }
       } else if (apiError.status === 403) {
-        errorMsg = 'Bạn không có quyền xem cuộc trò chuyện này.';
+        errorMsg = t(
+          'ai.sessionForbiddenError',
+          'Bạn không có quyền xem cuộc trò chuyện này.',
+        );
       } else if (apiError.message && !apiError.message.includes('status code')) {
         errorMsg = apiError.message;
       }
@@ -140,6 +153,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
     sessionMessagesQuery.data,
     sessionMessagesQuery.error,
     activeSessionId,
+    t,
   ]);
 
   // Auth transition handler: clear restored sessions when customer logs out
@@ -222,7 +236,7 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
     }
 
     if (trimmedText.length > 1000) {
-      setErrorBanner('Câu hỏi không được vượt quá 1000 ký tự.');
+      setErrorBanner(t('ai.charLimitError', 'Câu hỏi không được vượt quá 1000 ký tự.'));
       return;
     }
 
@@ -247,9 +261,17 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
       setInputText('');
     }
 
-    // Construct request. Resolves session state dynamically at SEND time!
+    // Prepend language response instruction to the outgoing payload for Spring AI LLM.
+    // The user's visible bubble strictly retains only the raw question they typed.
+    const languageInstruction =
+      language === 'en'
+        ? 'Please answer in English.\n\n'
+        : 'Vui lòng trả lời bằng tiếng Việt.\n\n';
+
+    // Construct request. Resolves session state and language dynamically at SEND time!
+    const outgoingMessage = `${languageInstruction}${trimmedText}`.slice(0, 1000);
     const request: AiAskRequest = {
-      message: trimmedText,
+      message: outgoingMessage,
       ...(isCustomer && activeSessionId ? { sessionId: activeSessionId } : {}),
     };
 
@@ -295,26 +317,39 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
       );
 
       const apiError = toApiError(err);
-      let userFacingError = 'Không thể nhận câu trả lời lúc này. Vui lòng thử lại.';
+      let userFacingError = t(
+        'ai.genericError',
+        'Không thể nhận câu trả lời lúc này. Vui lòng thử lại.',
+      );
 
       if (apiError.status === 400 || apiError.code === 'VALIDATION_ERROR') {
-        userFacingError = 'Vui lòng kiểm tra lại câu hỏi.';
+        userFacingError = t('ai.validationError', 'Vui lòng kiểm tra lại câu hỏi.');
       } else if (apiError.status === 429 || apiError.code === 'RATE_LIMITED') {
-        userFacingError =
-          'Bạn đã hỏi quá nhiều câu trong 1 phút. Vui lòng chờ một chút rồi thử lại.';
+        userFacingError = t(
+          'ai.rateLimitedError',
+          'Bạn đã hỏi quá nhiều câu trong 1 phút. Vui lòng chờ một chút rồi thử lại.',
+        );
       } else if (apiError.status === 404 || apiError.code === 'RESOURCE_NOT_FOUND') {
         // Stale or deleted session: reset local activeSessionId so next turn creates a fresh session
         setActiveSessionId(null);
-        userFacingError =
-          'Phiên trò chuyện trước đó đã kết thúc. Câu hỏi tiếp theo sẽ bắt đầu cuộc trò chuyện mới.';
+        userFacingError = t(
+          'ai.sessionEndedError',
+          'Phiên trò chuyện trước đó đã kết thúc. Câu hỏi tiếp theo sẽ bắt đầu cuộc trò chuyện mới.',
+        );
       } else if (apiError.status === 403) {
-        userFacingError = 'Bạn không có quyền thực hiện thao tác này.';
+        userFacingError = t(
+          'ai.forbiddenError',
+          'Bạn không có quyền thực hiện thao tác này.',
+        );
       } else if (
         apiError.code === 'NETWORK_ERROR' ||
         apiError.code === 'TIMEOUT_ERROR' ||
         apiError.status === null
       ) {
-        userFacingError = 'Không thể kết nối tới trợ lý lúc này. Vui lòng thử lại.';
+        userFacingError = t(
+          'ai.networkError',
+          'Không thể kết nối tới trợ lý lúc này. Vui lòng thử lại.',
+        );
       } else if (apiError.message && !apiError.message.includes('status code')) {
         userFacingError = apiError.message;
       }
@@ -347,16 +382,30 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
   // Gracefully block access if seller or admin navigates directly
   if (isSellerOrAdmin) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+      >
         <View style={styles.blockedState}>
           <Text style={styles.blockedIcon}>ℹ️</Text>
-          <Text style={styles.blockedTitle}>Trợ lý mua sắm AI</Text>
-          <Text style={styles.blockedMessage}>
-            Trợ lý AI chỉ khả dụng cho Khách hàng và Khách vãng lai để tìm kiếm sản phẩm và giải đáp
-            chính sách.
+          <Text style={[styles.blockedTitle, { color: theme.text }]}>
+            {t('ai.blockedTitle', 'Trợ lý mua sắm AI')}
           </Text>
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Quay lại</Text>
+          <Text style={[styles.blockedMessage, { color: theme.textSecondary }]}>
+            {t(
+              'ai.blockedMessage',
+              'Trợ lý AI chỉ khả dụng cho Khách hàng và Khách vãng lai để tìm kiếm sản phẩm và giải đáp chính sách.',
+            )}
+          </Text>
+          <Pressable
+            style={[styles.backButton, { backgroundColor: theme.primary }]}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel={t('ai.goBack', 'Quay lại')}
+          >
+            <Text style={[styles.backButtonText, { color: theme.onPrimary }]}>
+              {t('ai.goBack', 'Quay lại')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -366,7 +415,11 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
   const isSendDisabled = inputText.trim().length === 0 || askAiMutation.isPending;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="ai-assistant-screen"
+    >
       <KeyboardAvoidingView
         style={[
           styles.keyboardContainer,
@@ -376,31 +429,47 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Top Action Bar for Customer History and New Chat */}
-        <View style={styles.topBar}>
+        <View
+          style={[
+            styles.topBar,
+            { backgroundColor: theme.background, borderBottomColor: theme.border },
+          ]}
+        >
           {isCustomer ? (
             <Pressable
-              style={styles.topBarButton}
+              style={[
+                styles.topBarButton,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
               onPress={() => {
                 setDrawerLoadError(null);
                 setHistoryDrawerVisible(true);
               }}
               accessibilityRole="button"
-              accessibilityLabel="Lịch sử"
+              accessibilityLabel={t('ai.historyA11y', 'Lịch sử')}
             >
               <Text style={styles.topBarButtonIcon}>🕒</Text>
-              <Text style={styles.topBarButtonText}>Lịch sử</Text>
+              <Text style={[styles.topBarButtonText, { color: theme.text }]}>
+                {t('ai.history', 'Lịch sử')}
+              </Text>
             </Pressable>
           ) : null}
 
           {isCustomer || messages.length > 0 ? (
             <Pressable
-              style={[styles.topBarButton, styles.newChatButton]}
+              style={[
+                styles.topBarButton,
+                styles.newChatButton,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
               onPress={handleNewChat}
               accessibilityRole="button"
-              accessibilityLabel="Đoạn chat mới"
+              accessibilityLabel={t('ai.newChatA11y', 'Đoạn chat mới')}
             >
-              <Text style={styles.newChatButtonIcon}>＋</Text>
-              <Text style={styles.newChatButtonText}>Đoạn chat mới</Text>
+              <Text style={[styles.newChatButtonIcon, { color: theme.primary }]}>＋</Text>
+              <Text style={[styles.newChatButtonText, { color: theme.primary }]}>
+                {t('ai.newChat', 'Đoạn chat mới')}
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -408,27 +477,42 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
         {messages.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyHeader}>
-              <View style={styles.avatarWrap}>
+              <View
+                style={[
+                  styles.avatarWrap,
+                  { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#E0F2FE' },
+                ]}
+              >
                 <Text style={styles.avatarIcon}>✨</Text>
               </View>
-              <Text style={styles.emptyTitle}>Xin chào! Mình là trợ lý mua sắm.</Text>
-              <Text style={styles.emptySubtitle}>
-                Bạn muốn tìm sản phẩm hoặc hỏi gì về cửa hàng?
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                {t('ai.assistantGreeting', 'Xin chào! Mình là trợ lý mua sắm.')}
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                {t(
+                  'ai.assistantSubtitle',
+                  'Bạn muốn tìm sản phẩm hoặc hỏi gì về cửa hàng?',
+                )}
               </Text>
             </View>
 
             <View style={styles.suggestionsWrap}>
-              <Text style={styles.suggestionsHeading}>Gợi ý câu hỏi:</Text>
-              {SUGGESTED_PROMPTS.map((prompt, index) => (
+              <Text style={[styles.suggestionsHeading, { color: theme.textSecondary }]}>
+                {t('ai.suggestedQuestions', 'Gợi ý câu hỏi:')}
+              </Text>
+              {suggestedPrompts.map((prompt, index) => (
                 <Pressable
                   key={index}
-                  style={styles.promptPill}
+                  style={[
+                    styles.promptPill,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
                   onPress={() => handleSend(prompt)}
                   accessibilityRole="button"
                   accessibilityLabel={prompt}
                 >
-                  <Text style={styles.promptPillText}>{prompt}</Text>
-                  <Text style={styles.promptPillArrow}>→</Text>
+                  <Text style={[styles.promptPillText, { color: theme.text }]}>{prompt}</Text>
+                  <Text style={[styles.promptPillArrow, { color: theme.primary }]}>→</Text>
                 </Pressable>
               ))}
             </View>
@@ -451,8 +535,10 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
             ListFooterComponent={
               askAiMutation.isPending ? (
                 <View style={styles.typingIndicator}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.typingText}>Trợ lý đang suy nghĩ...</Text>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                  <Text style={[styles.typingText, { color: theme.textSecondary }]}>
+                    {t('ai.thinking', 'Trợ lý đang suy nghĩ...')}
+                  </Text>
                 </View>
               ) : undefined
             }
@@ -460,45 +546,91 @@ export default function AiAssistantScreen({ navigation }: AppNavigatorScreenProp
         )}
 
         {errorBanner ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{errorBanner}</Text>
+          <View
+            style={[
+              styles.errorBanner,
+              {
+                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+                borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+              },
+            ]}
+          >
+            <Text style={[styles.errorBannerText, { color: theme.danger }]}>{errorBanner}</Text>
             <Pressable
               onPress={() => setErrorBanner(null)}
               accessibilityRole="button"
-              accessibilityLabel="Đóng thông báo lỗi"
+              accessibilityLabel={t('ai.closeErrorBanner', 'Đóng thông báo lỗi')}
             >
-              <Text style={styles.errorBannerClose}>✕</Text>
+              <Text
+                style={[
+                  styles.errorBannerClose,
+                  { color: isDark ? '#FCA5A5' : '#991B1B' },
+                ]}
+              >
+                ✕
+              </Text>
             </Pressable>
           </View>
         ) : null}
 
-        <View style={styles.composerWrapper}>
+        <View
+          style={[
+            styles.composerWrapper,
+            { backgroundColor: theme.background, borderTopColor: theme.border },
+          ]}
+        >
           <TextInput
-            style={styles.composerInput}
+            style={[
+              styles.composerInput,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Hỏi về sản phẩm, chính sách..."
-            placeholderTextColor={colors.textSecondary}
+            placeholder={t('ai.composerPlaceholder', 'Hỏi về sản phẩm, chính sách...')}
+            placeholderTextColor={theme.textSecondary}
             multiline
             maxLength={1000}
             editable={!askAiMutation.isPending}
-            accessibilityLabel="Nhập câu hỏi cho trợ lý AI"
+            accessibilityLabel={t('ai.composerA11y', 'Nhập câu hỏi cho trợ lý AI')}
           />
 
           {inputText.length >= 900 ? (
-            <Text style={styles.charCounter} testID="composer-char-counter">
+            <Text
+              style={[styles.charCounter, { color: isDark ? '#FCD34D' : '#D97706' }]}
+              testID="composer-char-counter"
+            >
               {inputText.length}/1000
             </Text>
           ) : null}
 
           <Pressable
-            style={[styles.sendButton, isSendDisabled && styles.sendButtonDisabled]}
+            style={[
+              styles.sendButton,
+              { backgroundColor: theme.primary },
+              isSendDisabled && [
+                styles.sendButtonDisabled,
+                { backgroundColor: isDark ? theme.border : '#E5E7EB' },
+              ],
+            ]}
             onPress={() => handleSend()}
             disabled={isSendDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Gửi câu hỏi"
+            accessibilityLabel={t('ai.sendA11y', 'Gửi câu hỏi')}
           >
-            <Text style={[styles.sendButtonIcon, isSendDisabled && styles.sendButtonIconDisabled]}>
+            <Text
+              style={[
+                styles.sendButtonIcon,
+                { color: theme.onPrimary },
+                isSendDisabled && [
+                  styles.sendButtonIconDisabled,
+                  { color: isDark ? theme.textSecondary : '#9CA3AF' },
+                ],
+              ]}
+            >
               ↑
             </Text>
           </Pressable>

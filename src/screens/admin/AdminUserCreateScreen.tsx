@@ -19,9 +19,10 @@
  *    - Password visibility toggle.
  *    - Preserves entered form values on error.
  * 6. Accessibility labels and error display.
+ * 7. Personalization: Theme-driven semantic styles & localized bilingual strings.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -38,24 +39,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
-import { useAuth } from '../../hooks/useAuth';
+import { radii, spacing, typography } from '../../constants/theme';
 import { useCreateAdminUser } from '../../hooks/useAdmin';
+import { useAuth } from '../../hooks/useAuth';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
+import { useAppTheme } from '../../theme';
 import type { Role } from '../../types/auth';
 
 type Props = AppNavigatorScreenProps<'AdminUserCreate'>;
-
-const ROLE_OPTIONS: { role: Role; label: string; desc: string }[] = [
-  { role: 'CUSTOMER', label: 'Khách hàng', desc: 'Mua sắm và đặt hàng trên nền tảng' },
-  { role: 'SELLER', label: 'Người bán', desc: 'Mở gian hàng và bán sản phẩm (Bắt đầu ở trạng thái Chờ duyệt)' },
-  { role: 'ADMIN', label: 'Quản trị viên', desc: 'Toàn quyền quản trị hệ thống' },
-];
 
 const VIETNAMESE_PHONE_REGEX = /^(0|\+84)[35789]\d{8}$/;
 
 export default function AdminUserCreateScreen({ navigation }: Props) {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+
   const isAdmin = isAuthenticated && currentUser?.role === 'ADMIN';
 
   const [email, setEmail] = useState('');
@@ -72,23 +73,54 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
   const createMutation = useCreateAdminUser();
 
+  const roleOptions: { role: Role; label: string; desc: string }[] = useMemo(
+    () => [
+      {
+        role: 'CUSTOMER',
+        label: t('admin.enums.role.customer', 'Khách hàng'),
+        desc: t('admin.users.create.roleDescCustomer', 'Mua sắm và đặt hàng trên nền tảng'),
+      },
+      {
+        role: 'SELLER',
+        label: t('admin.enums.role.seller', 'Người bán'),
+        desc: t(
+          'admin.users.create.roleDescSeller',
+          'Mở gian hàng và bán sản phẩm (Bắt đầu ở trạng thái Chờ duyệt)',
+        ),
+      },
+      {
+        role: 'ADMIN',
+        label: t('admin.enums.role.admin', 'Quản trị viên'),
+        desc: t('admin.users.create.roleDescAdmin', 'Toàn quyền quản trị hệ thống'),
+      },
+    ],
+    [t],
+  );
+
   // Role Guard
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>
+            {t('admin.users.create.unauthorizedTitle', 'Truy cập bị từ chối')}
+          </Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền tạo người dùng.
+            {t(
+              'admin.users.create.unauthorizedMessage',
+              'Chỉ Quản trị viên hệ thống mới có quyền tạo người dùng.',
+            )}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel={t('admin.common.actions.back', 'Quay lại')}
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>
+              {t('admin.common.actions.back', 'Quay lại')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -100,31 +132,34 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      errors.email = 'Vui lòng nhập địa chỉ email';
+      errors.email = t('admin.users.create.validation.emailRequired', 'Vui lòng nhập địa chỉ email');
     } else if (!trimmedEmail.includes('@') || trimmedEmail.length > 255) {
-      errors.email = 'Email không hợp lệ';
+      errors.email = t('admin.users.create.validation.emailInvalid', 'Email không hợp lệ');
     }
 
     if (!password) {
-      errors.password = 'Vui lòng nhập mật khẩu';
+      errors.password = t('admin.users.create.validation.passwordRequired', 'Vui lòng nhập mật khẩu');
     } else if (password.length < 8 || password.length > 72) {
-      errors.password = 'Mật khẩu phải từ 8 đến 72 ký tự';
+      errors.password = t('admin.users.create.validation.passwordLength', 'Mật khẩu phải từ 8 đến 72 ký tự');
     }
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = 'Vui lòng nhập họ và tên';
+      errors.name = t('admin.users.create.validation.nameRequired', 'Vui lòng nhập họ và tên');
     } else if (trimmedName.length > 255) {
-      errors.name = 'Họ và tên tối đa 255 ký tự';
+      errors.name = t('admin.users.create.validation.nameTooLong', 'Họ và tên tối đa 255 ký tự');
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
-      errors.phone = 'Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)';
+      errors.phone = t(
+        'admin.users.create.validation.phoneInvalid',
+        'Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)',
+      );
     }
 
     if (address.length > 500) {
-      errors.address = 'Địa chỉ tối đa 500 ký tự';
+      errors.address = t('admin.users.create.validation.addressTooLong', 'Địa chỉ tối đa 500 ký tự');
     }
 
     setFormErrors(errors);
@@ -146,9 +181,11 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
         address: address.trim() || undefined,
       });
 
-      Alert.alert('Thành công', 'Đã tạo tài khoản người dùng mới thành công.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        t('admin.users.create.successTitle', 'Thành công'),
+        t('admin.users.create.successMsg', 'Đã tạo tài khoản người dùng mới thành công.'),
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (err: unknown) {
       const apiErr = toApiError(err);
       setServerError(apiErr.message);
@@ -172,12 +209,12 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Email field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Email <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.emailLabel', 'Email')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.email ? styles.inputError : null]}
               placeholder="user@example.com"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
@@ -196,13 +233,16 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Password field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Mật khẩu ban đầu <Text style={styles.requiredStar}>* (8-72 ký tự)</Text>
+              {t('admin.users.create.passwordLabel', 'Mật khẩu ban đầu')}{' '}
+              <Text style={styles.requiredStar}>
+                * {t('admin.users.create.passwordHint', '(8-72 ký tự)')}
+              </Text>
             </Text>
             <View style={[styles.passwordContainer, formErrors.password ? styles.inputError : null]}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Nhập mật khẩu"
-                placeholderTextColor={colors.textSecondary}
+                placeholder={t('admin.users.create.passwordPlaceholder', 'Nhập mật khẩu')}
+                placeholderTextColor={theme.textSecondary}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -218,10 +258,18 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
                 hitSlop={8}
                 style={styles.eyeButton}
                 accessibilityRole="button"
-                accessibilityLabel={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                accessibilityLabel={
+                  showPassword
+                    ? t('admin.users.create.togglePasswordHide', 'Ẩn mật khẩu')
+                    : t('admin.users.create.togglePasswordShow', 'Hiện mật khẩu')
+                }
                 testID="toggle-password-visibility"
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Ẩn' : 'Hiện'}</Text>
+                <Text style={styles.eyeText}>
+                  {showPassword
+                    ? t('admin.users.create.togglePasswordHide', 'Ẩn')
+                    : t('admin.users.create.togglePasswordShow', 'Hiện')}
+                </Text>
               </Pressable>
             </View>
             {formErrors.password ? (
@@ -232,12 +280,12 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Full Name field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Họ và tên <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.nameLabel', 'Họ và tên')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
-              placeholder="Nguyễn Văn A"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('admin.users.create.namePlaceholder', 'Nguyễn Văn A')}
+              placeholderTextColor={theme.textSecondary}
               value={name}
               onChangeText={(text) => {
                 setName(text);
@@ -253,10 +301,10 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Vai trò <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.roleLabel', 'Vai trò')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <View style={styles.roleOptionsContainer}>
-              {ROLE_OPTIONS.map((item) => {
+              {roleOptions.map((item) => {
                 const isSelected = role === item.role;
                 return (
                   <Pressable
@@ -285,11 +333,13 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
           {/* Phone field */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Số điện thoại (tùy chọn)</Text>
+            <Text style={styles.label}>
+              {t('admin.users.create.phoneLabel', 'Số điện thoại (tùy chọn)')}
+            </Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
               placeholder="0912345678"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               value={phone}
               onChangeText={(text) => {
                 setPhone(text);
@@ -305,11 +355,13 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
           {/* Address field */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Địa chỉ (tùy chọn)</Text>
+            <Text style={styles.label}>
+              {t('admin.users.create.addressLabel', 'Địa chỉ (tùy chọn)')}
+            </Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder="Địa chỉ liên hệ"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('admin.users.create.addressPlaceholder', 'Địa chỉ liên hệ')}
+              placeholderTextColor={theme.textSecondary}
               value={address}
               onChangeText={(text) => {
                 setAddress(text);
@@ -326,16 +378,21 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Enabled switch */}
           <View style={styles.switchGroup}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Kích hoạt tài khoản ngay</Text>
+              <Text style={styles.switchLabel}>
+                {t('admin.users.create.enabledLabel', 'Kích hoạt tài khoản ngay')}
+              </Text>
               <Text style={styles.switchSubtext}>
-                Tài khoản có thể đăng nhập ngay sau khi tạo
+                {t(
+                  'admin.users.create.enabledSubtext',
+                  'Tài khoản có thể đăng nhập ngay sau khi tạo',
+                )}
               </Text>
             </View>
             <Switch
               value={enabled}
               onValueChange={setEnabled}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.onPrimary}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={theme.onPrimary}
               testID="create-enabled-switch"
             />
           </View>
@@ -350,13 +407,15 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
             onPress={handleSubmit}
             disabled={createMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Tạo người dùng"
+            accessibilityLabel={t('admin.users.create.submitBtn', 'Tạo người dùng')}
             testID="submit-create-user-button"
           >
             {createMutation.isPending ? (
-              <ActivityIndicator size="small" color={colors.onPrimary} />
+              <ActivityIndicator size="small" color={theme.onPrimary} />
             ) : (
-              <Text style={styles.submitButtonText}>Tạo người dùng</Text>
+              <Text style={styles.submitButtonText}>
+                {t('admin.users.create.submitBtn', 'Tạo người dùng')}
+              </Text>
             )}
           </Pressable>
         </ScrollView>
@@ -365,220 +424,221 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  serverErrorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3F2',
-    borderWidth: 1,
-    borderColor: '#FECDCA',
-    borderRadius: radii.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  errorIcon: {
-    fontSize: 16,
-  },
-  serverErrorText: {
-    flex: 1,
-    color: colors.danger,
-    fontSize: typography.sm,
-    lineHeight: 18,
-  },
-  fieldGroup: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  requiredStar: {
-    color: colors.danger,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.md,
-    color: colors.text,
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.md,
-    color: colors.text,
-  },
-  eyeButton: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  eyeText: {
-    fontSize: typography.sm,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: typography.xs,
-    marginTop: 4,
-  },
-  roleOptionsContainer: {
-    gap: spacing.xs,
-  },
-  roleCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: spacing.sm + 2,
-  },
-  roleCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: '#F0FBFC',
-  },
-  roleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: colors.textSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  radioCircleActive: {
-    borderColor: colors.primary,
-  },
-  radioInnerCircle: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  roleTitle: {
-    fontSize: typography.md,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  roleTitleActive: {
-    color: colors.primary,
-  },
-  roleDesc: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-    marginLeft: 26,
-    lineHeight: 16,
-  },
-  switchGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.lg,
-  },
-  switchLabelContainer: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  switchLabel: {
-    fontSize: typography.md,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  switchSubtext: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: radii.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    color: colors.onPrimary,
-    fontSize: typography.base,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  stateIcon: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  unauthorizedTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  unauthorizedMessage: {
-    fontSize: typography.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radii.sm,
-  },
-  backButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.base,
-  },
-});
+const createStyles = (theme: ReturnType<typeof useAppTheme>['theme'], isDark = false) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    serverErrorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF3F2',
+      borderWidth: 1,
+      borderColor: isDark ? '#B91C1C' : '#FECDCA',
+      borderRadius: radii.sm,
+      padding: spacing.sm,
+      marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    errorIcon: {
+      fontSize: 16,
+    },
+    serverErrorText: {
+      flex: 1,
+      color: theme.danger,
+      fontSize: typography.sm,
+      lineHeight: 18,
+    },
+    fieldGroup: {
+      marginBottom: spacing.md,
+    },
+    label: {
+      fontSize: typography.sm,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: spacing.xs,
+    },
+    requiredStar: {
+      color: theme.danger,
+    },
+    input: {
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      fontSize: typography.md,
+      color: theme.text,
+    },
+    passwordContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+    },
+    passwordInput: {
+      flex: 1,
+      paddingVertical: spacing.sm + 2,
+      fontSize: typography.md,
+      color: theme.text,
+    },
+    eyeButton: {
+      paddingHorizontal: spacing.xs,
+      paddingVertical: spacing.xs,
+    },
+    eyeText: {
+      fontSize: typography.sm,
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    inputError: {
+      borderColor: theme.danger,
+    },
+    errorText: {
+      color: theme.danger,
+      fontSize: typography.xs,
+      marginTop: 4,
+    },
+    roleOptionsContainer: {
+      gap: spacing.xs,
+    },
+    roleCard: {
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      padding: spacing.sm + 2,
+    },
+    roleCardActive: {
+      borderColor: theme.primary,
+      backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : '#F0FBFC',
+    },
+    roleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    radioCircle: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      borderColor: theme.textSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: spacing.sm,
+    },
+    radioCircleActive: {
+      borderColor: theme.primary,
+    },
+    radioInnerCircle: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.primary,
+    },
+    roleTitle: {
+      fontSize: typography.md,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    roleTitleActive: {
+      color: theme.primary,
+    },
+    roleDesc: {
+      fontSize: typography.xs,
+      color: theme.textSecondary,
+      marginLeft: 26,
+      lineHeight: 16,
+    },
+    switchGroup: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: spacing.lg,
+    },
+    switchLabelContainer: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    switchLabel: {
+      fontSize: typography.md,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    switchSubtext: {
+      fontSize: typography.xs,
+      color: theme.textSecondary,
+    },
+    submitButton: {
+      backgroundColor: theme.primary,
+      paddingVertical: spacing.md,
+      borderRadius: radii.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    submitButtonText: {
+      color: theme.onPrimary,
+      fontSize: typography.base,
+      fontWeight: '700',
+    },
+    buttonPressed: {
+      opacity: 0.7,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    centerContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    stateIcon: {
+      fontSize: 48,
+      marginBottom: spacing.sm,
+    },
+    unauthorizedTitle: {
+      fontSize: typography.xl,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    unauthorizedMessage: {
+      fontSize: typography.md,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: spacing.lg,
+    },
+    backButton: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.primary,
+      borderRadius: radii.sm,
+    },
+    backButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.base,
+    },
+  });

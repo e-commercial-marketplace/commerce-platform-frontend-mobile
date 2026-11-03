@@ -1,20 +1,6 @@
 /**
  * Shopping cart screen backed by the real Cart API (via `useCart`).
- *
- * Customer states:
- * - loading      -> spinner;
- * - error        -> backend/normalized message + Retry;
- * - empty        -> empty state whose "Continue Shopping" returns to Home;
- * - items        -> server cart lines + selection + preview subtotal.
- *
- * Guests get a sign-in prompt (no guest server cart exists); sellers/admins
- * are told the cart is customer-only and no cart request is made for them.
- *
- * Checkout selection is local UI state keyed by cart-item id. All purchasable
- * lines are selected after the first authoritative cart load; unavailable
- * lines stay visible but can never be selected. The footer shows a preview
- * subtotal for the selection, not the backend cart subtotal (which covers
- * every purchasable line).
+ * Fully theme-aware with dynamic semantic tokens and localized strings.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -31,10 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
 import CartItemRow from '../components/CartItemRow';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
+import { useAppLanguage } from '../i18n';
 import type { MainTabScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 import {
   createDefaultSelection,
   getSelectedCartItemIds,
@@ -44,6 +32,8 @@ import {
 import { formatVND } from '../utils/format';
 
 export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { user, isAuthenticated, isRestoring } = useAuth();
   const {
     items,
@@ -62,8 +52,6 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
     clearCart,
   } = useCart();
 
-  // `null` means "no authoritative cart loaded yet". Once loaded, the default
-  // is every purchasable line; later data changes only prune the selection.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectionInitialized = useRef(false);
 
@@ -106,23 +94,26 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
     });
   };
 
-  /** Runs a cart action and surfaces the normalized backend message. */
   const runAction = async (action: () => Promise<void>) => {
     try {
       await action();
     } catch (actionError) {
-      Alert.alert('Cart', toApiError(actionError).message);
+      Alert.alert(t('cart.title', 'Cart'), toApiError(actionError).message);
     }
   };
 
-  // Session restore: avoid flashing the guest prompt while the stored session
-  // is still being verified.
   if (isRestoring) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="cart-screen"
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.centerText}>Loading your cart…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.centerText, { color: theme.textSecondary }]}>
+            {t('cart.loadingCart', 'Loading your cart…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -130,29 +121,47 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 
   if (!isAuthenticated || user == null) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="cart-screen"
+      >
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🔐</Text>
-          <Text style={styles.emptyTitle}>Sign in to use your cart</Text>
-          <Text style={styles.emptyText}>
-            Your cart is saved to your customer account. Log in to add products and see your
-            items here.
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('cart.signInTitle', 'Sign in to use your cart')}
+          </Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            {t(
+              'cart.signInText',
+              'Your cart is saved to your customer account. Log in to add products and see your items here.',
+            )}
           </Text>
           <Pressable
             onPress={handleLogin}
-            style={({ pressed }) => [styles.emptyButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.emptyButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Log in"
+            accessibilityLabel={t('cart.login', 'Log in')}
           >
-            <Text style={styles.emptyButtonText}>Login</Text>
+            <Text style={styles.emptyButtonText}>{t('cart.login', 'Login')}</Text>
           </Pressable>
           <Pressable
             onPress={handleContinueShopping}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              { backgroundColor: theme.surface, borderColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Continue shopping"
+            accessibilityLabel={t('cart.continueShopping', 'Continue shopping')}
           >
-            <Text style={styles.secondaryButtonText}>Continue Shopping</Text>
+            <Text style={[styles.secondaryButtonText, { color: theme.primary }]}>
+              {t('cart.continueShopping', 'Continue Shopping')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -161,18 +170,35 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 
   if (!isCustomer) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="cart-screen"
+      >
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🛒</Text>
-          <Text style={styles.emptyTitle}>Customer accounts only</Text>
-          <Text style={styles.emptyText}>Cart is available for customer accounts only.</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('cart.customerAccountsOnly', 'Customer accounts only')}
+          </Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            {t(
+              'cart.customerAccountsText',
+              'Cart is available for customer accounts only.',
+            )}
+          </Text>
           <Pressable
             onPress={handleContinueShopping}
-            style={({ pressed }) => [styles.emptyButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.emptyButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Continue shopping"
+            accessibilityLabel={t('cart.continueShopping', 'Continue shopping')}
           >
-            <Text style={styles.emptyButtonText}>Continue Shopping</Text>
+            <Text style={styles.emptyButtonText}>
+              {t('cart.continueShopping', 'Continue Shopping')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -181,10 +207,16 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="cart-screen"
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.centerText}>Loading your cart…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.centerText, { color: theme.textSecondary }]}>
+            {t('cart.loadingCart', 'Loading your cart…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -192,22 +224,34 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 
   if (isError) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to load your cart. Please try again.';
+      error instanceof Error
+        ? error.message
+        : t('cart.couldNotLoad', 'Failed to load your cart. Please try again.');
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="cart-screen"
+      >
         <View style={styles.centerState}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Couldn&apos;t load your cart</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
+          <Text style={[styles.errorTitle, { color: theme.text }]}>
+            {t('cart.couldNotLoad', "Couldn't load your cart")}
+          </Text>
+          <Text style={[styles.errorText, { color: theme.textSecondary }]}>{errorMessage}</Text>
           <Pressable
             onPress={() => {
               void refetch();
             }}
-            style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Retry loading cart"
+            accessibilityLabel={t('cart.retryLoadingCart', 'Retry loading cart')}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{t('cart.retry', 'Retry')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -216,18 +260,35 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="cart-screen"
+      >
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🛒</Text>
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptyText}>Browse the catalog and add products you love.</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('cart.emptyCartTitle', 'Your cart is empty')}
+          </Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            {t(
+              'cart.emptyCartText',
+              'Browse the catalog and add products you love.',
+            )}
+          </Text>
           <Pressable
             onPress={handleContinueShopping}
-            style={({ pressed }) => [styles.emptyButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.emptyButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Continue shopping"
+            accessibilityLabel={t('cart.continueShopping', 'Continue shopping')}
           >
-            <Text style={styles.emptyButtonText}>Continue Shopping</Text>
+            <Text style={styles.emptyButtonText}>
+              {t('cart.continueShopping', 'Continue Shopping')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -237,12 +298,20 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
   const hasUnavailable = items.some((item) => !item.available);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+      testID="cart-screen"
+    >
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Cart</Text>
-          <Text style={styles.headerSubtitle}>
-            {totalItems} {totalItems === 1 ? 'item' : 'items'}
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            {t('cart.title', 'Cart')}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+            {totalItems === 1
+              ? t('cart.itemCount_one', '1 item')
+              : t('cart.itemCount_other', `${totalItems} items`, { count: totalItems })}
           </Text>
         </View>
         <Pressable
@@ -252,11 +321,17 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
           disabled={isMutating}
           style={({ pressed }) => [(pressed || isMutating) && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel="Clear cart"
+          accessibilityLabel={t('cart.clearCart', 'Clear cart')}
           accessibilityState={{ disabled: isMutating, busy: isClearing }}
         >
-          <Text style={[styles.clearText, isMutating && styles.clearTextDisabled]}>
-            {isClearing ? 'Clearing…' : 'Clear Cart'}
+          <Text
+            style={[
+              styles.clearText,
+              { color: theme.danger },
+              isMutating && styles.clearTextDisabled,
+            ]}
+          >
+            {isClearing ? t('cart.clearing', 'Clearing…') : t('cart.clearCart', 'Clear Cart')}
           </Text>
         </Pressable>
       </View>
@@ -285,30 +360,58 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
         contentContainerStyle={styles.listContent}
       />
 
-      <View style={styles.summary}>
+      <View
+        style={[
+          styles.summary,
+          {
+            backgroundColor: theme.surface,
+            borderTopColor: theme.border,
+          },
+        ]}
+      >
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Selected subtotal</Text>
-          <Text style={styles.summaryValue}>{formatVND(selectedSubtotal)}</Text>
+          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
+            {t('cart.selectedSubtotal', 'Selected subtotal')}
+          </Text>
+          <Text style={[styles.summaryValue, { color: theme.text }]}>
+            {formatVND(selectedSubtotal)}
+          </Text>
         </View>
-        <Text style={styles.summaryCaption}>
-          {selectedItemIds.length} of {totalItems} {totalItems === 1 ? 'item' : 'items'} selected
+        <Text style={[styles.summaryCaption, { color: theme.textSecondary }]}>
+          {t(
+            'cart.selectedCount',
+            `${selectedItemIds.length} of ${totalItems} ${totalItems === 1 ? 'item' : 'items'} selected`,
+            {
+              selected: selectedItemIds.length,
+              total: totalItems,
+              items: totalItems === 1 ? 'item' : 'items',
+            },
+          )}
         </Text>
         {hasUnavailable && (
-          <Text style={styles.summaryCaption}>Excludes unavailable items.</Text>
+          <Text style={[styles.summaryCaption, { color: theme.textSecondary }]}>
+            {t('cart.excludesUnavailable', 'Excludes unavailable items.')}
+          </Text>
         )}
         <Pressable
           onPress={handleCheckout}
           disabled={!hasSelection || isMutating}
           style={({ pressed }) => [
             styles.checkoutButton,
-            (!hasSelection || isMutating) && styles.checkoutButtonDisabled,
-            pressed && hasSelection && !isMutating && styles.buttonPressed,
+            { backgroundColor: theme.primary },
+            (!hasSelection || isMutating || pressed) && styles.checkoutButtonDisabled,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Proceed to checkout"
+          accessibilityLabel={t('cart.proceedToCheckout', 'Proceed to checkout')}
           accessibilityState={{ disabled: !hasSelection || isMutating }}
         >
-          <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+          <Text style={styles.checkoutButtonText}>
+            {hasSelection
+              ? t('cart.checkoutSelected', `Checkout (${selectedItemIds.length})`, {
+                  count: selectedItemIds.length,
+                })
+              : t('cart.checkout', 'Checkout')}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -318,126 +421,79 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingVertical: spacing.md,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.text,
   },
   headerSubtitle: {
-    marginTop: spacing.xs,
     fontSize: 13,
-    color: colors.textSecondary,
+    marginTop: 2,
   },
   clearText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.danger,
   },
   clearTextDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
-  pressed: {
-    opacity: 0.75,
-  },
-  // Item list
   listContent: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
     gap: spacing.sm,
   },
-  // Summary + checkout footer
   summary: {
-    padding: spacing.md,
-    gap: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
+    padding: spacing.md,
+    gap: spacing.xs,
   },
   summaryRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
   },
   summaryLabel: {
-    fontSize: 15,
-    color: colors.textSecondary,
+    fontSize: 14,
   },
   summaryValue: {
-    fontSize: 18,
+    fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.text,
   },
   summaryCaption: {
     fontSize: 12,
-    color: colors.textSecondary,
   },
   checkoutButton: {
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
   },
   checkoutButtonDisabled: {
     opacity: 0.5,
   },
   checkoutButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
   },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  // Centered loading/error states
   centerState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
     gap: spacing.sm,
+    padding: spacing.xl,
   },
   centerText: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
-  errorIcon: {
-    fontSize: 40,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  errorText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radii.sm,
-  },
-  retryButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-  },
-  // Empty / guest / non-customer states
   empty: {
     flex: 1,
     alignItems: 'center',
@@ -449,45 +505,67 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: typography.xl,
+    fontWeight: '700',
   },
   emptyText: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: 'center',
+    maxWidth: 280,
   },
   emptyButton: {
-    alignSelf: 'stretch',
-    marginTop: spacing.md,
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
-    minHeight: 48,
+    minHeight: 44,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
   },
   emptyButtonText: {
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.onPrimary,
   },
   secondaryButton: {
-    alignSelf: 'stretch',
-    marginTop: spacing.xs,
-    backgroundColor: colors.surface,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: 48,
+    minHeight: 44,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
   },
   secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  errorIcon: {
+    fontSize: 48,
+  },
+  errorTitle: {
+    fontSize: typography.xl,
+    fontWeight: '700',
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  retryButton: {
+    borderRadius: radii.md,
+    minHeight: 40,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

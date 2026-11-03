@@ -18,6 +18,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { ProductSummaryDto } from '../../types/sellerProductApi';
 import PriceDisplay from '../PriceDisplay';
 import ProductImage from '../ProductImage';
@@ -41,6 +43,9 @@ export default function SellerProductCard({
   onRelist,
   disabled = false,
 }: SellerProductCardProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const imageSource =
     product.imageUrl && product.imageUrl.trim().length > 0
       ? { uri: product.imageUrl }
@@ -50,46 +55,67 @@ export default function SellerProductCard({
   const isListed = product.active;
 
   return (
-    <View style={styles.card} testID={`seller-product-card-${product.id}`}>
+    <View
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      testID={`seller-product-card-${product.id}`}
+    >
       <View style={styles.mainRow}>
-        <ProductImage source={imageSource} style={styles.thumbnail} />
+        <ProductImage
+          source={imageSource}
+          style={[styles.thumbnail, { backgroundColor: theme.surface }]}
+        />
 
         <View style={styles.infoCol}>
           <View style={styles.titleRow}>
-            <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">
+            <Text
+              style={[styles.name, { color: theme.text }]}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
               {product.name}
             </Text>
             <View
               style={[
                 styles.statusBadge,
-                isListed ? styles.statusBadgeActive : styles.statusBadgeInactive,
+                isListed
+                  ? isDark
+                    ? { backgroundColor: 'rgba(34, 197, 94, 0.2)' }
+                    : styles.statusBadgeActive
+                  : isDark
+                    ? { backgroundColor: 'rgba(148, 163, 184, 0.2)' }
+                    : styles.statusBadgeInactive,
               ]}
             >
               <Text
                 style={[
                   styles.statusText,
-                  isListed ? styles.statusTextActive : styles.statusTextInactive,
+                  isListed
+                    ? { color: isDark ? '#4ADE80' : '#15803D' }
+                    : { color: isDark ? '#94A3B8' : '#6B7280' },
                 ]}
               >
-                {isListed ? 'Listed' : 'Unlisted'}
+                {isListed ? t('seller.filterListed', 'Listed') : t('seller.filterUnlisted', 'Unlisted')}
               </Text>
             </View>
           </View>
 
           {product.category?.name ? (
-            <Text style={styles.category}>{product.category.name}</Text>
+            <Text style={[styles.category, { color: theme.textSecondary }]}>
+              {product.category.name}
+            </Text>
           ) : null}
 
           <View style={styles.metaRow}>
             <PriceDisplay price={numPrice} size="sm" />
-            <Text style={styles.stockText}>
-              Stock: <Text style={styles.stockValue}>{product.stock}</Text>
+            <Text style={[styles.stockText, { color: theme.textSecondary }]}>
+              {t('seller.stockLabel', 'Stock:')}{' '}
+              <Text style={[styles.stockValue, { color: theme.text }]}>{product.stock}</Text>
             </Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.actionsRow}>
+      <View style={[styles.actionsRow, { borderTopColor: theme.border }]}>
         <Pressable
           onPress={() => onEdit?.(product)}
           disabled={disabled}
@@ -98,11 +124,14 @@ export default function SellerProductCard({
           style={({ pressed }) => [
             styles.actionButton,
             styles.actionSecondary,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             pressed && styles.pressed,
             disabled && styles.disabledButton,
           ]}
         >
-          <Text style={styles.actionSecondaryText}>Edit</Text>
+          <Text style={[styles.actionSecondaryText, { color: theme.text }]}>
+            {t('seller.edit', 'Edit')}
+          </Text>
         </Pressable>
 
         <Pressable
@@ -113,11 +142,14 @@ export default function SellerProductCard({
           style={({ pressed }) => [
             styles.actionButton,
             styles.actionSecondary,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             pressed && styles.pressed,
             disabled && styles.disabledButton,
           ]}
         >
-          <Text style={styles.actionSecondaryText}>Update Stock</Text>
+          <Text style={[styles.actionSecondaryText, { color: theme.text }]}>
+            {t('seller.updateStock', 'Update Stock')}
+          </Text>
         </Pressable>
 
         {isListed ? (
@@ -129,11 +161,17 @@ export default function SellerProductCard({
             style={({ pressed }) => [
               styles.actionButton,
               styles.actionDanger,
+              isDark && {
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                borderColor: 'rgba(239, 68, 68, 0.4)',
+              },
               pressed && styles.pressed,
               disabled && styles.disabledButton,
             ]}
           >
-            <Text style={styles.actionDangerText}>Unlist</Text>
+            <Text style={[styles.actionDangerText, { color: theme.danger }]}>
+              {t('seller.unlist', 'Unlist')}
+            </Text>
           </Pressable>
         ) : (
           <Pressable
@@ -144,11 +182,22 @@ export default function SellerProductCard({
             style={({ pressed }) => [
               styles.actionButton,
               styles.actionSuccess,
+              isDark && {
+                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                borderColor: 'rgba(34, 197, 94, 0.4)',
+              },
               pressed && styles.pressed,
               disabled && styles.disabledButton,
             ]}
           >
-            <Text style={styles.actionSuccessText}>Relist</Text>
+            <Text
+              style={[
+                styles.actionSuccessText,
+                { color: isDark ? '#4ADE80' : '#15803D' },
+              ]}
+            >
+              {t('seller.relist', 'Relist')}
+            </Text>
           </Pressable>
         )}
       </View>

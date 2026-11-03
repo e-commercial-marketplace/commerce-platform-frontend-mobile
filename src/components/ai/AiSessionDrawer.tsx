@@ -24,6 +24,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import { useAiSessions } from '../../hooks/useAi';
 import type { AiChatSessionResponse } from '../../types/aiApi';
 
@@ -61,6 +63,8 @@ export default function AiSessionDrawer({
   restoringSessionId,
   errorMessage,
 }: AiSessionDrawerProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const { data: sessions, isLoading, isError, refetch } = useAiSessions({ enabled: visible });
 
   const sortedSessions = React.useMemo(() => {
@@ -83,68 +87,107 @@ export default function AiSessionDrawer({
           style={styles.backdropDismiss}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel="Đóng lịch sử trò chuyện"
+          accessibilityLabel={t('ai.drawerCloseA11y', 'Đóng lịch sử trò chuyện')}
         />
 
-        <SafeAreaView style={styles.sheet} edges={['bottom', 'top']}>
+        <SafeAreaView
+          style={[styles.sheet, { backgroundColor: theme.background }]}
+          edges={['bottom', 'top']}
+        >
           {/* Drawer Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>Lịch sử trò chuyện</Text>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>
+                {t('ai.drawerTitle', 'Lịch sử trò chuyện')}
+              </Text>
             </View>
 
             <View style={styles.headerActions}>
               <Pressable
-                style={styles.newChatHeaderBtn}
+                style={[
+                  styles.newChatHeaderBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                    borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+                  },
+                ]}
                 onPress={onNewChat}
                 accessibilityRole="button"
-                accessibilityLabel="Đoạn chat mới"
+                accessibilityLabel={t('ai.newChatA11y', 'Đoạn chat mới')}
               >
-                <Text style={styles.newChatHeaderBtnText}>＋ Đoạn chat mới</Text>
+                <Text style={[styles.newChatHeaderBtnText, { color: theme.primary }]}>
+                  {t('ai.newChatDrawerBtn', '＋ Đoạn chat mới')}
+                </Text>
               </Pressable>
 
               <Pressable
-                style={styles.closeBtn}
+                style={[
+                  styles.closeBtn,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
                 onPress={onClose}
                 accessibilityRole="button"
                 accessibilityLabel="Đóng lịch sử"
               >
-                <Text style={styles.closeBtnText}>✕</Text>
+                <Text style={[styles.closeBtnText, { color: theme.textSecondary }]}>✕</Text>
               </Pressable>
             </View>
           </View>
 
           {/* Error Banner if restoration or session switch failed */}
           {errorMessage ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            <View
+              style={[
+                styles.errorBanner,
+                {
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+                  borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+                },
+              ]}
+            >
+              <Text style={[styles.errorBannerText, { color: theme.danger }]}>
+                {errorMessage}
+              </Text>
             </View>
           ) : null}
 
           {/* Drawer Body */}
           {isLoading ? (
             <View style={styles.stateContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.stateText}>Đang tải lịch sử...</Text>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {t('ai.loadingHistory', 'Đang tải lịch sử...')}
+              </Text>
             </View>
           ) : isError ? (
             <View style={styles.stateContainer}>
               <Text style={styles.errorIcon}>⚠️</Text>
-              <Text style={styles.errorText}>Không thể tải danh sách phiên trò chuyện.</Text>
+              <Text style={[styles.errorText, { color: theme.text }]}>
+                {t('ai.loadHistoryFailed', 'Không thể tải danh sách phiên trò chuyện.')}
+              </Text>
               <Pressable
-                style={styles.retryBtn}
+                style={[styles.retryBtn, { backgroundColor: theme.primary }]}
                 onPress={() => refetch()}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại"
+                accessibilityLabel={t('ai.retry', 'Thử lại')}
               >
-                <Text style={styles.retryBtnText}>Thử lại</Text>
+                <Text style={[styles.retryBtnText, { color: theme.onPrimary }]}>
+                  {t('ai.retry', 'Thử lại')}
+                </Text>
               </Pressable>
             </View>
           ) : sortedSessions.length === 0 ? (
             <View style={styles.stateContainer}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyTitle}>Chưa có cuộc trò chuyện nào.</Text>
-              <Text style={styles.emptySubtitle}>Các cuộc trò chuyện của bạn sẽ được lưu tại đây.</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                {t('ai.emptyHistoryTitle', 'Chưa có cuộc trò chuyện nào.')}
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                {t(
+                  'ai.emptyHistorySubtitle',
+                  'Các cuộc trò chuyện của bạn sẽ được lưu tại đây.',
+                )}
+              </Text>
             </View>
           ) : (
             <FlatList
@@ -155,42 +198,80 @@ export default function AiSessionDrawer({
                 const isActive = item.id === activeSessionId;
                 const isRestoring = item.id === restoringSessionId;
                 const dateLabel = formatSessionDate(item.createdAt);
-                const displayTitle = `Cuộc trò chuyện ${dateLabel}`;
+                const displayTitle = t('ai.sessionDatePrefix', `Cuộc trò chuyện ${dateLabel}`, {
+                  date: dateLabel,
+                });
 
                 return (
                   <Pressable
-                    style={[styles.sessionCard, isActive && styles.sessionCardActive]}
+                    style={[
+                      styles.sessionCard,
+                      { backgroundColor: theme.surface, borderColor: theme.border },
+                      isActive && [
+                        styles.sessionCardActive,
+                        {
+                          borderColor: theme.primary,
+                          backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#F0F9FF',
+                        },
+                      ],
+                    ]}
                     onPress={() => onSelectSession(item.id)}
                     accessibilityRole="button"
                     accessibilityLabel={displayTitle}
                     disabled={isRestoring}
                   >
                     <View style={styles.sessionCardLeft}>
-                      <View style={[styles.sessionIconWrap, isActive && styles.sessionIconWrapActive]}>
+                      <View
+                        style={[
+                          styles.sessionIconWrap,
+                          { backgroundColor: isDark ? '#262626' : '#F3F4F6' },
+                          isActive && [
+                            styles.sessionIconWrapActive,
+                            { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.25)' : '#DBEAFE' },
+                          ],
+                        ]}
+                      >
                         <Text style={styles.sessionIcon}>💬</Text>
                       </View>
                       <View style={styles.sessionInfo}>
                         <Text
-                          style={[styles.sessionTitle, isActive && styles.sessionTitleActive]}
+                          style={[
+                            styles.sessionTitle,
+                            { color: theme.text },
+                            isActive && [styles.sessionTitleActive, { color: theme.primary }],
+                          ]}
                           numberOfLines={1}
                         >
                           {displayTitle}
                         </Text>
-                        <Text style={styles.sessionDate}>{dateLabel}</Text>
+                        <Text style={[styles.sessionDate, { color: theme.textSecondary }]}>
+                          {dateLabel}
+                        </Text>
                       </View>
                     </View>
 
                     <View style={styles.sessionCardRight}>
                       {isActive ? (
-                        <View style={styles.activeBadge}>
-                          <Text style={styles.activeBadgeText}>Đang mở</Text>
+                        <View
+                          style={[
+                            styles.activeBadge,
+                            {
+                              backgroundColor: isDark
+                                ? 'rgba(59, 130, 246, 0.25)'
+                                : '#DBEAFE',
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.activeBadgeText, { color: theme.primary }]}>
+                            {t('ai.activeSession', 'Đang mở')}
+                          </Text>
                         </View>
                       ) : null}
 
                       {isRestoring ? (
-                        <ActivityIndicator size="small" color={colors.primary} />
+                        <ActivityIndicator size="small" color={theme.primary} />
                       ) : (
-                        <Text style={styles.chevron}>›</Text>
+                        <Text style={[styles.chevron, { color: theme.textSecondary }]}>›</Text>
                       )}
                     </View>
                   </Pressable>

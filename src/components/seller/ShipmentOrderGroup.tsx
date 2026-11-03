@@ -14,6 +14,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { SellerOrderItem } from '../../types/sellerApi';
 import { formatVND } from '../../utils/format';
 
@@ -32,6 +34,8 @@ export default function ShipmentOrderGroup({
   onCancelItem,
   disabled = false,
 }: ShipmentOrderGroupProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce(
     (sum, item) => sum + (Number.parseFloat(item.unitPrice) || 0) * item.quantity,
@@ -39,16 +43,28 @@ export default function ShipmentOrderGroup({
   );
 
   return (
-    <View style={styles.groupCard} testID={`order-group-${orderId}`}>
+    <View
+      style={[styles.groupCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      testID={`order-group-${orderId}`}
+    >
       {/* Order Header with Action */}
       <View style={styles.groupHeader}>
         <View style={styles.orderMeta}>
-          <Text style={styles.orderLabel}>Order</Text>
-          <Text style={styles.orderId} numberOfLines={1}>
+          <Text style={[styles.orderLabel, { color: theme.textSecondary }]}>
+            {t('orders.order', 'Order')}
+          </Text>
+          <Text style={[styles.orderId, { color: theme.text }]} numberOfLines={1}>
             #{orderId.slice(0, 8)}
           </Text>
-          <View style={styles.itemBadge}>
-            <Text style={styles.itemBadgeText}>
+          <View
+            style={[
+              styles.itemBadge,
+              {
+                backgroundColor: isDark ? 'rgba(148, 163, 184, 0.2)' : '#F3F4F6',
+              },
+            ]}
+          >
+            <Text style={[styles.itemBadgeText, { color: theme.textSecondary }]}>
               {items.length} {items.length === 1 ? 'line' : 'lines'} ({totalQuantity} pcs)
             </Text>
           </View>
@@ -59,17 +75,20 @@ export default function ShipmentOrderGroup({
           disabled={disabled || items.length === 0}
           style={({ pressed }) => [
             styles.createShipmentBtn,
+            { backgroundColor: theme.primary },
             pressed && !disabled && styles.btnPressed,
             (disabled || items.length === 0) && styles.btnDisabled,
           ]}
           accessibilityRole="button"
           accessibilityLabel={`Create Shipment for Order #${orderId.slice(0, 8)}`}
         >
-          <Text style={styles.createShipmentBtnText}>Create Shipment</Text>
+          <Text style={[styles.createShipmentBtnText, { color: theme.onPrimary }]}>
+            {t('seller.createShipment', 'Create Shipment')}
+          </Text>
         </Pressable>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
       {/* Items list belonging to this order */}
       <View style={styles.itemsList}>
@@ -80,10 +99,10 @@ export default function ShipmentOrderGroup({
           return (
             <View key={item.id} style={styles.itemRow} testID={`order-item-${item.id}`}>
               <View style={styles.itemInfo}>
-                <Text style={styles.productName} numberOfLines={1}>
+                <Text style={[styles.productName, { color: theme.text }]} numberOfLines={1}>
                   {item.productName}
                 </Text>
-                <Text style={styles.itemPricing}>
+                <Text style={[styles.itemPricing, { color: theme.textSecondary }]}>
                   Qty: {item.quantity} • {formatVND(unitPriceNum)} = {formatVND(lineTotal)}
                 </Text>
               </View>
@@ -93,13 +112,16 @@ export default function ShipmentOrderGroup({
                 disabled={disabled}
                 style={({ pressed }) => [
                   styles.cancelItemBtn,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
                   pressed && !disabled && styles.btnPressed,
                   disabled && styles.btnDisabled,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={`Cancel ${item.productName}`}
               >
-                <Text style={styles.cancelItemBtnText}>Cancel</Text>
+                <Text style={[styles.cancelItemBtnText, { color: theme.danger }]}>
+                  {t('seller.cancel', 'Cancel')}
+                </Text>
               </Pressable>
             </View>
           );
@@ -108,8 +130,10 @@ export default function ShipmentOrderGroup({
 
       {/* Footer order total */}
       <View style={styles.groupFooter}>
-        <Text style={styles.footerLabel}>Order Bundle Total:</Text>
-        <Text style={styles.footerTotal}>{formatVND(totalAmount)}</Text>
+        <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>
+          {t('seller.orderGroupHeader', 'Order Bundle Total:')}
+        </Text>
+        <Text style={[styles.footerTotal, { color: theme.text }]}>{formatVND(totalAmount)}</Text>
       </View>
     </View>
   );

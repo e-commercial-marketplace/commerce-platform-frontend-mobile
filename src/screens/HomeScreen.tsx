@@ -5,13 +5,7 @@
  * `useCategories`); the screen owns only UI state (search text, selected
  * category, layout mode, current page).
  *
- * The four outcomes are kept strictly separate:
- * - LOADING : the request is in flight and nothing has been received yet;
- * - ERROR   : the request failed - the real message and a Retry action are
- *             shown, and the screen never claims "0 products" for a failure;
- * - EMPTY   : the request succeeded and the backend really has no matching
- *             product;
- * - SUCCESS : the request succeeded and the products are rendered.
+ * Fully theme-aware and localized with semantic tokens for Dark/Light mode.
  */
 
 import { useMemo, useState } from 'react';
@@ -33,11 +27,13 @@ import Button from '../components/Button';
 import ProductCard, { type ProductViewMode } from '../components/ProductCard';
 import ProductImage from '../components/ProductImage';
 import SearchBar from '../components/SearchBar';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useCategories, useProductList } from '../hooks/useProducts';
+import { useAppLanguage } from '../i18n';
 import type { MainTabScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 import type { Product } from '../types/product';
 import { formatVND } from '../utils/format';
 
@@ -51,6 +47,8 @@ const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 350;
 
 export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { user } = useAuth();
   const showAiEntry = user?.role !== 'SELLER' && user?.role !== 'ADMIN';
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,6 +116,7 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
     }
     return map;
   }, [products]);
+
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
 
@@ -131,11 +130,6 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
 
   function handleCategoryPress(categoryId: string) {
     setSelectedCategoryId(categoryId);
-    setPage(0);
-  }
-
-  function handleSearchChange(text: string) {
-    setSearchQuery(text);
     setPage(0);
   }
 
@@ -166,11 +160,11 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
     const minRatingNum = minRating.trim() === '' ? undefined : Number(minRating.trim());
 
     if (minPrice.trim() !== '' && (Number.isNaN(minPriceNum) || (minPriceNum as number) < 0)) {
-      setFilterError('Minimum price must be 0 or more.');
+      setFilterError(t('catalog.minPriceError', 'Minimum price must be 0 or more.'));
       return;
     }
     if (maxPrice.trim() !== '' && (Number.isNaN(maxPriceNum) || (maxPriceNum as number) < 0)) {
-      setFilterError('Maximum price must be 0 or more.');
+      setFilterError(t('catalog.maxPriceError', 'Maximum price must be 0 or more.'));
       return;
     }
     if (
@@ -178,12 +172,18 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
       maxPriceNum !== undefined &&
       (maxPriceNum as number) < (minPriceNum as number)
     ) {
-      setFilterError('Maximum price must not be less than minimum price.');
+      setFilterError(
+        t('catalog.priceRangeError', 'Maximum price must not be less than minimum price.'),
+      );
       return;
     }
     if (minRating.trim() !== '') {
-      if (Number.isNaN(minRatingNum) || (minRatingNum as number) < 0 || (minRatingNum as number) > 5) {
-        setFilterError('Minimum rating must be between 0 and 5.');
+      if (
+        Number.isNaN(minRatingNum) ||
+        (minRatingNum as number) < 0 ||
+        (minRatingNum as number) > 5
+      ) {
+        setFilterError(t('catalog.ratingRangeError', 'Minimum rating must be between 0 and 5.'));
         return;
       }
     }
@@ -208,7 +208,9 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
   }
 
   const hasActiveFilters =
-    appliedMinPrice !== undefined || appliedMaxPrice !== undefined || appliedMinRating !== undefined;
+    appliedMinPrice !== undefined ||
+    appliedMaxPrice !== undefined ||
+    appliedMinRating !== undefined;
 
   function renderProduct({ item }: ListRenderItemInfo<Product>) {
     return <ProductCard product={item} viewMode={viewMode} onPress={handleProductPress} />;
@@ -218,20 +220,30 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
   // instead of an empty list that looks like "0 products".
   if (isPending && !hasLoaded) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="home-screen"
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.centerText}>Loading products…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.centerText, { color: theme.textSecondary }]}>
+            {t('catalog.loadingProducts', 'Loading products…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   const errorMessage =
-    error instanceof Error ? error.message : 'Failed to load products. Please try again.';
+    error instanceof Error ? error.message : t('catalog.couldNotLoad', 'Failed to load products. Please try again.');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+      testID="home-screen"
+    >
       <FlatList
         key={viewMode}
         data={products}
@@ -243,60 +255,139 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         onRefresh={() => refetch()}
-        refreshing={isFetching && !isPending}
+        refreshing={Boolean(isFetching && !isPending)}
         ListHeaderComponent={
           <View>
             <View style={styles.header}>
               <View>
-                <Text style={styles.headerEyebrow}>MARKETPLACE</Text>
-                <Text style={styles.headerTitle}>All Deals</Text>
+                <Text style={[styles.headerEyebrow, { color: theme.primary }]}>
+                  {t('catalog.eyebrow', 'MARKETPLACE')}
+                </Text>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>
+                  {t('catalog.allDeals', 'All Deals')}
+                </Text>
               </View>
               <View style={styles.headerActions}>
-                <Pressable style={styles.headerIconButton} onPress={() => navigation.navigate('Cart')} accessibilityLabel="Open cart">
-                  <Text style={styles.headerIcon}>🛒</Text>
+                <Pressable
+                  style={[
+                    styles.headerIconButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 },
+                  ]}
+                  onPress={() => navigation.navigate('Cart')}
+                  accessibilityLabel={t('catalog.openCart', 'Open cart')}
+                >
+                  <Text style={[styles.headerIcon, { color: theme.text }]}>🛒</Text>
                 </Pressable>
-                <Pressable style={styles.avatarButton} onPress={() => navigation.navigate('Profile')} accessibilityLabel="Open account">
+                <Pressable
+                  style={[
+                    styles.avatarButton,
+                    { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+                  ]}
+                  onPress={() => navigation.navigate('Profile')}
+                  accessibilityLabel={t('catalog.openAccount', 'Open account')}
+                >
                   <Text style={styles.avatarIcon}>👤</Text>
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.searchRow}>
-              <Pressable style={styles.searchGrow} onPress={() => navigation.navigate('Search')} accessibilityRole="button" accessibilityLabel="Open product search">
-                <View pointerEvents="none"><SearchBar value="" onChangeText={() => undefined} /></View>
+              <Pressable
+                style={styles.searchGrow}
+                onPress={() => navigation.navigate('Search')}
+                accessibilityRole="button"
+                accessibilityLabel={t('catalog.openProductSearch', 'Open product search')}
+              >
+                <View pointerEvents="none">
+                  <SearchBar value="" onChangeText={() => undefined} />
+                </View>
               </Pressable>
-              <Pressable onPress={openFilters} style={[styles.squareFilter, hasActiveFilters && styles.squareFilterActive]} accessibilityLabel="Open filters">
-                <Text style={[styles.squareFilterText, hasActiveFilters && styles.squareFilterTextActive]}>☷</Text>
+              <Pressable
+                onPress={openFilters}
+                style={[
+                  styles.squareFilter,
+                  { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 },
+                  hasActiveFilters && {
+                    backgroundColor: theme.surfaceAlt,
+                    borderColor: theme.primary,
+                  },
+                ]}
+                accessibilityLabel={t('catalog.openFilters', 'Open filters')}
+              >
+                <Text
+                  style={[
+                    styles.squareFilterText,
+                    { color: hasActiveFilters ? theme.primary : theme.textSecondary },
+                  ]}
+                >
+                  ☷
+                </Text>
               </Pressable>
             </View>
 
             {showAiEntry ? (
               <Pressable
-                style={styles.aiEntryCard}
+                style={[
+                  styles.aiEntryCard,
+                  {
+                    backgroundColor: theme.surfaceAlt,
+                    borderColor: theme.primary,
+                  },
+                ]}
                 onPress={() => navigation.navigate('AiAssistant')}
                 accessibilityRole="button"
-                accessibilityLabel="Mở trợ lý AI"
+                accessibilityLabel={t('catalog.aiAssistantA11y', 'Mở trợ lý AI')}
               >
                 <View style={styles.aiEntryLeft}>
-                  <View style={styles.aiEntryBadge}>
+                  <View style={[styles.aiEntryBadge, { backgroundColor: theme.primary + '20' }]}>
                     <Text style={styles.aiEntrySparkle}>✨</Text>
                   </View>
                   <View style={styles.aiEntryTexts}>
-                    <Text style={styles.aiEntryTitle}>Trợ lý AI</Text>
-                    <Text style={styles.aiEntrySubtitle}>Hỏi đáp sản phẩm & gợi ý mua sắm thông minh</Text>
+                    <Text style={[styles.aiEntryTitle, { color: theme.text }]}>
+                      {t('catalog.aiAssistant', 'Trợ lý AI')}
+                    </Text>
+                    <Text style={[styles.aiEntrySubtitle, { color: theme.textSecondary }]}>
+                      {t(
+                        'catalog.aiAssistantSubtitle',
+                        'Hỏi đáp sản phẩm & gợi ý mua sắm thông minh',
+                      )}
+                    </Text>
                   </View>
                 </View>
-                <Text style={styles.aiEntryArrow}>→</Text>
+                <Text style={[styles.aiEntryArrow, { color: theme.primary }]}>→</Text>
               </Pressable>
             ) : null}
 
             {products.length > 0 ? (
-              <Pressable style={styles.heroCard} onPress={() => handleProductPress(products[0])}>
+              <Pressable
+                style={[
+                  styles.heroCard,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border,
+                    borderWidth: 1,
+                  },
+                ]}
+                onPress={() => handleProductPress(products[0])}
+              >
                 <View style={styles.heroCopy}>
-                  <Text style={styles.heroEyebrow}>FEATURED DEAL</Text>
-                  <Text style={styles.heroTitle} numberOfLines={2}>{products[0].name}</Text>
-                  <Text style={styles.heroPrice}>{formatVND(products[0].price)}</Text>
-                  <View style={styles.heroButton}><Text style={styles.heroButtonText}>Shop now  →</Text></View>
+                  <Text style={[styles.heroEyebrow, { color: theme.primary }]}>
+                    {t('catalog.featuredDeal', 'FEATURED DEAL')}
+                  </Text>
+                  <Text
+                    style={[styles.heroTitle, { color: theme.text }]}
+                    numberOfLines={2}
+                  >
+                    {products[0].name}
+                  </Text>
+                  <Text style={[styles.heroPrice, { color: theme.textSecondary }]}>
+                    {formatVND(products[0].price)}
+                  </Text>
+                  <View style={[styles.heroButton, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.heroButtonText}>
+                      {t('catalog.shopNow', 'Shop now  →')}
+                    </Text>
+                  </View>
                 </View>
                 <ProductImage source={products[0].image} style={styles.heroImage} />
               </Pressable>
@@ -309,7 +400,14 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
             >
               {categories.map((category) => {
                 const isSelected = category.id === selectedCategoryId;
-                const image = category.id === ALL_CATEGORY.id ? products[0]?.image : categoryImageByName.get(category.name);
+                const image =
+                  category.id === ALL_CATEGORY.id
+                    ? products[0]?.image
+                    : categoryImageByName.get(category.name);
+                const categoryDisplayName =
+                  category.id === ALL_CATEGORY.id
+                    ? t('catalog.allCategory', 'All')
+                    : category.name;
                 return (
                   <Pressable
                     key={category.id}
@@ -318,10 +416,39 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
                   >
-                    <View style={[styles.categoryVisual, isSelected && styles.categoryVisualSelected]}>
-                      {image ? <ProductImage source={image} style={styles.categoryImage} /> : <Text style={[styles.categoryFallback, isSelected && styles.categoryFallbackSelected]}>{category.name.slice(0, 1).toUpperCase()}</Text>}
+                    <View
+                      style={[
+                        styles.categoryVisual,
+                        {
+                          backgroundColor: theme.surface,
+                          borderColor: isSelected ? theme.primary : theme.border,
+                          borderWidth: isSelected ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      {image ? (
+                        <ProductImage source={image} style={styles.categoryImage} />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.categoryFallback,
+                            { color: isSelected ? theme.primary : theme.textSecondary },
+                          ]}
+                        >
+                          {categoryDisplayName.slice(0, 1).toUpperCase()}
+                        </Text>
+                      )}
                     </View>
-                    <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelSelected]} numberOfLines={1}>{category.name}</Text>
+                    <Text
+                      style={[
+                        styles.categoryLabel,
+                        { color: isSelected ? theme.primary : theme.textSecondary },
+                        isSelected && { fontWeight: '700' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {categoryDisplayName}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -329,32 +456,64 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
 
             <View style={styles.toolbar}>
               {hasLoaded ? (
-                <Text style={styles.resultCount}>
-                  {totalElements} {totalElements === 1 ? 'product' : 'products'}
+                <Text style={[styles.resultCount, { color: theme.textSecondary }]}>
+                  {totalElements === 1
+                    ? t('catalog.productCount_one', '1 product')
+                    : t('catalog.productCount_other', `${totalElements} products`, {
+                        count: totalElements,
+                      })}
                 </Text>
               ) : (
-                <Text style={styles.resultCount}>Products unavailable</Text>
+                <Text style={[styles.resultCount, { color: theme.textSecondary }]}>
+                  {t('catalog.productsUnavailable', 'Products unavailable')}
+                </Text>
               )}
               <View style={styles.toolbarActions}>
-                <View style={styles.viewToggle}>
+                <View
+                  style={[
+                    styles.viewToggle,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
                   <Pressable
                     onPress={() => setViewMode('grid')}
-                    style={[styles.toggleButton, viewMode === 'grid' && styles.toggleButtonActive]}
+                    style={[
+                      styles.toggleButton,
+                      viewMode === 'grid' && { backgroundColor: theme.primary },
+                    ]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: viewMode === 'grid' }}
                   >
-                    <Text style={[styles.toggleText, viewMode === 'grid' && styles.toggleTextActive]}>
-                      Grid
+                    <Text
+                      style={[
+                        styles.toggleText,
+                        { color: viewMode === 'grid' ? '#FFFFFF' : theme.textSecondary },
+                        viewMode === 'grid' && styles.toggleTextActive,
+                      ]}
+                    >
+                      {t('catalog.grid', 'Grid')}
                     </Text>
                   </Pressable>
                   <Pressable
                     onPress={() => setViewMode('list')}
-                    style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+                    style={[
+                      styles.toggleButton,
+                      viewMode === 'list' && { backgroundColor: theme.primary },
+                    ]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: viewMode === 'list' }}
                   >
-                    <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-                      List
+                    <Text
+                      style={[
+                        styles.toggleText,
+                        { color: viewMode === 'list' ? '#FFFFFF' : theme.textSecondary },
+                        viewMode === 'list' && styles.toggleTextActive,
+                      ]}
+                    >
+                      {t('catalog.list', 'List')}
                     </Text>
                   </Pressable>
                 </View>
@@ -364,31 +523,42 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
         }
         ListEmptyComponent={
           isError ? (
-            // A failed request is NOT an empty catalog: show the reason and a
-            // retry action instead of an empty-state message.
             <View style={styles.stateBlock}>
               <Text style={styles.stateIcon}>⚠️</Text>
-              <Text style={styles.stateTitle}>Couldn&apos;t load products</Text>
-              <Text style={styles.stateText}>{errorMessage}</Text>
+              <Text style={[styles.stateTitle, { color: theme.text }]}>
+                {t('catalog.couldNotLoad', "Couldn't load products")}
+              </Text>
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {errorMessage}
+              </Text>
               <Pressable
                 onPress={() => refetch()}
-                style={styles.retryButton}
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
                 accessibilityRole="button"
-                accessibilityLabel="Retry loading products"
+                accessibilityLabel={t('catalog.retryLoadingProducts', 'Retry loading products')}
               >
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>{t('catalog.retry', 'Retry')}</Text>
               </Pressable>
             </View>
           ) : isPending ? (
             <View style={styles.stateBlock}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.stateText}>Loading products…</Text>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {t('catalog.loadingProducts', 'Loading products…')}
+              </Text>
             </View>
           ) : (
             <View style={styles.stateBlock}>
               <Text style={styles.stateIcon}>🔍</Text>
-              <Text style={styles.stateTitle}>No products found</Text>
-              <Text style={styles.stateText}>Try a different keyword or category.</Text>
+              <Text style={[styles.stateTitle, { color: theme.text }]}>
+                {t('catalog.noProductsFound', 'No products found')}
+              </Text>
+              <Text style={[styles.stateText, { color: theme.textSecondary }]}>
+                {t(
+                  'catalog.noProductsFoundHint',
+                  'Try a different keyword or category.',
+                )}
+              </Text>
             </View>
           )
         }
@@ -398,31 +568,59 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
               <Pressable
                 onPress={goToPreviousPage}
                 disabled={page === 0}
-                style={[styles.pageButton, page === 0 && styles.pageButtonDisabled]}
+                style={[
+                  styles.pageButton,
+                  { backgroundColor: theme.primary },
+                  page === 0 && [
+                    styles.pageButtonDisabled,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ],
+                ]}
                 accessibilityRole="button"
-                accessibilityLabel="Previous page"
-              >
-                <Text style={[styles.pageButtonText, page === 0 && styles.pageButtonTextDisabled]}>
-                  Previous
-                </Text>
-              </Pressable>
-              <Text style={styles.pageInfo}>
-                Page {page + 1} / {totalPages}
-              </Text>
-              <Pressable
-                onPress={goToNextPage}
-                disabled={page >= totalPages - 1}
-                style={[styles.pageButton, page >= totalPages - 1 && styles.pageButtonDisabled]}
-                accessibilityRole="button"
-                accessibilityLabel="Next page"
+                accessibilityLabel={t('catalog.previousPage', 'Previous page')}
               >
                 <Text
                   style={[
                     styles.pageButtonText,
-                    page >= totalPages - 1 && styles.pageButtonTextDisabled,
+                    page === 0 && [
+                      styles.pageButtonTextDisabled,
+                      { color: theme.textSecondary },
+                    ],
                   ]}
                 >
-                  Next
+                  {t('catalog.previous', 'Previous')}
+                </Text>
+              </Pressable>
+              <Text style={[styles.pageInfo, { color: theme.textSecondary }]}>
+                {t('catalog.pageInfo', `Page ${page + 1} / ${totalPages}`, {
+                  page: page + 1,
+                  totalPages,
+                })}
+              </Text>
+              <Pressable
+                onPress={goToNextPage}
+                disabled={page >= totalPages - 1}
+                style={[
+                  styles.pageButton,
+                  { backgroundColor: theme.primary },
+                  page >= totalPages - 1 && [
+                    styles.pageButtonDisabled,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ],
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('catalog.nextPage', 'Next page')}
+              >
+                <Text
+                  style={[
+                    styles.pageButtonText,
+                    page >= totalPages - 1 && [
+                      styles.pageButtonTextDisabled,
+                      { color: theme.textSecondary },
+                    ],
+                  ]}
+                >
+                  {t('catalog.next', 'Next')}
                 </Text>
               </Pressable>
             </View>
@@ -436,44 +634,151 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
         onRequestClose={() => setFilterVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.filterSheet}>
-            <View style={styles.filterHeader}>
-              <Text style={styles.modalTitle}>Filter</Text>
-              <Pressable onPress={() => setFilterVisible(false)} style={styles.closeButton}><Text style={styles.closeText}>×</Text></Pressable>
+          <View
+            style={[
+              styles.filterSheet,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <View style={[styles.filterHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {t('catalog.filter', 'Filter')}
+              </Text>
+              <Pressable onPress={() => setFilterVisible(false)} style={styles.closeButton}>
+                <Text style={[styles.closeText, { color: theme.textSecondary }]}>×</Text>
+              </Pressable>
             </View>
 
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Price range</Text>
+            <View style={[styles.filterSection, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.filterSectionTitle, { color: theme.text }]}>
+                {t('catalog.priceRange', 'Price range')}
+              </Text>
               <View style={styles.priceRow}>
-                <View style={styles.priceField}><Text style={styles.currency}>$</Text><TextInput value={minPrice} onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))} placeholder="10" keyboardType="numeric" style={styles.priceInput} /></View>
-                <View style={styles.rangeLine} />
-                <View style={styles.priceField}><Text style={styles.currency}>$</Text><TextInput value={maxPrice} onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))} placeholder="1000" keyboardType="numeric" style={styles.priceInput} /></View>
+                <View
+                  style={[
+                    styles.priceField,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.currency, { color: theme.textSecondary }]}>đ</Text>
+                  <TextInput
+                    value={minPrice}
+                    onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
+                    placeholder="10000"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="numeric"
+                    style={[styles.priceInput, { color: theme.text }]}
+                  />
+                </View>
+                <View style={[styles.rangeLine, { backgroundColor: theme.border }]} />
+                <View
+                  style={[
+                    styles.priceField,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.currency, { color: theme.textSecondary }]}>đ</Text>
+                  <TextInput
+                    value={maxPrice}
+                    onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
+                    placeholder="1000000"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="numeric"
+                    style={[styles.priceInput, { color: theme.text }]}
+                  />
+                </View>
               </View>
-              <View style={styles.sliderTrack}><View style={styles.sliderActive} /><View style={[styles.sliderKnob, { left: '5%' }]} /><View style={[styles.sliderKnob, { left: '42%' }]} /></View>
             </View>
 
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Average review</Text>
+            <View style={[styles.filterSection, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.filterSectionTitle, { color: theme.text }]}>
+                {t('catalog.averageReview', 'Average review')}
+              </Text>
               <View style={styles.ratingFilterRow}>
-                <Text style={styles.stars}>★ ★ ★ ★</Text><Text style={styles.starOff}>★</Text>
-                <TextInput value={minRating} onChangeText={(text) => setMinRating(text.replace(/[^0-9.]/g, ''))} placeholder="4" keyboardType="decimal-pad" style={styles.ratingInput} />
-                <Text style={styles.andUp}>& Up</Text>
+                <Text style={styles.stars}>★ ★ ★ ★</Text>
+                <Text style={styles.starOff}>★</Text>
+                <TextInput
+                  value={minRating}
+                  onChangeText={(text) => setMinRating(text.replace(/[^0-9.]/g, ''))}
+                  placeholder="4"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="decimal-pad"
+                  style={[styles.ratingInput, { color: theme.text }]}
+                />
+                <Text style={[styles.andUp, { color: theme.text }]}>
+                  {t('catalog.andUp', '& Up')}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Others</Text>
+            <View style={[styles.filterSection, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.filterSectionTitle, { color: theme.text }]}>
+                {t('catalog.others', 'Others')}
+              </Text>
               <View style={styles.optionGrid}>
-                <View style={[styles.optionCard, styles.optionCardActive]}><Text style={styles.optionIcon}>↔</Text><Text style={styles.optionTextActive}>30-day Free Return</Text></View>
-                <View style={styles.optionCard}><Text style={styles.optionIconMuted}>▣</Text><Text style={styles.optionText}>Buyer Protection</Text></View>
-                <View style={styles.optionCard}><Text style={styles.optionIconMuted}>◆</Text><Text style={styles.optionText}>Best Deal</Text></View>
-                <View style={styles.optionCard}><Text style={styles.optionIconMuted}>⌖</Text><Text style={styles.optionText}>Ship to store</Text></View>
+                <View
+                  style={[
+                    styles.optionCard,
+                    styles.optionCardActive,
+                    { borderColor: theme.primary, backgroundColor: theme.surfaceAlt },
+                  ]}
+                >
+                  <Text style={[styles.optionIcon, { color: theme.primary }]}>↔</Text>
+                  <Text style={[styles.optionTextActive, { color: theme.primary }]}>
+                    {t('catalog.freeReturn', '30-day Free Return')}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.optionCard,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.optionIconMuted, { color: theme.textSecondary }]}>▣</Text>
+                  <Text style={[styles.optionText, { color: theme.textSecondary }]}>
+                    {t('catalog.buyerProtection', 'Buyer Protection')}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.optionCard,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.optionIconMuted, { color: theme.textSecondary }]}>◆</Text>
+                  <Text style={[styles.optionText, { color: theme.textSecondary }]}>
+                    {t('catalog.bestDeal', 'Best Deal')}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.optionCard,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.optionIconMuted, { color: theme.textSecondary }]}>⌖</Text>
+                  <Text style={[styles.optionText, { color: theme.textSecondary }]}>
+                    {t('catalog.shipToStore', 'Ship to store')}
+                  </Text>
+                </View>
               </View>
             </View>
-            {filterError ? <Text style={styles.modalError}>{filterError}</Text> : null}
+            {filterError ? (
+              <Text style={[styles.modalError, { color: theme.danger }]}>{filterError}</Text>
+            ) : null}
             <View style={styles.modalActions}>
-              <Button title="Clear" onPress={clearFilters} variant="secondary" style={styles.modalButton} />
-              <Button title="Apply filters" onPress={applyFilters} variant="primary" style={styles.modalButton} />
+              <Button
+                title={t('catalog.clear', 'Clear')}
+                onPress={clearFilters}
+                variant="secondary"
+                style={styles.modalButton}
+              />
+              <Button
+                title={t('catalog.applyFilters', 'Apply filters')}
+                onPress={applyFilters}
+                variant="primary"
+                style={styles.modalButton}
+              />
             </View>
           </View>
         </View>
@@ -485,7 +790,6 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'Home'>) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   centerState: {
     flex: 1,
@@ -495,7 +799,6 @@ const styles = StyleSheet.create({
   },
   centerText: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   listContent: {
     paddingHorizontal: spacing.md,
@@ -512,48 +815,93 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 21,
     fontWeight: '700',
-    color: colors.text,
   },
-  headerSubtitle: {
-    marginTop: spacing.xs,
-    fontSize: 13,
-    color: colors.textSecondary,
+  headerEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
   },
   categories: {
     gap: 14,
     paddingVertical: spacing.md,
     paddingRight: spacing.md,
   },
-  categoryItem: { width: 88, alignItems: 'center' },
-  categoryVisual: {
-    width: 76, height: 76, borderRadius: 22, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
-    alignItems: 'center', justifyContent: 'center',
+  categoryItem: {
+    width: 88,
+    alignItems: 'center',
   },
-  categoryVisualSelected: { borderWidth: 2, borderColor: colors.primary, backgroundColor: '#E8FAFC' },
-  categoryImage: { width: '100%', height: '100%' },
-  categoryFallback: { fontSize: 26, fontWeight: '800', color: colors.textSecondary },
-  categoryFallbackSelected: { color: colors.primary },
-  categoryLabel: { marginTop: 7, width: 88, textAlign: 'center', fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-  categoryLabelSelected: { color: colors.primary, fontWeight: '700' },
+  categoryVisual: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  categoryFallback: {
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  categoryLabel: {
+    marginTop: 7,
+    width: 88,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
+  },
   heroCard: {
     minHeight: 172,
     marginTop: spacing.sm,
     marginBottom: spacing.md,
     borderRadius: 18,
-    backgroundColor: '#F3EEFF',
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.lg,
   },
-  heroCopy: { flex: 1, zIndex: 2 },
-  heroEyebrow: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1.2, marginBottom: 7 },
-  heroTitle: { fontSize: 22, lineHeight: 27, fontWeight: '800', color: colors.text, maxWidth: 180 },
-  heroPrice: { marginTop: 7, fontSize: 16, fontWeight: '700', color: colors.textSecondary },
-  heroButton: { alignSelf: 'flex-start', marginTop: 13, backgroundColor: '#171A21', borderRadius: 7, paddingHorizontal: 14, paddingVertical: 9 },
-  heroButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-  heroImage: { width: 132, height: 132, borderRadius: 16, marginLeft: 8 },
+  heroCopy: {
+    flex: 1,
+    zIndex: 2,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 7,
+  },
+  heroTitle: {
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '800',
+    maxWidth: 180,
+  },
+  heroPrice: {
+    marginTop: 7,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  heroButton: {
+    alignSelf: 'flex-start',
+    marginTop: 13,
+    borderRadius: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  heroButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  heroImage: {
+    width: 132,
+    height: 132,
+    borderRadius: 16,
+    marginLeft: 8,
+  },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,35 +916,11 @@ const styles = StyleSheet.create({
   },
   resultCount: {
     fontSize: 13,
-    color: colors.textSecondary,
-  },
-  filterButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  filterButtonTextActive: {
-    color: colors.onPrimary,
-    fontWeight: '600',
   },
   viewToggle: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.xs,
     gap: spacing.xs,
   },
@@ -605,16 +929,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radii.sm - 2,
   },
-  toggleButtonActive: {
-    backgroundColor: colors.primary,
-  },
   toggleText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.textSecondary,
   },
   toggleTextActive: {
-    color: colors.onPrimary,
     fontWeight: '600',
   },
   gridRow: {
@@ -632,22 +951,19 @@ const styles = StyleSheet.create({
   stateTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   stateText: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.sm,
   },
   retryButtonText: {
-    color: colors.onPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -661,118 +977,209 @@ const styles = StyleSheet.create({
   pageButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.sm,
   },
   pageButtonDisabled: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   pageButtonText: {
-    color: colors.onPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   pageButtonTextDisabled: {
-    color: colors.textSecondary,
+    fontWeight: '500',
   },
   pageInfo: {
     fontSize: 13,
-    color: colors.textSecondary,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.22)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalCard: {
+  filterSheet: {
     width: '100%',
-    maxWidth: 360,
-    backgroundColor: colors.background,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderTopWidth: 1,
+    paddingBottom: spacing.lg,
+  },
+  filterHeader: {
+    height: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
   },
   modalTitle: {
     fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.xs,
   },
-  modalLabel: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: spacing.xs,
+  closeButton: {
+    position: 'absolute',
+    right: spacing.md,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalInput: {
+  closeText: {
+    fontSize: 28,
+    fontWeight: '300',
+  },
+  filterSection: {
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    gap: spacing.md,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  priceField: {
+    flex: 1,
+    height: 42,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.base,
-    color: colors.text,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  currency: {
+    fontSize: 15,
+    marginRight: 5,
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+  rangeLine: {
+    width: 18,
+    height: 1,
+  },
+  ratingFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stars: {
+    color: '#FBBF24',
+    fontSize: 22,
+    letterSpacing: 2,
+  },
+  starOff: {
+    color: '#94A3B8',
+    fontSize: 22,
+    marginLeft: 3,
+  },
+  ratingInput: {
+    width: 36,
+    marginLeft: spacing.sm,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  andUp: {
+    fontSize: 14,
+  },
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  optionCard: {
+    width: '47%',
+    minHeight: 78,
+    borderWidth: 1,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: 4,
+  },
+  optionCardActive: {
+    borderWidth: 1.5,
+  },
+  optionIcon: {
+    fontSize: 22,
+  },
+  optionIconMuted: {
+    fontSize: 22,
+  },
+  optionText: {
+    fontSize: 12,
+  },
+  optionTextActive: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   modalError: {
     fontSize: typography.sm,
-    color: colors.danger,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
   },
   modalActions: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   modalButton: {
     flex: 1,
   },
-
-  headerEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: colors.primary },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  headerIconButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  headerIcon: { fontSize: 22, color: colors.text },
-  avatarButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F4E8FF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
-  avatarIcon: {
-    fontSize: 21,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  avatarText: { fontSize: 15, fontWeight: '800', color: '#7C3AED' },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  searchGrow: { flex: 1 },
-  squareFilter: { width: 44, height: 44, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  squareFilterActive: { backgroundColor: '#E6FAFD', borderWidth: 1, borderColor: colors.primary },
-  squareFilterText: { fontSize: 22, color: colors.textSecondary, transform: [{ rotate: '90deg' }] },
-  squareFilterTextActive: { color: colors.primary },
-  filterSheet: { width: '100%', backgroundColor: colors.background, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: spacing.lg },
-  filterHeader: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
-  closeButton: { position: 'absolute', right: spacing.md, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  closeText: { fontSize: 28, color: colors.textSecondary, fontWeight: '300' },
-  filterSection: { padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.md },
-  filterSectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  priceField: { flex: 1, height: 42, borderWidth: 1, borderColor: '#B8C0CC', borderRadius: 5, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm },
-  currency: { fontSize: 15, color: colors.textSecondary, marginRight: 5 },
-  priceInput: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
-  rangeLine: { width: 18, height: 1, backgroundColor: colors.border },
-  sliderTrack: { height: 4, borderRadius: 2, backgroundColor: '#B9EEF4', position: 'relative', marginVertical: 8 },
-  sliderActive: { position: 'absolute', left: '5%', width: '38%', height: 4, borderRadius: 2, backgroundColor: colors.primary },
-  sliderKnob: { position: 'absolute', top: -8, width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.primary },
-  ratingFilterRow: { flexDirection: 'row', alignItems: 'center' },
-  stars: { color: '#FBBF24', fontSize: 22, letterSpacing: 2 },
-  starOff: { color: '#D5DAE1', fontSize: 22, marginLeft: 3 },
-  ratingInput: { width: 32, marginLeft: spacing.sm, color: colors.text, fontSize: 14, textAlign: 'center' },
-  andUp: { fontSize: 14, color: colors.text },
-  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  optionCard: { width: '47%', minHeight: 78, borderWidth: 1, borderColor: colors.border, borderRadius: 6, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  optionCardActive: { borderColor: colors.primary, backgroundColor: '#F7FEFF' },
-  optionIcon: { fontSize: 23, color: colors.primary },
-  optionIconMuted: { fontSize: 22, color: '#98A2B3' },
-  optionText: { fontSize: 12, color: '#98A2B3' },
-  optionTextActive: { fontSize: 12, color: colors.primary },
+  headerIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIcon: {
+    fontSize: 20,
+  },
+  avatarButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  avatarIcon: {
+    fontSize: 20,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  searchGrow: {
+    flex: 1,
+  },
+  squareFilter: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  squareFilterText: {
+    fontSize: 22,
+    transform: [{ rotate: '90deg' }],
+  },
   aiEntryCard: {
     marginTop: spacing.sm,
-    backgroundColor: '#F0FDFA',
     borderWidth: 1,
-    borderColor: '#99F6E4',
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
@@ -790,7 +1197,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#CCFBF1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -803,17 +1209,14 @@ const styles = StyleSheet.create({
   aiEntryTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.text,
   },
   aiEntrySubtitle: {
     fontSize: 11,
-    color: colors.textSecondary,
     marginTop: 1,
   },
   aiEntryArrow: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.primary,
     marginLeft: spacing.sm,
   },
 });

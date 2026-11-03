@@ -1,11 +1,13 @@
 /**
  * Formats and displays a product price in VND. When an original (pre-sale)
  * price exists it is shown struck through next to the current price.
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
  */
 
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing } from '../constants/theme';
+import { spacing } from '../constants/theme';
+import { useAppTheme } from '../theme';
 import { formatVND } from '../utils/format';
 
 type PriceDisplayProps = {
@@ -21,12 +23,20 @@ const PRICE_FONT_SIZE = { sm: 15, md: 17, lg: 24 } as const;
 
 export default function PriceDisplay({ price, originalPrice, size = 'md' }: PriceDisplayProps) {
   const showOriginal = originalPrice !== undefined && originalPrice > price;
+  const { theme } = useAppTheme();
 
   return (
     <View style={styles.row}>
-      <Text style={[styles.price, { fontSize: PRICE_FONT_SIZE[size] }]}>{formatVND(price)}</Text>
+      <Text style={[styles.price, { fontSize: PRICE_FONT_SIZE[size], color: theme.primary }]}>
+        {formatVND(price)}
+      </Text>
       {showOriginal && (
-        <Text style={[styles.original, { fontSize: Math.max(11, PRICE_FONT_SIZE[size] - 4) }]}>
+        <Text
+          style={[
+            styles.original,
+            { fontSize: Math.max(11, PRICE_FONT_SIZE[size] - 4), color: theme.textSecondary },
+          ]}
+        >
           {formatVND(originalPrice)}
         </Text>
       )}
@@ -42,11 +52,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   price: {
-    color: colors.primary,
     fontWeight: '700',
   },
   original: {
-    color: colors.textSecondary,
     textDecorationLine: 'line-through',
   },
 });

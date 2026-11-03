@@ -4,6 +4,9 @@
  * Implements client-side validation (1..5 star rating, non-blank comment up to 2000 chars),
  * loading state to prevent duplicate submissions, and maps structured backend errors
  * (e.g. REVIEW_NOT_ELIGIBLE, REVIEW_ALREADY_EXISTS) into user-friendly messages.
+ *
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
+ * Localized across English and Vietnamese via i18next reviews namespace.
  */
 
 import React, { useState } from 'react';
@@ -22,8 +25,10 @@ import {
 
 import { toApiError } from '../api/errors';
 import Button from './Button';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
 import { useCreateReview } from '../hooks/useReviews';
+import { useAppLanguage } from '../i18n';
+import { useAppTheme } from '../theme';
 import type { ReviewResponse } from '../types/reviewApi';
 
 type WriteReviewModalProps = {
@@ -41,6 +46,9 @@ export default function WriteReviewModal({
   onClose,
   onSuccess,
 }: WriteReviewModalProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -74,15 +82,22 @@ export default function WriteReviewModal({
   const handleSubmit = async () => {
     if (!isValid || isPending) {
       if (rating < 1 || rating > 5) {
-        setErrorMessage('Please select a star rating from 1 to 5.');
+        setErrorMessage(
+          t('reviews.ratingRequired', 'Please select a star rating from 1 to 5.'),
+        );
         return;
       }
       if (trimmedComment.length === 0) {
-        setErrorMessage('Please write a review comment.');
+        setErrorMessage(t('reviews.commentRequired', 'Please write a review comment.'));
         return;
       }
       if (comment.length > 2000) {
-        setErrorMessage('Review comment must not exceed 2000 characters.');
+        setErrorMessage(
+          t(
+            'reviews.commentMaxLength',
+            'Review comment must not exceed 2000 characters.',
+          ),
+        );
         return;
       }
       return;
@@ -105,27 +120,44 @@ export default function WriteReviewModal({
       setErrorMessage(null);
 
       onClose();
-      Alert.alert('Review Submitted', 'Thank you for your feedback!');
+      Alert.alert(
+        t('reviews.reviewSubmittedTitle', 'Review Submitted'),
+        t('reviews.reviewSubmittedMessage', 'Thank you for your feedback!'),
+      );
       onSuccess?.(result);
     } catch (err) {
       const apiError = toApiError(err);
 
       if (apiError.code === 'REVIEW_NOT_ELIGIBLE') {
-        setErrorMessage('You can review this product after completing an order for it.');
+        setErrorMessage(
+          t(
+            'reviews.reviewNotEligible',
+            'You can review this product after completing an order for it.',
+          ),
+        );
       } else if (apiError.code === 'REVIEW_ALREADY_EXISTS') {
-        setErrorMessage('You have already reviewed this product.');
+        setErrorMessage(
+          t('reviews.reviewAlreadyExists', 'You have already reviewed this product.'),
+        );
       } else if (apiError.status === 401) {
-        setErrorMessage('Please log in to submit a review.');
+        setErrorMessage(t('reviews.loginRequired', 'Please log in to submit a review.'));
       } else if (apiError.status === 403) {
-        setErrorMessage('Customer accounts only can submit reviews.');
+        setErrorMessage(
+          t('reviews.customerOnly', 'Customer accounts only can submit reviews.'),
+        );
       } else if (apiError.code === 'VALIDATION_ERROR' && apiError.fieldErrors) {
         const firstField = Object.values(apiError.fieldErrors)[0];
         setErrorMessage(firstField || apiError.message);
       } else {
-        setErrorMessage(apiError.message || 'Failed to submit review. Please try again.');
+        setErrorMessage(
+          apiError.message ||
+            t('reviews.failedToSubmit', 'Failed to submit review. Please try again.'),
+        );
       }
     }
   };
+
+  const starColor = '#F59E0B';
 
   return (
     <Modal
@@ -136,14 +168,30 @@ export default function WriteReviewModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.backdrop}
+        style={[
+          styles.backdrop,
+          { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)' },
+        ]}
       >
         <Pressable style={styles.outsidePress} onPress={handleClose} />
-        <View style={styles.modalCard}>
-          <View style={styles.headerRow}>
+        <View
+          style={[
+            styles.modalCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
             <View style={styles.headerTextGroup}>
-              <Text style={styles.modalTitle}>Write a Review</Text>
-              <Text style={styles.productName} numberOfLines={1}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {t('reviews.writeReview', 'Write a Review')}
+              </Text>
+              <Text
+                style={[styles.productName, { color: theme.textSecondary }]}
+                numberOfLines={1}
+              >
                 {productName}
               </Text>
             </View>
@@ -152,15 +200,17 @@ export default function WriteReviewModal({
               disabled={isPending}
               style={styles.closeButton}
               accessibilityRole="button"
-              accessibilityLabel="Close review dialog"
+              accessibilityLabel={t('reviews.closeDialog', 'Close review dialog')}
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>✕</Text>
             </Pressable>
           </View>
 
           <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
             {/* Rating Stars Selector */}
-            <Text style={styles.fieldLabel}>Rating</Text>
+            <Text style={[styles.fieldLabel, { color: theme.text }]}>
+              {t('reviews.rating', 'Rating')}
+            </Text>
             <View style={styles.starRow}>
               {[1, 2, 3, 4, 5].map((starValue) => {
                 const isFilled = starValue <= rating;
@@ -171,13 +221,17 @@ export default function WriteReviewModal({
                     disabled={isPending}
                     style={styles.starTouch}
                     accessibilityRole="button"
-                    accessibilityLabel={`Rate ${starValue} star${starValue > 1 ? 's' : ''}`}
+                    accessibilityLabel={t(
+                      starValue === 1 ? 'reviews.rateStars_one' : 'reviews.rateStars_other',
+                      `Rate ${starValue} star${starValue > 1 ? 's' : ''}`,
+                      { count: starValue },
+                    )}
                     accessibilityState={{ selected: starValue === rating }}
                   >
                     <Text
                       style={[
                         styles.starGlyph,
-                        isFilled ? styles.starFilled : styles.starEmpty,
+                        isFilled ? { color: starColor } : { color: theme.border },
                       ]}
                     >
                       ★
@@ -185,18 +239,23 @@ export default function WriteReviewModal({
                   </Pressable>
                 );
               })}
-              <Text style={styles.ratingNumber}>
-                {rating > 0 ? `${rating} / 5` : 'Select rating'}
+              <Text style={[styles.ratingNumber, { color: theme.text }]}>
+                {rating > 0
+                  ? t('reviews.ratingScore', `${rating} / 5`, { score: rating })
+                  : t('reviews.selectRating', 'Select rating')}
               </Text>
             </View>
 
             {/* Comment Field */}
             <View style={styles.commentLabelRow}>
-              <Text style={styles.fieldLabel}>Your Comment</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>
+                {t('reviews.yourComment', 'Your Comment')}
+              </Text>
               <Text
                 style={[
                   styles.charCounter,
-                  comment.length > 2000 && styles.charCounterLimit,
+                  { color: theme.textSecondary },
+                  comment.length > 2000 && { color: theme.danger, fontWeight: '600' },
                 ]}
               >
                 {comment.length}/2000
@@ -206,12 +265,20 @@ export default function WriteReviewModal({
             <TextInput
               style={[
                 styles.textArea,
-                errorMessage != null && styles.textAreaError,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+                errorMessage != null && { borderColor: theme.danger },
               ]}
               multiline
               numberOfLines={4}
-              placeholder="What did you think of the product?"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t(
+                'reviews.commentPlaceholder',
+                'What did you think of the product?',
+              )}
+              placeholderTextColor={theme.textSecondary}
               value={comment}
               onChangeText={handleCommentChange}
               maxLength={2000}
@@ -222,28 +289,39 @@ export default function WriteReviewModal({
 
             {/* Error Container */}
             {errorMessage != null && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEECEC',
+                  },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: theme.danger }]}>
+                  {errorMessage}
+                </Text>
               </View>
             )}
           </ScrollView>
 
           {/* Action Buttons */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: theme.border }]}>
             <Button
-              title="Cancel"
+              title={t('reviews.cancel', 'Cancel')}
               variant="secondary"
               onPress={handleClose}
               disabled={isPending}
               style={styles.cancelButton}
+              accessibilityLabel={t('reviews.cancel', 'Cancel')}
             />
             <Button
-              title="Submit Review"
+              title={t('reviews.submitReview', 'Submit Review')}
               variant="primary"
               onPress={handleSubmit}
               loading={isPending}
               disabled={!isValid || isPending}
               style={styles.submitButton}
+              accessibilityLabel={t('reviews.submitReview', 'Submit Review')}
             />
           </View>
         </View>
@@ -255,7 +333,6 @@ export default function WriteReviewModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
@@ -267,8 +344,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     maxHeight: '90%',
-    backgroundColor: colors.background,
     borderRadius: radii.lg,
+    borderWidth: 1,
     padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -282,7 +359,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   headerTextGroup: {
     flex: 1,
@@ -291,11 +367,9 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
   },
   productName: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   closeButton: {
@@ -303,7 +377,6 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '600',
   },
   body: {
@@ -312,7 +385,6 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: typography.md,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   starRow: {
@@ -326,16 +398,9 @@ const styles = StyleSheet.create({
   starGlyph: {
     fontSize: 28,
   },
-  starFilled: {
-    color: colors.star,
-  },
-  starEmpty: {
-    color: colors.border,
-  },
   ratingNumber: {
     fontSize: typography.md,
     fontWeight: '600',
-    color: colors.text,
     marginLeft: spacing.sm,
   },
   commentLabelRow: {
@@ -346,33 +411,20 @@ const styles = StyleSheet.create({
   },
   charCounter: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
-  },
-  charCounterLimit: {
-    color: colors.danger,
-    fontWeight: '600',
   },
   textArea: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.md,
     padding: spacing.sm,
     minHeight: 100,
     fontSize: typography.base,
-    color: colors.text,
-  },
-  textAreaError: {
-    borderColor: colors.danger,
   },
   errorBox: {
     marginTop: spacing.sm,
     padding: spacing.sm,
-    backgroundColor: '#FEECEC',
     borderRadius: radii.sm,
   },
   errorText: {
-    color: colors.danger,
     fontSize: typography.sm,
     lineHeight: 18,
   },
@@ -381,7 +433,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   cancelButton: {
     flex: 1,

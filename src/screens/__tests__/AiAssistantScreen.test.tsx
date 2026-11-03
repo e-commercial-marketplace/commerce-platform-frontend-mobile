@@ -214,7 +214,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(getByText('Tìm tai nghe chống ồn dưới 2 triệu'));
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Tìm tai nghe chống ồn dưới 2 triệu',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTìm tai nghe chống ồn dưới 2 triệu',
       });
 
       await waitFor(() => {
@@ -281,7 +281,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Tìm tai nghe',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTìm tai nghe',
       });
 
       await waitFor(() => {
@@ -341,7 +341,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Tìm tai nghe',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTìm tai nghe',
       });
 
       await waitFor(() => {
@@ -353,7 +353,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Cái nào rẻ nhất?',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nCái nào rẻ nhất?',
         sessionId: 'session-cust-123',
       });
 
@@ -449,7 +449,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenLastCalledWith({
-        message: 'Turn 3',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTurn 3',
       });
     });
   });
@@ -742,7 +742,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Giá bao nhiêu?',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nGiá bao nhiêu?',
         sessionId: 'session-history-1',
       });
 
@@ -780,7 +780,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
 
       expect(mockMutateAsync).toHaveBeenLastCalledWith({
-        message: 'Bắt đầu chat mới',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nBắt đầu chat mới',
       });
     });
 

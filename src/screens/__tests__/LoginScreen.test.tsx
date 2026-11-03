@@ -1,12 +1,15 @@
 /**
  * Unit tests for LoginScreen.
- * Verifies email/password inputs, login submit, and navigation to ForgotPassword.
+ * Verifies email/password inputs, login submit, navigation to ForgotPassword,
+ * and Vietnamese localized text.
  */
 
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { useAuth } from '../../hooks/useAuth';
+import i18n from '../../i18n';
+import { AppI18nProvider } from '../../i18n/I18nContext';
 import LoginScreen from '../LoginScreen';
 
 jest.mock('../../hooks/useAuth');
@@ -25,8 +28,9 @@ describe('LoginScreen', () => {
     goBack: mockGoBack,
   } as never;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await i18n.changeLanguage('en');
     mockedUseAuth.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -36,6 +40,10 @@ describe('LoginScreen', () => {
       logout: jest.fn(),
       changePassword: jest.fn(),
     });
+  });
+
+  afterAll(async () => {
+    await i18n.changeLanguage('en');
   });
 
   it('renders login form and "Forgot password?" link', () => {
@@ -95,6 +103,27 @@ describe('LoginScreen', () => {
         password: 'Password123',
       });
       expect(mockGoBack).toHaveBeenCalled();
+    });
+  });
+
+  it('renders Vietnamese localized copy and validation errors when language is vi', async () => {
+    await i18n.changeLanguage('vi');
+
+    const { getByRole, getByText } = render(
+      <AppI18nProvider initialLanguage="vi">
+        <LoginScreen navigation={navigation} route={{} as never} />
+      </AppI18nProvider>,
+    );
+
+    expect(getByText('Đăng nhập để tiếp tục.')).toBeTruthy();
+    expect(getByText('Quên mật khẩu?')).toBeTruthy();
+    expect(getByText('Chưa có tài khoản? ')).toBeTruthy();
+
+    fireEvent.press(getByRole('button', { name: 'Log in' }));
+
+    await waitFor(() => {
+      expect(getByText('Vui lòng nhập email.')).toBeTruthy();
+      expect(getByText('Vui lòng nhập mật khẩu.')).toBeTruthy();
     });
   });
 });

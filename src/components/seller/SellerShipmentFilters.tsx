@@ -15,6 +15,8 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { ShipmentStatus } from '../../types/sellerApi';
 
 export type SellerShipmentFiltersProps = {
@@ -43,8 +45,11 @@ export default function SellerShipmentFilters({
   onSelectStatus,
   disabled = false,
 }: SellerShipmentFiltersProps) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -52,6 +57,7 @@ export default function SellerShipmentFilters({
       >
         {SHIPMENT_STATUS_OPTIONS.map(({ status, label }) => {
           const isSelected = currentStatus === status;
+          const displayLabel = t(`seller.shipmentStatus_${status}`, label);
           return (
             <Pressable
               key={status}
@@ -59,7 +65,8 @@ export default function SellerShipmentFilters({
               disabled={disabled}
               style={({ pressed }) => [
                 styles.tab,
-                isSelected && styles.tabActive,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                isSelected && [styles.tabActive, { backgroundColor: theme.primary, borderColor: theme.primary }],
                 pressed && !disabled && styles.tabPressed,
                 disabled && styles.tabDisabled,
               ]}
@@ -68,8 +75,14 @@ export default function SellerShipmentFilters({
               accessibilityState={{ selected: isSelected, disabled }}
               testID={`shipment-filter-${status.toLowerCase()}`}
             >
-              <Text style={[styles.tabText, isSelected && styles.tabTextActive]}>
-                {label}
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: theme.text },
+                  isSelected && [styles.tabTextActive, { color: theme.onPrimary }],
+                ]}
+              >
+                {displayLabel}
               </Text>
             </Pressable>
           );

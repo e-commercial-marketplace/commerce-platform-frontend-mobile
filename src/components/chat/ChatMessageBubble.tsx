@@ -15,6 +15,8 @@ import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { MessageResponse } from '../../types/chatApi';
 import { formatChatTimestamp } from '../../utils/format';
 
@@ -40,8 +42,13 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
   isFailed = false,
   onRetry,
 }: ChatMessageBubbleProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const [imageError, setImageError] = useState(false);
   const formattedTime = formatChatTimestamp(message.createdAt);
+
+  const senderPrefix = isOutgoing ? t('chat.you', 'Bạn: ') : t('chat.partner', 'Đối tác: ');
+  const contentOrImage = message.content || t('chat.imageFallback', 'Hình ảnh');
 
   return (
     <View
@@ -50,23 +57,34 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
         isOutgoing ? styles.outgoingContainer : styles.incomingContainer,
       ]}
       accessibilityRole="text"
-      accessibilityLabel={`${isOutgoing ? 'Bạn: ' : 'Đối tác: '}${message.content || 'Hình ảnh'}`}
+      accessibilityLabel={`${senderPrefix}${contentOrImage}`}
     >
       <View
         style={[
           styles.bubble,
-          isOutgoing ? styles.outgoingBubble : styles.incomingBubble,
-          isFailed && styles.failedBubble,
+          isOutgoing
+            ? [styles.outgoingBubble, { backgroundColor: theme.primary }]
+            : [
+                styles.incomingBubble,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ],
+          isFailed && [
+            styles.failedBubble,
+            {
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#FDE8E8',
+              borderColor: theme.danger,
+            },
+          ],
         ]}
       >
         {/* Optional Attached Image (Render-only fallback, upload is unsupported) */}
         {message.imageUrl && !imageError ? (
           <Image
             source={{ uri: message.imageUrl }}
-            style={styles.attachedImage}
+            style={[styles.attachedImage, { backgroundColor: theme.border }]}
             resizeMode="cover"
             onError={() => setImageError(true)}
-            accessibilityLabel="Hình ảnh đính kèm"
+            accessibilityLabel={t('chat.attachedImageA11y', 'Hình ảnh đính kèm')}
           />
         ) : null}
 
@@ -75,7 +93,9 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
           <Text
             style={[
               styles.messageText,
-              isOutgoing ? styles.outgoingText : styles.incomingText,
+              isOutgoing
+                ? [styles.outgoingText, { color: theme.onPrimary }]
+                : [styles.incomingText, { color: theme.text }],
             ]}
             selectable
           >
@@ -91,28 +111,39 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
           isOutgoing ? styles.outgoingMetaRow : styles.incomingMetaRow,
         ]}
       >
-        <Text style={styles.timestampText}>{formattedTime}</Text>
+        <Text style={[styles.timestampText, { color: theme.textSecondary }]}>
+          {formattedTime}
+        </Text>
 
         {/* Outgoing Read Indicator: Subtle "Đã xem" only when isRead is true */}
         {isOutgoing && !isFailed && message.isRead === true ? (
-          <Text style={styles.readStatusText}>Đã xem</Text>
+          <Text style={[styles.readStatusText, { color: theme.primary }]}>
+            {t('chat.seen', 'Đã xem')}
+          </Text>
         ) : null}
 
         {/* Failure State & Retry Button */}
         {isFailed ? (
           <View style={styles.failedActionRow}>
-            <Text style={styles.failedNotice}>⚠️ Lỗi gửi</Text>
+            <Text style={[styles.failedNotice, { color: theme.danger }]}>
+              {`⚠️ ${t('chat.sendFailed', 'Lỗi gửi')}`}
+            </Text>
             {onRetry ? (
               <Pressable
                 onPress={onRetry}
                 style={({ pressed }) => [
                   styles.retryButton,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2',
+                  },
                   pressed && styles.retryButtonPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại gửi tin nhắn"
+                accessibilityLabel={t('chat.retryBubbleA11y', 'Thử lại gửi tin nhắn')}
               >
-                <Text style={styles.retryButtonText}>Thử lại</Text>
+                <Text style={[styles.retryButtonText, { color: theme.danger }]}>
+                  {t('chat.retry', 'Thử lại')}
+                </Text>
               </Pressable>
             ) : null}
           </View>

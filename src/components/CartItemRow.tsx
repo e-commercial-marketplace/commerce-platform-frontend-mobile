@@ -7,15 +7,14 @@
  * presentational — the screen wires callbacks to the `useCart` mutations and
  * owns the local checkout selection.
  *
- * A line may be unavailable (`!active`) or over stock
- * (`quantity > availableStock`). Such lines stay visible and removable but
- * cannot be increased; decrement is only blocked while the product itself is
- * inactive or the quantity is already 1 (the backend refuses PATCH to 0).
+ * Fully theme-aware with dynamic semantic tokens and localized strings.
  */
 
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppLanguage } from '../i18n';
+import { useAppTheme } from '../theme';
 import type { CartLine } from '../types/cart';
 import { formatVND } from '../utils/format';
 import PriceDisplay from './PriceDisplay';
@@ -46,6 +45,8 @@ export default function CartItemRow({
   disabled = false,
   pending = false,
 }: CartItemRowProps) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { quantity, active, availableStock } = item;
 
   const canDecrease = active && quantity > 1 && !disabled;
@@ -54,25 +55,44 @@ export default function CartItemRow({
   const canSelect = item.available && !disabled;
   const showControls = active;
 
-  const status = getStatusLabel(item);
+  const status = getStatusLabel(item, t);
 
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+        },
+      ]}
+    >
       <View style={styles.top}>
         <Pressable
           onPress={onToggleSelected}
           disabled={!canSelect}
           style={({ pressed }) => [
             styles.selection,
-            selected && canSelect && styles.selectionChecked,
+            {
+              backgroundColor: theme.background,
+              borderColor: theme.border,
+            },
+            selected && canSelect && {
+              borderColor: theme.primary,
+              backgroundColor: theme.primary,
+            },
             !canSelect && styles.selectionDisabled,
             pressed && canSelect && styles.pressed,
           ]}
           accessibilityRole="checkbox"
           accessibilityLabel={
             item.available
-              ? `${selected ? 'Deselect' : 'Select'} ${item.name}`
-              : `${item.name} is unavailable for checkout`
+              ? selected
+                ? t('cart.deselectItem', `Deselect ${item.name}`, { name: item.name })
+                : t('cart.selectItem', `Select ${item.name}`, { name: item.name })
+              : t('cart.unavailableForCheckout', `${item.name} is unavailable for checkout`, {
+                  name: item.name,
+                })
           }
           accessibilityState={{ checked: selected, disabled: !canSelect }}
         >
@@ -82,17 +102,33 @@ export default function CartItemRow({
         <ProductImage source={item.image} style={styles.thumb} />
 
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={2}>
+          <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>
             {item.name}
           </Text>
 
           <PriceDisplay price={item.unitPrice} size="sm" />
 
-          <Text style={[styles.status, !item.available && styles.statusUnavailable]}>{status}</Text>
+          <Text
+            style={[
+              styles.status,
+              { color: theme.textSecondary },
+              !item.available && { color: theme.danger, fontWeight: '600' },
+            ]}
+          >
+            {status}
+          </Text>
 
           <View style={styles.actions}>
             {showControls && (
-              <View style={styles.stepper}>
+              <View
+                style={[
+                  styles.stepper,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
                 <Pressable
                   onPress={onDecrease}
                   disabled={!canDecrease}
@@ -102,13 +138,17 @@ export default function CartItemRow({
                     pressed && canDecrease && styles.pressed,
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={`Decrease quantity of ${item.name}`}
+                  accessibilityLabel={t(
+                    'cart.decreaseQuantity',
+                    `Decrease quantity of ${item.name}`,
+                    { name: item.name },
+                  )}
                   accessibilityState={{ disabled: !canDecrease }}
                 >
-                  <Text style={styles.stepSymbol}>−</Text>
+                  <Text style={[styles.stepSymbol, { color: theme.text }]}>−</Text>
                 </Pressable>
 
-                <Text style={styles.quantity}>{quantity}</Text>
+                <Text style={[styles.quantity, { color: theme.text }]}>{quantity}</Text>
 
                 <Pressable
                   onPress={onIncrease}
@@ -119,15 +159,19 @@ export default function CartItemRow({
                     pressed && canIncrease && styles.pressed,
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={`Increase quantity of ${item.name}`}
+                  accessibilityLabel={t(
+                    'cart.increaseQuantity',
+                    `Increase quantity of ${item.name}`,
+                    { name: item.name },
+                  )}
                   accessibilityState={{ disabled: !canIncrease }}
                 >
-                  <Text style={styles.stepSymbol}>+</Text>
+                  <Text style={[styles.stepSymbol, { color: theme.text }]}>+</Text>
                 </Pressable>
               </View>
             )}
 
-            {pending && <ActivityIndicator size="small" color={colors.primary} />}
+            {pending && <ActivityIndicator size="small" color={theme.primary} />}
 
             <Pressable
               onPress={onRemove}
@@ -138,16 +182,20 @@ export default function CartItemRow({
                 !canRemove && styles.removeButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Remove ${item.name} from cart`}
+              accessibilityLabel={t('cart.removeFromCart', `Remove ${item.name} from cart`, {
+                name: item.name,
+              })}
               accessibilityState={{ disabled: !canRemove }}
             >
-              <Text style={styles.removeText}>Remove</Text>
+              <Text style={[styles.removeText, { color: theme.danger }]}>
+                {t('cart.remove', 'Remove')}
+              </Text>
             </Pressable>
           </View>
         </View>
       </View>
 
-      <Text style={styles.lineTotal}>
+      <Text style={[styles.lineTotal, { color: theme.textSecondary }]}>
         {quantity} × {formatVND(item.unitPrice)}
       </Text>
     </View>
@@ -158,25 +206,30 @@ export default function CartItemRow({
  * Human-readable availability. Mirrors the backend rules: a line is
  * purchasable only when the product is active and quantity <= availableStock.
  */
-function getStatusLabel(item: CartLine): string {
+function getStatusLabel(
+  item: CartLine,
+  t: (key: string, def?: string, options?: Record<string, unknown>) => string,
+): string {
   if (!item.active) {
-    return 'Unavailable';
+    return t('cart.unavailable', 'Unavailable');
   }
   if (item.availableStock === 0) {
-    return 'Out of stock';
+    return t('cart.outOfStock', 'Out of stock');
   }
   if (item.quantity > item.availableStock) {
-    return `Only ${item.availableStock} left in stock`;
+    return t('cart.onlyLeftInStock', `Only ${item.availableStock} left in stock`, {
+      count: item.availableStock,
+    });
   }
-  return `${item.availableStock} available`;
+  return t('cart.stockAvailable', `${item.availableStock} available`, {
+    count: item.availableStock,
+  });
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.background,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.sm,
     gap: spacing.sm,
   },
@@ -190,14 +243,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  selectionChecked: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
   },
   selectionDisabled: {
     opacity: 0.35,
@@ -206,7 +253,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 18,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   thumb: {
     width: 72,
@@ -220,15 +267,9 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   status: {
     fontSize: 12,
-    color: colors.textSecondary,
-  },
-  statusUnavailable: {
-    color: colors.danger,
-    fontWeight: '600',
   },
   actions: {
     flexDirection: 'row',
@@ -240,10 +281,8 @@ const styles = StyleSheet.create({
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   stepButton: {
     width: 32,
@@ -258,14 +297,12 @@ const styles = StyleSheet.create({
   stepSymbol: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   quantity: {
     minWidth: 28,
     textAlign: 'center',
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   removeButton: {
     marginLeft: 'auto',
@@ -278,11 +315,9 @@ const styles = StyleSheet.create({
   removeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.danger,
   },
   lineTotal: {
     fontSize: 12,
-    color: colors.textSecondary,
     textAlign: 'right',
   },
   pressed: {

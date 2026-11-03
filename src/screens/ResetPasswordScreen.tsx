@@ -3,6 +3,7 @@
  * Supports prefilled email from route params, code input restriction to 6 digits,
  * password bounds (8..72 chars), client-side confirmation check, and a 60s
  * resend cooldown timer.
+ * Fully theme-aware and localized with i18n support.
  */
 
 import { useEffect, useState } from 'react';
@@ -21,9 +22,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
 import FormField from '../components/FormField';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import * as authService from '../services/authService';
+import { useAppTheme } from '../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_MAX_LENGTH = 255;
@@ -43,6 +46,9 @@ export default function ResetPasswordScreen({
   route,
   navigation,
 }: AppNavigatorScreenProps<'ResetPassword'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const initialEmail = route.params?.email ?? '';
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
@@ -78,15 +84,24 @@ export default function ResetPasswordScreen({
 
     const trimmedEmail = email.trim();
     if (trimmedEmail.length === 0) {
-      setErrors((previous) => ({ ...previous, email: 'Email is required to resend code.' }));
+      setErrors((previous) => ({
+        ...previous,
+        email: t('auth.emailRequiredForResend', 'Email is required to resend code.'),
+      }));
       return;
     }
     if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setErrors((previous) => ({ ...previous, email: 'Enter a valid email address.' }));
+      setErrors((previous) => ({
+        ...previous,
+        email: t('auth.emailInvalid', 'Enter a valid email address.'),
+      }));
       return;
     }
     if (trimmedEmail.length > EMAIL_MAX_LENGTH) {
-      setErrors((previous) => ({ ...previous, email: 'Email must be at most 255 characters.' }));
+      setErrors((previous) => ({
+        ...previous,
+        email: t('auth.emailMaxLength', 'Email must be at most 255 characters.'),
+      }));
       return;
     }
 
@@ -97,8 +112,8 @@ export default function ResetPasswordScreen({
       await authService.forgotPassword({ email: trimmedEmail });
       setCountdown(RESEND_COOLDOWN_SECONDS);
       Alert.alert(
-        'Reset Code Sent',
-        'If eligible, a new reset code has been sent.',
+        t('auth.resetCodeSentTitle', 'Reset Code Sent'),
+        t('auth.resetCodeSentAgainMessage', 'If eligible, a new reset code has been sent.'),
       );
     } catch (err) {
       const apiError = toApiError(err);
@@ -118,31 +133,37 @@ export default function ResetPasswordScreen({
     const trimmedCode = code.trim();
 
     if (trimmedEmail.length === 0) {
-      nextErrors.email = 'Email is required.';
+      nextErrors.email = t('auth.emailRequired', 'Email is required.');
     } else if (!EMAIL_REGEX.test(trimmedEmail)) {
-      nextErrors.email = 'Enter a valid email address.';
+      nextErrors.email = t('auth.emailInvalid', 'Enter a valid email address.');
     } else if (trimmedEmail.length > EMAIL_MAX_LENGTH) {
-      nextErrors.email = 'Email must be at most 255 characters.';
+      nextErrors.email = t('auth.emailMaxLength', 'Email must be at most 255 characters.');
     }
 
     if (trimmedCode.length === 0) {
-      nextErrors.code = 'Reset code is required.';
+      nextErrors.code = t('auth.resetCodeRequired', 'Reset code is required.');
     } else if (trimmedCode.length !== CODE_LENGTH || !/^\d{6}$/.test(trimmedCode)) {
-      nextErrors.code = 'Reset code must be exactly 6 digits.';
+      nextErrors.code = t('auth.resetCodeLength', 'Reset code must be exactly 6 digits.');
     }
 
     if (newPassword.length === 0) {
-      nextErrors.newPassword = 'New password is required.';
+      nextErrors.newPassword = t('auth.newPasswordRequired', 'New password is required.');
     } else if (newPassword.length < PASSWORD_MIN_LENGTH) {
-      nextErrors.newPassword = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+      nextErrors.newPassword = t(
+        'auth.passwordMinLength',
+        `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+      );
     } else if (newPassword.length > PASSWORD_MAX_LENGTH) {
-      nextErrors.newPassword = `Password must be at most ${PASSWORD_MAX_LENGTH} characters.`;
+      nextErrors.newPassword = t(
+        'auth.passwordMaxLength',
+        `Password must be at most ${PASSWORD_MAX_LENGTH} characters.`,
+      );
     }
 
     if (confirmPassword.length === 0) {
-      nextErrors.confirmPassword = 'Confirm your new password.';
+      nextErrors.confirmPassword = t('auth.confirmPasswordRequired', 'Confirm your new password.');
     } else if (newPassword !== confirmPassword) {
-      nextErrors.confirmPassword = 'Passwords do not match.';
+      nextErrors.confirmPassword = t('auth.passwordsDoNotMatch', 'Passwords do not match.');
     }
 
     setErrors(nextErrors);
@@ -162,8 +183,11 @@ export default function ResetPasswordScreen({
       });
 
       Alert.alert(
-        'Password Reset Successful',
-        'Your password has been reset successfully. Please log in with your new password.',
+        t('auth.passwordResetSuccessTitle', 'Password Reset Successful'),
+        t(
+          'auth.passwordResetSuccessMessage',
+          'Your password has been reset successfully. Please log in with your new password.',
+        ),
       );
       navigation.navigate('Login');
     } catch (err) {
@@ -185,24 +209,31 @@ export default function ResetPasswordScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="reset-password-screen"
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.intro}>
-            Enter your email, the 6-digit code received, and your new password.
+          <Text style={[styles.intro, { color: theme.textSecondary }]}>
+            {t(
+              'auth.resetPasswordInstruction',
+              'Enter your email, the 6-digit code received, and your new password.',
+            )}
           </Text>
 
           <FormField
-            label="Email"
+            label={t('auth.email', 'Email')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
               setErrors((previous) => ({ ...previous, email: undefined }));
             }}
-            placeholder="you@example.com"
+            placeholder={t('auth.emailPlaceholder', 'you@example.com')}
             error={errors.email}
             editable={!submitting && !resending}
             keyboardType="email-address"
@@ -210,27 +241,27 @@ export default function ResetPasswordScreen({
           />
 
           <FormField
-            label="6-Digit Reset Code"
+            label={t('auth.sixDigitResetCode', '6-Digit Reset Code')}
             value={code}
             onChangeText={(text) => {
               const digitsOnly = text.replace(/\D/g, '').slice(0, CODE_LENGTH);
               setCode(digitsOnly);
               setErrors((previous) => ({ ...previous, code: undefined }));
             }}
-            placeholder="123456"
+            placeholder={t('auth.codePlaceholder', '123456')}
             error={errors.code}
             editable={!submitting && !resending}
             keyboardType="number-pad"
           />
 
           <FormField
-            label="New Password"
+            label={t('auth.newPassword', 'New Password')}
             value={newPassword}
             onChangeText={(text) => {
               setNewPassword(text);
               setErrors((previous) => ({ ...previous, newPassword: undefined }));
             }}
-            placeholder="At least 8 characters"
+            placeholder={t('auth.registerPasswordPlaceholder', 'At least 8 characters')}
             error={errors.newPassword}
             secureTextEntry
             editable={!submitting && !resending}
@@ -238,13 +269,13 @@ export default function ResetPasswordScreen({
           />
 
           <FormField
-            label="Confirm New Password"
+            label={t('auth.confirmNewPassword', 'Confirm New Password')}
             value={confirmPassword}
             onChangeText={(text) => {
               setConfirmPassword(text);
               setErrors((previous) => ({ ...previous, confirmPassword: undefined }));
             }}
-            placeholder="Re-enter new password"
+            placeholder={t('auth.confirmNewPasswordPlaceholder', 'Re-enter new password')}
             error={errors.confirmPassword}
             secureTextEntry
             editable={!submitting && !resending}
@@ -264,26 +295,33 @@ export default function ResetPasswordScreen({
               hitSlop={spacing.sm}
               accessibilityRole="button"
               accessibilityLabel={
-                countdown > 0 ? `Resend code in ${countdown} seconds` : 'Resend code'
+                countdown > 0
+                  ? t('auth.resendCodeInSeconds', `Resend code in ${countdown} seconds`, {
+                      seconds: countdown,
+                    })
+                  : t('auth.resendCode', 'Resend code')
               }
               accessibilityState={{ disabled: countdown > 0 || resending || submitting }}
             >
               <Text
                 style={[
                   styles.resendLink,
+                  { color: theme.primary },
                   (countdown > 0 || resending || submitting) && styles.resendLinkDimmed,
                 ]}
               >
                 {resending
-                  ? 'Sending code...'
+                  ? t('auth.sendingCode', 'Sending code...')
                   : countdown > 0
-                    ? `Resend code in ${countdown}s`
-                    : 'Resend Code'}
+                    ? t('auth.resendCodeIn', `Resend code in ${countdown}s`, { seconds: countdown })
+                    : t('auth.resendCode', 'Resend Code')}
               </Text>
             </Pressable>
           </View>
 
-          {formError != null && <Text style={styles.formError}>{formError}</Text>}
+          {formError != null && (
+            <Text style={[styles.formError, { color: theme.danger }]}>{formError}</Text>
+          )}
 
           <Pressable
             onPress={() => {
@@ -292,10 +330,11 @@ export default function ResetPasswordScreen({
             disabled={submitting || resending}
             style={({ pressed }) => [
               styles.submitButton,
+              { backgroundColor: theme.primary },
               (pressed || submitting || resending) && styles.submitButtonDimmed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Reset Password"
+            accessibilityLabel={t('auth.resetPasswordTitle', 'Reset Password')}
             accessibilityState={{
               disabled: submitting || resending,
               busy: submitting,
@@ -303,26 +342,38 @@ export default function ResetPasswordScreen({
           >
             {submitting ? (
               <View style={styles.submitRow}>
-                <ActivityIndicator color={colors.onPrimary} size="small" />
-                <Text style={styles.submitButtonText}>Resetting password...</Text>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.submitButtonText}>
+                  {t('auth.resettingPassword', 'Resetting password...')}
+                </Text>
               </View>
             ) : (
-              <Text style={styles.submitButtonText}>Reset Password</Text>
+              <Text style={styles.submitButtonText}>
+                {t('auth.resetPasswordTitle', 'Reset Password')}
+              </Text>
             )}
           </Pressable>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>Remember your password? </Text>
+            <Text style={[styles.switchText, { color: theme.textSecondary }]}>
+              {t('auth.rememberPasswordQuestion', 'Remember your password? ')}
+            </Text>
             <Pressable
               onPress={() => navigation.navigate('Login')}
               disabled={submitting || resending}
               hitSlop={spacing.sm}
               accessibilityRole="button"
-              accessibilityLabel="Return to Login"
+              accessibilityLabel={t('auth.returnToLogin', 'Return to Login')}
               accessibilityState={{ disabled: submitting || resending }}
             >
-              <Text style={[styles.switchLink, (submitting || resending) && styles.switchLinkDimmed]}>
-                Return to Login
+              <Text
+                style={[
+                  styles.switchLink,
+                  { color: theme.primary },
+                  (submitting || resending) && styles.switchLinkDimmed,
+                ]}
+              >
+                {t('auth.returnToLogin', 'Return to Login')}
               </Text>
             </Pressable>
           </View>
@@ -335,7 +386,6 @@ export default function ResetPasswordScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
@@ -343,28 +393,23 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: 14,
-    color: colors.textSecondary,
-  },
-  formError: {
-    fontSize: 13,
-    color: colors.danger,
   },
   resendRow: {
     alignItems: 'flex-end',
     marginTop: -spacing.xs,
   },
   resendLink: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
   },
   resendLinkDimmed: {
-    color: colors.textSecondary,
-    opacity: 0.7,
+    opacity: 0.5,
+  },
+  formError: {
+    fontSize: 13,
   },
   submitButton: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
     minHeight: 48,
     alignItems: 'center',
@@ -382,7 +427,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   switchRow: {
     flexDirection: 'row',
@@ -392,12 +437,10 @@ const styles = StyleSheet.create({
   },
   switchText: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   switchLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
   },
   switchLinkDimmed: {
     opacity: 0.5,

@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { SellerOrderItem } from '../../types/sellerApi';
 
 type CancelOrderItemModalProps = {
@@ -43,6 +45,8 @@ export default function CancelOrderItemModal({
   isSubmitting = false,
   errorMessage = null,
 }: CancelOrderItemModalProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const [cancelReason, setCancelReason] = useState('');
 
   if (!item) {
@@ -80,9 +84,11 @@ export default function CancelOrderItemModal({
           style={styles.outsidePress}
           onPress={isSubmitting ? undefined : handleClose}
         />
-        <View style={styles.modalCard}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Cancel Order Item</Text>
+        <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('seller.cancelItem', 'Cancel Order Item')}
+            </Text>
             <Pressable
               onPress={handleClose}
               disabled={isSubmitting}
@@ -90,30 +96,40 @@ export default function CancelOrderItemModal({
               accessibilityRole="button"
               accessibilityLabel="Close cancellation dialog"
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>✕</Text>
             </Pressable>
           </View>
 
           <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
-            <Text style={styles.warningMessage}>
-              Are you sure you want to cancel this order item? This will release stock
-              back to your inventory and update the order balance.
+            <Text style={[styles.warningMessage, { color: theme.textSecondary }]}>
+              {t(
+                'seller.unlistPromptMsg',
+                'Are you sure you want to cancel this order item? This will release stock back to your inventory and update the order balance.',
+              )}
             </Text>
 
-            <View style={styles.itemSummary}>
-              <Text style={styles.productName} numberOfLines={2}>
+            <View
+              style={[
+                styles.itemSummary,
+                { backgroundColor: theme.background, borderLeftColor: theme.danger },
+              ]}
+            >
+              <Text style={[styles.productName, { color: theme.text }]} numberOfLines={2}>
                 {item.productName}
               </Text>
-              <Text style={styles.itemMeta}>
+              <Text style={[styles.itemMeta, { color: theme.textSecondary }]}>
                 Quantity: {item.quantity} • Order #{item.orderId.slice(0, 8)}
               </Text>
             </View>
 
             <View style={styles.reasonHeaderRow}>
-              <Text style={styles.fieldLabel}>Cancellation Reason (Optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
+                {t('seller.descriptionLabel', 'Cancellation Reason (Optional)')}
+              </Text>
               <Text
                 style={[
                   styles.charCount,
+                  { color: theme.textSecondary },
                   cancelReason.length > 1000 && styles.charCountOver,
                 ]}
               >
@@ -124,12 +140,20 @@ export default function CancelOrderItemModal({
             <TextInput
               style={[
                 styles.textArea,
-                errorMessage != null && styles.textAreaError,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+                errorMessage != null && [styles.textAreaError, { borderColor: theme.danger }],
               ]}
               multiline
               numberOfLines={3}
-              placeholder="Provide a reason for the customer (e.g. out of stock)"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t(
+                'seller.descriptionPlaceholder',
+                'Provide a reason for the customer (e.g. out of stock)',
+              )}
+              placeholderTextColor={theme.textSecondary}
               value={cancelReason}
               onChangeText={setCancelReason}
               maxLength={1000}
@@ -139,25 +163,36 @@ export default function CancelOrderItemModal({
             />
 
             {errorMessage != null ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                    borderColor: theme.danger,
+                  },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: theme.danger }]}>{errorMessage}</Text>
               </View>
             ) : null}
           </ScrollView>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: theme.border }]}>
             <Pressable
               onPress={handleClose}
               disabled={isSubmitting}
               style={({ pressed }) => [
                 styles.cancelActionBtn,
+                { backgroundColor: theme.surface, borderColor: theme.border },
                 pressed && !isSubmitting && styles.buttonPressed,
                 isSubmitting && styles.buttonDisabled,
               ]}
               accessibilityRole="button"
               accessibilityLabel="Keep item"
             >
-              <Text style={styles.cancelActionBtnText}>Keep Item</Text>
+              <Text style={[styles.cancelActionBtnText, { color: theme.text }]}>
+                {t('orders.cancel', 'Keep Item')}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -165,6 +200,7 @@ export default function CancelOrderItemModal({
               disabled={isSubmitting || cancelReason.length > 1000}
               style={({ pressed }) => [
                 styles.confirmActionBtn,
+                { backgroundColor: theme.danger },
                 pressed && !isSubmitting && styles.buttonPressed,
                 (isSubmitting || cancelReason.length > 1000) && styles.buttonDisabled,
               ]}
@@ -173,11 +209,13 @@ export default function CancelOrderItemModal({
             >
               {isSubmitting ? (
                 <View style={styles.buttonInnerRow}>
-                  <ActivityIndicator size="small" color={colors.onPrimary} />
-                  <Text style={styles.confirmActionBtnText}>Cancelling...</Text>
+                  <ActivityIndicator size="small" color={theme.onPrimary} />
+                  <Text style={[styles.confirmActionBtnText, { color: theme.onPrimary }]}>Cancelling...</Text>
                 </View>
               ) : (
-                <Text style={styles.confirmActionBtnText}>Confirm Cancel</Text>
+                <Text style={[styles.confirmActionBtnText, { color: theme.onPrimary }]}>
+                  {t('seller.cancelItem', 'Confirm Cancel')}
+                </Text>
               )}
             </Pressable>
           </View>

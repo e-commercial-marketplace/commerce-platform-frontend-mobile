@@ -1,8 +1,7 @@
 /**
  * Sign-in form calling the real backend (POST /auth/login via AuthContext).
- * Validation mirrors the backend rules (email format, password min length);
- * the form is never submitted while invalid or while a request is running.
- * Backend messages (wrong credentials, network, ...) are shown inline.
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
+ * Localized copy and frontend-owned validation error messages.
  */
 
 import { useState } from 'react';
@@ -20,9 +19,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
 import FormField from '../components/FormField';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** The backend enforces 8..72 characters for registration; reuse 8 here. */
@@ -35,6 +36,9 @@ type LoginFieldErrors = {
 
 export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Login'>) {
   const { login } = useAuth();
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<LoginFieldErrors>({});
@@ -50,15 +54,18 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
     const trimmedEmail = email.trim();
 
     if (trimmedEmail.length === 0) {
-      nextErrors.email = 'Email is required.';
+      nextErrors.email = t('auth.emailRequired', 'Email is required.');
     } else if (!EMAIL_REGEX.test(trimmedEmail)) {
-      nextErrors.email = 'Enter a valid email address.';
+      nextErrors.email = t('auth.emailInvalid', 'Enter a valid email address.');
     }
 
     if (password.length === 0) {
-      nextErrors.password = 'Password is required.';
+      nextErrors.password = t('auth.passwordRequired', 'Password is required.');
     } else if (password.length < PASSWORD_MIN_LENGTH) {
-      nextErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+      nextErrors.password = t(
+        'auth.passwordMinLength',
+        `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+      );
     }
 
     setErrors(nextErrors);
@@ -89,22 +96,28 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="login-screen"
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.intro}>Sign in to continue.</Text>
+          <Text style={[styles.intro, { color: theme.textSecondary }]}>
+            {t('auth.signInToContinue', 'Sign in to continue.')}
+          </Text>
 
           <FormField
-            label="Email"
+            label={t('auth.email', 'Email')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
               setErrors((previous) => ({ ...previous, email: undefined }));
             }}
-            placeholder="you@example.com"
+            placeholder={t('auth.emailPlaceholder', 'you@example.com')}
             error={errors.email}
             editable={!submitting}
             keyboardType="email-address"
@@ -112,13 +125,13 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
           />
 
           <FormField
-            label="Password"
+            label={t('auth.password', 'Password')}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
               setErrors((previous) => ({ ...previous, password: undefined }));
             }}
-            placeholder="Your password"
+            placeholder={t('auth.passwordPlaceholder', 'Your password')}
             error={errors.password}
             secureTextEntry
             editable={!submitting}
@@ -138,13 +151,21 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
               accessibilityLabel="Forgot password?"
               accessibilityState={{ disabled: submitting }}
             >
-              <Text style={[styles.forgotPasswordText, submitting && styles.forgotPasswordTextDimmed]}>
-                Forgot password?
+              <Text
+                style={[
+                  styles.forgotPasswordText,
+                  { color: theme.primary },
+                  submitting && styles.forgotPasswordTextDimmed,
+                ]}
+              >
+                {t('auth.forgotPasswordQuestion', 'Forgot password?')}
               </Text>
             </Pressable>
           </View>
 
-          {formError != null && <Text style={styles.formError}>{formError}</Text>}
+          {formError != null && (
+            <Text style={[styles.formError, { color: theme.danger }]}>{formError}</Text>
+          )}
 
           <Pressable
             onPress={() => {
@@ -153,6 +174,7 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
             disabled={submitting}
             style={({ pressed }) => [
               styles.submitButton,
+              { backgroundColor: theme.primary },
               (pressed || submitting) && styles.submitButtonDimmed,
             ]}
             accessibilityRole="button"
@@ -161,16 +183,20 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
           >
             {submitting ? (
               <View style={styles.submitRow}>
-                <ActivityIndicator color={colors.onPrimary} size="small" />
-                <Text style={styles.submitButtonText}>Logging in...</Text>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.submitButtonText}>
+                  {t('auth.loggingIn', 'Logging in...')}
+                </Text>
               </View>
             ) : (
-              <Text style={styles.submitButtonText}>Login</Text>
+              <Text style={styles.submitButtonText}>{t('auth.login', 'Login')}</Text>
             )}
           </Pressable>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>Don&apos;t have an account? </Text>
+            <Text style={[styles.switchText, { color: theme.textSecondary }]}>
+              {t('auth.noAccountQuestion', "Don't have an account? ")}
+            </Text>
             <Pressable
               onPress={() => navigation.replace('Register')}
               disabled={submitting}
@@ -179,8 +205,14 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
               accessibilityLabel="Create an account"
               accessibilityState={{ disabled: submitting }}
             >
-              <Text style={[styles.switchLink, submitting && styles.switchLinkDimmed]}>
-                Create one
+              <Text
+                style={[
+                  styles.switchLink,
+                  { color: theme.primary },
+                  submitting && styles.switchLinkDimmed,
+                ]}
+              >
+                {t('auth.createOne', 'Create one')}
               </Text>
             </Pressable>
           </View>
@@ -193,7 +225,6 @@ export default function LoginScreen({ navigation }: AppNavigatorScreenProps<'Log
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
@@ -201,11 +232,9 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   formError: {
     fontSize: 13,
-    color: colors.danger,
   },
   forgotPasswordRow: {
     alignItems: 'flex-end',
@@ -214,14 +243,12 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.primary,
   },
   forgotPasswordTextDimmed: {
     opacity: 0.5,
   },
   submitButton: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
     minHeight: 48,
     alignItems: 'center',
@@ -239,7 +266,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   switchRow: {
     flexDirection: 'row',
@@ -249,12 +276,10 @@ const styles = StyleSheet.create({
   },
   switchText: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   switchLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
   },
   switchLinkDimmed: {
     opacity: 0.5,

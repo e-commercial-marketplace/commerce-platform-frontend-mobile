@@ -14,6 +14,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import { useOpenConversation } from '../hooks/useChat';
 import { useSellerShop } from '../hooks/useSellers';
@@ -95,32 +97,37 @@ function ItemRow({
   canReview?: boolean;
   onReview?: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const unitPrice = parseMoney(item.unitPrice);
   const qty = item.quantity || 0;
   const lineTotal = unitPrice * qty;
   return (
     <View style={styles.itemRow}>
       <View style={styles.itemInfo}>
-        <Text style={styles.itemName} numberOfLines={2}>
+        <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={2}>
           {item.productName}
         </Text>
-        <Text style={styles.itemMeta}>
+        <Text style={[styles.itemMeta, { color: theme.textSecondary }]}>
           {formatVND(unitPrice)} × {qty}
         </Text>
       </View>
       <View style={styles.itemRight}>
-        <Text style={styles.itemTotal}>{formatVND(lineTotal)}</Text>
+        <Text style={[styles.itemTotal, { color: theme.text }]}>{formatVND(lineTotal)}</Text>
         {canReview && item.status !== 'CANCELLED' && onReview != null && (
           <Pressable
             style={({ pressed }) => [
               styles.reviewItemButton,
+              { backgroundColor: theme.primary },
               pressed && styles.reviewItemButtonPressed,
             ]}
             onPress={onReview}
             accessibilityRole="button"
-            accessibilityLabel={`Write review for ${item.productName}`}
+            accessibilityLabel={t('orders.writeReviewA11y', 'Write review for {{name}}', { name: item.productName })}
           >
-            <Text style={styles.reviewItemButtonText}>Write Review</Text>
+            <Text style={[styles.reviewItemButtonText, { color: theme.onPrimary }]}>
+              {t('orders.writeReview', 'Write Review')}
+            </Text>
           </Pressable>
         )}
       </View>
@@ -152,28 +159,30 @@ function OrderSellerGroup({
   chatError: string | null;
   showDivider: boolean;
 }) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const isRealSeller = Boolean(sellerId && sellerId !== 'unknown');
   const { data: shop } = useSellerShop(isRealSeller ? sellerId : '');
   const shopName = shop?.name ?? (isRealSeller ? `Shop #${sellerId.slice(0, 8)}` : 'Shop');
 
   return (
-    <View style={[styles.sellerGroup, showDivider && styles.sellerGroupWithDivider]}>
+    <View style={[styles.sellerGroup, showDivider && [styles.sellerGroupWithDivider, { borderTopColor: theme.border }]]}>
       {isRealSeller && (
         <View style={styles.sellerHeader}>
           <Pressable
             onPress={() => onOpenShop(sellerId)}
             style={({ pressed }) => [styles.sellerHeaderInfo, pressed && styles.sellerHeaderPressed]}
             accessibilityRole="button"
-            accessibilityLabel={`Shop ${shopName}`}
+            accessibilityLabel={t('orders.viewShopName', 'Shop {{name}}', { name: shopName })}
           >
             <ShopAvatar name={shop?.name} size={36} />
             <View style={styles.sellerNameContainer}>
-              <Text style={styles.sellerGroupName} numberOfLines={1}>
+              <Text style={[styles.sellerGroupName, { color: theme.text }]} numberOfLines={1}>
                 {shopName}
               </Text>
-              <Text style={styles.sellerSubtitle}>Xem shop</Text>
+              <Text style={[styles.sellerSubtitle, { color: theme.textSecondary }]}>{t('orders.viewShop', 'Xem shop')}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={[styles.chevron, { color: theme.textSecondary }]}>›</Text>
           </Pressable>
 
           {isCustomer && (
@@ -183,24 +192,30 @@ function OrderSellerGroup({
               disabled={isOpeningChat}
               style={({ pressed }) => [
                 styles.chatWithShopButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.primary,
+                },
                 isOpeningChat && styles.chatWithShopButtonDisabled,
-                pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
+                pressed && !isOpeningChat && {
+                  backgroundColor: isDark ? 'rgba(13, 148, 136, 0.2)' : '#E6F8FA',
+                },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Nhắn tin với shop"
+              accessibilityLabel={t('orders.chatWithShop', 'Nhắn tin với shop')}
             >
               {isOpeningChat ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={theme.primary} />
               ) : (
                 <>
                   <Text style={styles.chatWithShopIcon}>💬</Text>
-                  <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
+                  <Text style={[styles.chatWithShopText, { color: theme.primary }]}>{t('orders.chatWithShop', 'Nhắn tin với shop')}</Text>
                 </>
               )}
             </Pressable>
           )}
 
-          {chatError != null && <Text style={styles.chatErrorText}>{chatError}</Text>}
+          {chatError != null && <Text style={[styles.chatErrorText, { color: theme.danger }]}>{chatError}</Text>}
         </View>
       )}
 
@@ -219,6 +234,8 @@ function OrderSellerGroup({
 }
 
 export default function OrderDetailScreen({ route, navigation }: AppNavigatorScreenProps<'OrderDetail'>) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const { orderId, paymentHint: initialPaymentHint } = route.params;
   const { data: order, isLoading, isError, refetch } = useOrderDetail(orderId);
   const confirmMutation = useConfirmReceived();
@@ -264,7 +281,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
     if (!sellerId || sellerId === 'unknown') {
       setChatError({
         sellerId: sellerId || '',
-        message: 'Không tìm thấy thông tin người bán.',
+        message: t('orders.sellerInfoNotFound', 'Không tìm thấy thông tin người bán.'),
       });
       return;
     }
@@ -288,7 +305,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
       const apiErr = toApiError(err);
       setChatError({
         sellerId,
-        message: apiErr.message || 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.',
+        message: apiErr.message || t('orders.cannotOpenChat', 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.'),
       });
     } finally {
       isOpeningChatRef.current = false;
@@ -357,7 +374,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
       const response = await retryPaymentMutation.mutateAsync(order.id);
 
       if (!response.paymentUrl || response.paymentUrl.trim().length === 0) {
-        setRetryError('Payment URL unavailable. Please try again later.');
+        setRetryError(t('orders.vnpay_url_unavailable', 'Payment URL unavailable. Please try again later.'));
         void queryClient.invalidateQueries({
           queryKey: queryKeys.orders.detail(order.id),
         });
@@ -376,7 +393,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
         );
       } catch {
         setPaymentHint('FAILED');
-        setRetryError('Failed to open payment browser. Please try again.');
+        setRetryError(t('orders.vnpay_browser_failed', 'Failed to open payment browser. Please try again.'));
         void queryClient.invalidateQueries({
           queryKey: queryKeys.orders.detail(order.id),
         });
@@ -415,14 +432,14 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409 || err.code === 'ORDER_NOT_PAYABLE') {
-          setRetryError('This order can no longer be paid.');
+          setRetryError(t('orders.vnpay_order_not_payable', 'This order can no longer be paid.'));
         } else {
-          setRetryError(err.message || 'Payment retry failed. Please try again.');
+          setRetryError(err.message || t('orders.vnpay_retry_failed', 'Payment retry failed. Please try again.'));
         }
       } else if (err instanceof Error) {
-        setRetryError(err.message || 'Payment retry failed. Please try again.');
+        setRetryError(err.message || t('orders.vnpay_retry_failed', 'Payment retry failed. Please try again.'));
       } else {
-        setRetryError('Payment retry failed. Please try again.');
+        setRetryError(t('orders.vnpay_retry_failed', 'Payment retry failed. Please try again.'));
       }
       void queryClient.invalidateQueries({
         queryKey: queryKeys.orders.detail(order.id),
@@ -441,42 +458,46 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
     if (!order || confirmMutation.isPending) {
       return;
     }
-    Alert.alert('Confirm received', 'Are you sure you have received this order?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Confirm',
-        onPress: () => {
-          setConfirming(true);
-          confirmMutation.mutate(orderId, {
-            onSettled: () => {
-              setConfirming(false);
-            },
-            onError: (err) => {
-              if (err instanceof ApiError) {
-                if (err.status === 404) {
-                  Alert.alert('Not found', 'Order not found or not accessible.');
-                } else if (err.status === 400) {
-                  Alert.alert('Cannot confirm', err.message || 'This order cannot be confirmed.');
-                  void refetch();
+    Alert.alert(
+      t('orders.confirmReceived', 'Confirm received'),
+      t('orders.confirmReceivedPrompt', 'Are you sure you have received this order?'),
+      [
+        { text: t('orders.cancel', 'Cancel'), style: 'cancel' },
+        {
+          text: t('orders.confirm', 'Confirm'),
+          onPress: () => {
+            setConfirming(true);
+            confirmMutation.mutate(orderId, {
+              onSettled: () => {
+                setConfirming(false);
+              },
+              onError: (err) => {
+                if (err instanceof ApiError) {
+                  if (err.status === 404) {
+                    Alert.alert('Not found', 'Order not found or not accessible.');
+                  } else if (err.status === 400) {
+                    Alert.alert('Cannot confirm', err.message || 'This order cannot be confirmed.');
+                    void refetch();
+                  } else {
+                    Alert.alert('Error', err.message || 'Failed to confirm received.');
+                  }
                 } else {
-                  Alert.alert('Error', err.message || 'Failed to confirm received.');
+                  Alert.alert('Error', 'Failed to confirm received.');
                 }
-              } else {
-                Alert.alert('Error', 'Failed to confirm received.');
-              }
-            },
-          });
+              },
+            });
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']} testID="order-detail-screen">
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.subtitle}>Loading order…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{t('orders.loadingOrderDetail', 'Loading order…')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -484,12 +505,12 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
 
   if (isError || !order) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']} testID="order-detail-screen">
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Couldn't load order</Text>
-          <Text style={styles.subtitle}>The order may not exist or you don't have access.</Text>
-          <Pressable onPress={() => refetch()} style={styles.retryButton}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={[styles.errorTitle, { color: theme.text }]}>{t('orders.couldNotLoadOrderDetail', "Couldn't load order")}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{t('orders.orderNotFoundOrNoAccess', "The order may not exist or you don't have access.")}</Text>
+          <Pressable onPress={() => refetch()} style={[styles.retryButton, { backgroundColor: theme.primary }]}>
+            <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>{t('orders.retry', 'Retry')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -512,114 +533,137 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
     if (order.paymentStatus === 'COMPLETED') {
       vnpayBanner = {
         type: 'success',
-        title: 'Payment successful',
-        description: 'Your payment via VNPay has been confirmed.',
+        title: t('orders.vnpay_success_title', 'Payment successful'),
+        description: t('orders.vnpay_success_desc', 'Your payment via VNPay has been confirmed.'),
       };
     } else if (order.paymentStatus === 'REFUNDED') {
       vnpayBanner = {
         type: 'info',
-        title: 'Refunded',
-        description: 'This payment has been refunded.',
+        title: t('orders.vnpay_refunded_title', 'Refunded'),
+        description: t('orders.vnpay_refunded_desc', 'This payment has been refunded.'),
       };
     } else if (isExpired) {
       vnpayBanner = {
         type: 'warning',
-        title: 'Payment expired',
-        description: 'The 24-hour payment window has expired. This order can no longer be paid.',
+        title: t('orders.vnpay_expired_title', 'Payment expired'),
+        description: t('orders.vnpay_expired_desc', 'The 24-hour payment window has expired. This order can no longer be paid.'),
       };
     } else if (order.paymentStatus === 'FAILED') {
       vnpayBanner = {
         type: 'danger',
-        title: 'Payment not completed',
-        description: 'Payment was not successful. You can retry payment while this order is still payable.',
+        title: t('orders.vnpay_failed_title', 'Payment not completed'),
+        description: t('orders.vnpay_failed_desc', 'Payment was not successful. You can retry payment while this order is still payable.'),
       };
     } else if (paymentHint === 'COMPLETED') {
       vnpayBanner = {
         type: 'info',
-        title: 'Checking payment status…',
-        description: 'Payment returned successfully. Checking order status…',
+        title: t('orders.vnpay_checking_title', 'Checking payment status…'),
+        description: t('orders.vnpay_checking_desc', 'Payment returned successfully. Checking order status…'),
       };
     } else if (paymentHint === 'CANCELLED') {
       vnpayBanner = {
         type: 'warning',
-        title: 'Payment cancelled',
-        description: 'Payment was cancelled. You can retry while this order is still payable.',
+        title: t('orders.vnpay_cancelled_title', 'Payment cancelled'),
+        description: t('orders.vnpay_cancelled_desc', 'Payment was cancelled. You can retry while this order is still payable.'),
       };
     } else if (paymentHint === 'FAILED') {
       vnpayBanner = {
         type: 'danger',
-        title: 'Payment not completed',
-        description: 'VNPay reported that payment was not completed.',
+        title: t('orders.vnpay_failed_title', 'Payment not completed'),
+        description: t('orders.vnpay_failed_desc', 'VNPay reported that payment was not completed.'),
       };
     } else if (paymentHint === 'INVALID') {
       vnpayBanner = {
         type: 'warning',
-        title: 'Payment unverified',
-        description: 'Payment result could not be verified. Checking order status…',
+        title: t('orders.vnpay_unverified_title', 'Payment unverified'),
+        description: t('orders.vnpay_unverified_desc', 'Payment result could not be verified. Checking order status…'),
       };
     } else {
       vnpayBanner = {
         type: 'warning',
-        title: 'Payment pending',
-        description: 'Please complete payment within 24 hours of placing your order.',
+        title: t('orders.vnpay_pending_title', 'Payment pending'),
+        description: t('orders.vnpay_pending_desc', 'Please complete payment within 24 hours of placing your order.'),
       };
     }
   }
 
+  const bannerThemeStyle = (() => {
+    if (!vnpayBanner) return null;
+    if (isDark) {
+      switch (vnpayBanner.type) {
+        case 'success':
+          return { bg: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.4)', title: '#4ADE80', desc: '#86EFAC' };
+        case 'warning':
+          return { bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)', title: '#FBBF24', desc: '#FCD34D' };
+        case 'danger':
+          return { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', title: '#F87171', desc: '#FCA5A5' };
+        case 'info':
+          return { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', title: '#60A5FA', desc: '#93C5FD' };
+      }
+    }
+    switch (vnpayBanner.type) {
+      case 'success':
+        return { bg: '#F0FDF4', border: '#BBF7D0', title: '#166534', desc: '#15803D' };
+      case 'warning':
+        return { bg: '#FFFBEB', border: '#FDE68A', title: '#92400E', desc: '#B45309' };
+      case 'danger':
+        return { bg: '#FEF2F2', border: '#FECACA', title: '#991B1B', desc: '#B91C1C' };
+      case 'info':
+        return { bg: '#F0F9FF', border: '#BAE6FD', title: '#075985', desc: '#0369A1' };
+    }
+  })();
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']} testID="order-detail-screen">
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
         }
       >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order</Text>
+        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.order', 'Order')}</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Order ID</Text>
-            <Text style={styles.value} numberOfLines={1}>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.orderId', 'Order ID')}</Text>
+            <Text style={[styles.value, { color: theme.text }]} numberOfLines={1}>
               {order.id}
             </Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Status</Text>
-            <Text style={styles.value}>{order.status}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.status', 'Status')}</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{t(`orders.status_${order.status}`, order.status)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Created</Text>
-            <Text style={styles.value}>{formatDate(order.createdAt)}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.created', 'Created')}</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{formatDate(order.createdAt)}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment</Text>
+        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.payment', 'Payment')}</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Method</Text>
-            <Text style={styles.value}>{order.paymentMethod}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.method', 'Method')}</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{t(`orders.paymentMethod_${order.paymentMethod}`, order.paymentMethod)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Status</Text>
-            <Text style={styles.value}>{order.paymentStatus}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.status', 'Status')}</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{t(`orders.paymentStatus_${order.paymentStatus}`, order.paymentStatus)}</Text>
           </View>
 
-          {vnpayBanner != null && (
+          {vnpayBanner != null && bannerThemeStyle != null && (
             <View
               style={[
                 styles.paymentBanner,
-                vnpayBanner.type === 'success' && styles.paymentBannerSuccess,
-                vnpayBanner.type === 'warning' && styles.paymentBannerWarning,
-                vnpayBanner.type === 'danger' && styles.paymentBannerDanger,
-                vnpayBanner.type === 'info' && styles.paymentBannerInfo,
+                {
+                  backgroundColor: bannerThemeStyle.bg,
+                  borderColor: bannerThemeStyle.border,
+                },
               ]}
             >
               <Text
                 style={[
                   styles.paymentBannerTitle,
-                  vnpayBanner.type === 'success' && styles.paymentBannerTitleSuccess,
-                  vnpayBanner.type === 'warning' && styles.paymentBannerTitleWarning,
-                  vnpayBanner.type === 'danger' && styles.paymentBannerTitleDanger,
-                  vnpayBanner.type === 'info' && styles.paymentBannerTitleInfo,
+                  { color: bannerThemeStyle.title },
                 ]}
               >
                 {vnpayBanner.title}
@@ -627,10 +671,7 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
               <Text
                 style={[
                   styles.paymentBannerDesc,
-                  vnpayBanner.type === 'success' && styles.paymentBannerDescSuccess,
-                  vnpayBanner.type === 'warning' && styles.paymentBannerDescWarning,
-                  vnpayBanner.type === 'danger' && styles.paymentBannerDescDanger,
-                  vnpayBanner.type === 'info' && styles.paymentBannerDescInfo,
+                  { color: bannerThemeStyle.desc },
                 ]}
               >
                 {vnpayBanner.description}
@@ -641,30 +682,30 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
           {canPayNow && (
             <View style={styles.payNowContainer}>
               <Button
-                title="Pay Now"
+                title={t('orders.payNow', 'Pay Now')}
                 onPress={() => {
                   void handlePayNow();
                 }}
                 loading={isRetrying}
                 disabled={isRetrying}
                 fullWidth
-                accessibilityLabel="Pay Now"
+                accessibilityLabel={t('orders.payNow', 'Pay Now')}
               />
             </View>
           )}
 
           {retryError != null && (
-            <Text style={styles.retryErrorText}>{retryError}</Text>
+            <Text style={[styles.retryErrorText, { color: theme.danger }]}>{retryError}</Text>
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Delivery Address</Text>
-          <Text style={styles.address}>{order.shippingAddress}</Text>
+        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.deliveryAddress', 'Delivery Address')}</Text>
+          <Text style={[styles.address, { color: theme.text }]}>{order.shippingAddress}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Items</Text>
+        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.items', 'Items')}</Text>
           {sellerGroups.map((group, index) => (
             <OrderSellerGroup
               key={group.sellerId || `seller-${index}`}
@@ -687,32 +728,32 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
           ))}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Totals</Text>
+        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.totals', 'Totals')}</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Shipping Fee</Text>
-            <Text style={styles.value}>{formatVND(parseMoney(order.shippingFee))}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.shippingFee', 'Shipping Fee')}</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{formatVND(parseMoney(order.shippingFee))}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Discount</Text>
-            <Text style={styles.value}>{formatVND(parseMoney(order.discountAmount))}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.discount', 'Discount')}</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{formatVND(parseMoney(order.discountAmount))}</Text>
           </View>
           {order.voucherCode ? (
             <View style={styles.row}>
-              <Text style={styles.label}>Voucher</Text>
-              <Text style={styles.value}>{order.voucherCode}</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>{t('orders.voucher', 'Voucher')}</Text>
+              <Text style={[styles.value, { color: theme.text }]}>{order.voucherCode}</Text>
             </View>
           ) : null}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.row}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{formatVND(parseMoney(order.totalAmount))}</Text>
+            <Text style={[styles.totalLabel, { color: theme.text }]}>{t('orders.total', 'Total')}</Text>
+            <Text style={[styles.totalValue, { color: theme.primary }]}>{formatVND(parseMoney(order.totalAmount))}</Text>
           </View>
         </View>
 
         {order.shipments && order.shipments.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shipment Tracking</Text>
+          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.shipmentTracking', 'Shipment Tracking')}</Text>
             {order.shipments.map((shipment, index) => (
               <ShipmentTimeline
                 key={shipment.id}
@@ -723,9 +764,9 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
             ))}
           </View>
         ) : (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shipment Tracking</Text>
-            <Text style={styles.subtitle}>Shipment information is not available yet.</Text>
+          <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('orders.shipmentTracking', 'Shipment Tracking')}</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{t('orders.shipmentNotAvailable', 'Shipment information is not available yet.')}</Text>
           </View>
         )}
 
@@ -735,13 +776,14 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
             disabled={isPendingMutation}
             style={({ pressed }) => [
               styles.confirmButton,
+              { backgroundColor: theme.primary },
               (pressed || isPendingMutation) && styles.buttonPressed,
             ]}
           >
             {isPendingMutation ? (
-              <ActivityIndicator color={colors.onPrimary} size="small" />
+              <ActivityIndicator color={theme.onPrimary} size="small" />
             ) : (
-              <Text style={styles.confirmButtonText}>Confirm Received</Text>
+              <Text style={[styles.confirmButtonText, { color: theme.onPrimary }]}>{t('orders.confirmReceived', 'Confirm Received')}</Text>
             )}
           </Pressable>
         ) : null}

@@ -93,6 +93,8 @@ export type RootStackParamList = {
   AdminVoucher: undefined;
   /** Admin portal shipping carrier management. */
   AdminCarrier: undefined;
+  /** UI Personalization & Settings screen. */
+  Settings: undefined;
 };
 
 /** Props for screens rendered directly by the root stack. */

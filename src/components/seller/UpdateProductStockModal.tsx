@@ -21,6 +21,8 @@ import {
 } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { ProductSummaryDto } from '../../types/sellerProductApi';
 import Button from '../Button';
 
@@ -45,6 +47,8 @@ export default function UpdateProductStockModal({
   onCancel,
   onSave,
 }: UpdateProductStockModalProps) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const isBusy = pending || loading;
 
   const displayName = product?.name ?? propProductName ?? 'Product';
@@ -63,24 +67,24 @@ export default function UpdateProductStockModal({
   const validate = (value: string): number | null => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      setErrorMessage('Stock is required.');
+      setErrorMessage(t('seller.val_stockRequired', 'Stock is required.'));
       return null;
     }
 
     // Must be integer: reject decimals, scientific notation, or non-numeric
     if (!/^-?\d+$/.test(trimmed)) {
-      setErrorMessage('Stock must be a whole number.');
+      setErrorMessage(t('seller.val_stockNonNegative', 'Stock must be a whole number.'));
       return null;
     }
 
     const parsed = Number(trimmed);
     if (!Number.isInteger(parsed)) {
-      setErrorMessage('Stock must be a whole number.');
+      setErrorMessage(t('seller.val_stockNonNegative', 'Stock must be a whole number.'));
       return null;
     }
 
     if (parsed < 0) {
-      setErrorMessage('Stock must be 0 or greater.');
+      setErrorMessage(t('seller.val_stockNonNegative', 'Stock must be 0 or greater.'));
       return null;
     }
 
@@ -127,51 +131,69 @@ export default function UpdateProductStockModal({
           accessibilityLabel="Dismiss modal backdrop"
         />
 
-        <View style={styles.card} testID="update-stock-modal-card">
-          <Text style={styles.title}>Update Stock</Text>
+        <View
+          style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          testID="update-stock-modal-card"
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('seller.stockModalTitle', 'Update Stock')}
+          </Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Product:</Text>
-            <Text style={styles.productName} numberOfLines={1}>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>
+              {t('seller.productNameLabel', 'Product:')}
+            </Text>
+            <Text style={[styles.productName, { color: theme.text }]} numberOfLines={1}>
               {displayName}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Current stock:</Text>
-            <Text style={styles.currentStockValue}>{effectiveCurrentStock}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>
+              {t('seller.stockCount', 'Current stock:')}
+            </Text>
+            <Text style={[styles.currentStockValue, { color: theme.text }]}>
+              {effectiveCurrentStock}
+            </Text>
           </View>
 
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>New Stock Quantity (Absolute)</Text>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>
+              {t('seller.stockModalInputLabel', 'New Stock Quantity (Absolute)')}
+            </Text>
             <TextInput
               value={stockInput}
               onChangeText={handleInputChange}
               keyboardType="number-pad"
-              placeholder="e.g. 25"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('seller.initialStockPlaceholder', 'e.g. 25')}
+              placeholderTextColor={theme.textSecondary}
               editable={!isBusy}
               style={[
                 styles.input,
-                errorMessage ? styles.inputError : null,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+                errorMessage ? [styles.inputError, { borderColor: theme.danger }] : null,
                 isBusy ? styles.inputDisabled : null,
               ]}
               accessibilityLabel="New stock quantity input"
               testID="update-stock-input"
             />
             {errorMessage ? (
-              <Text style={styles.errorText} testID="update-stock-error">
+              <Text style={[styles.errorText, { color: theme.danger }]} testID="update-stock-error">
                 {errorMessage}
               </Text>
             ) : null}
-            <Text style={styles.hintText}>
-              Enter the exact count currently in inventory.
+            <Text style={[styles.hintText, { color: theme.textSecondary }]}>
+              {t('seller.stockModalSubtitle', 'Enter the exact count currently in inventory.')}
             </Text>
           </View>
 
           <View style={styles.actionsRow}>
             <Button
-              title="Cancel"
+              title={t('seller.cancel', 'Cancel')}
               variant="secondary"
               onPress={onCancel}
               disabled={isBusy}
@@ -179,7 +201,7 @@ export default function UpdateProductStockModal({
               accessibilityLabel="Cancel stock update"
             />
             <Button
-              title="Save"
+              title={t('seller.stockModalSave', 'Save')}
               variant="primary"
               onPress={handleSave}
               disabled={isBusy}

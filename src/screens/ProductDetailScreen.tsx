@@ -3,6 +3,8 @@
  * Fetches product details using TanStack Query, displays real data, and
  * adds to the server-backed cart (Cart API) for authenticated customers.
  * Guests are sent to Login; seller/admin accounts cannot use the cart.
+ *
+ * Fully theme-aware with dynamic semantic tokens and localized strings.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -13,17 +15,19 @@ import { toApiError } from '../api/errors';
 import Button from '../components/Button';
 import PriceDisplay from '../components/PriceDisplay';
 import ProductImage from '../components/ProductImage';
+import ProductReviews from '../components/ProductReviews';
 import Rating from '../components/Rating';
 import ShopAvatar from '../components/ShopAvatar';
-import ProductReviews from '../components/ProductReviews';
 import WriteReviewModal from '../components/WriteReviewModal';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { useOpenConversation } from '../hooks/useChat';
 import { useProductDetail } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 import type { Cart } from '../types/cart';
 import { findCartLineByProductId } from '../utils/cartSelection';
 
@@ -33,7 +37,12 @@ const FEEDBACK_MS = 1500;
 /** Which footer action is currently talking to the backend. */
 type PendingAction = 'add' | 'buy' | null;
 
-export default function ProductDetailScreen({ route, navigation }: AppNavigatorScreenProps<'ProductDetail'>) {
+export default function ProductDetailScreen({
+  route,
+  navigation,
+}: AppNavigatorScreenProps<'ProductDetail'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { user, isAuthenticated } = useAuth();
   const { addItem } = useCart();
   const [addedFeedback, setAddedFeedback] = useState(false);
@@ -62,15 +71,8 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   const { productId } = route.params;
   const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
 
-  // The product DTO carries the id of the seller that owns it. The shop is
-  // looked up under the same query key the shop page uses, so the name is
-  // fetched once and the shop page then opens instantly. The lookup stays
-  // disabled until a product with a seller has been loaded, and a failure
-  // only removes the name - it never breaks the product screen.
   const { data: shop } = useSellerShop(product?.sellerId ?? '');
 
-  // Drops any pending feedback timer on unmount so setState never fires
-  // after the user has navigated away.
   useEffect(
     () => () => {
       if (feedbackTimer.current != null) {
@@ -80,31 +82,39 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     [],
   );
 
-  // Nothing received yet: show a loading state, never a "not found" screen.
   if (isPending && product === undefined) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+        testID="product-detail-screen"
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.centerText}>Loading product…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.centerText, { color: theme.textSecondary }]}>
+            {t('product.loading', 'Loading product…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // A 404 means the product does not exist (or is no longer active) - that is
-  // a different outcome from a transport/server failure and gets its own
-  // screen instead of a retryable error.
   const isNotFound = isError && (error as { status?: number | null })?.status === 404;
 
   if (isNotFound) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+        testID="product-detail-screen"
+      >
         <View style={styles.notFound}>
           <Text style={styles.notFoundIcon}>😕</Text>
-          <Text style={styles.notFoundTitle}>Product not found</Text>
-          <Text style={styles.notFoundText}>
-            This product doesn&apos;t exist or is no longer available.
+          <Text style={[styles.notFoundTitle, { color: theme.text }]}>
+            {t('product.notFound', 'Product not found')}
+          </Text>
+          <Text style={[styles.notFoundText, { color: theme.textSecondary }]}>
+            {t('product.notFoundHint', "This product doesn't exist or is no longer available.")}
           </Text>
         </View>
       </SafeAreaView>
@@ -113,20 +123,26 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
 
   if (isError) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to load product. Please try again.';
+      error instanceof Error ? error.message : t('product.couldNotLoad', 'Failed to load product. Please try again.');
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+        testID="product-detail-screen"
+      >
         <View style={styles.centerState}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Couldn&apos;t load this product</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
+          <Text style={[styles.errorTitle, { color: theme.text }]}>
+            {t('product.couldNotLoad', "Couldn't load this product")}
+          </Text>
+          <Text style={[styles.errorText, { color: theme.textSecondary }]}>{errorMessage}</Text>
           <Pressable
             onPress={() => refetch()}
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
             accessibilityRole="button"
-            accessibilityLabel="Retry loading product"
+            accessibilityLabel={t('product.retryLoading', 'Retry loading product')}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{t('product.retry', 'Retry')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -135,19 +151,29 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
 
   if (!product) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+        testID="product-detail-screen"
+      >
         <View style={styles.notFound}>
           <Text style={styles.notFoundIcon}>😕</Text>
-          <Text style={styles.notFoundTitle}>Product not found</Text>
-          <Text style={styles.notFoundText}>
-            This product doesn&apos;t exist or is no longer available.
+          <Text style={[styles.notFoundTitle, { color: theme.text }]}>
+            {t('product.notFound', 'Product not found')}
+          </Text>
+          <Text style={[styles.notFoundText, { color: theme.textSecondary }]}>
+            {t('product.notFoundHint', "This product doesn't exist or is no longer available.")}
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const maxQuantity = typeof (product as { stock?: number }).stock === 'number' && (product as { stock?: number }).stock! > 0 ? (product as { stock?: number }).stock : undefined;
+  const maxQuantity =
+    typeof (product as { stock?: number }).stock === 'number' &&
+    (product as { stock?: number }).stock! > 0
+      ? (product as { stock?: number }).stock
+      : undefined;
   const canDecrease = quantity > 1;
   const canIncrease = maxQuantity == null || quantity < maxQuantity;
 
@@ -168,7 +194,6 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   const cartDisabled = isAuthenticated && user?.role !== 'CUSTOMER';
   const busy = pendingAction != null;
 
-  /** Shows the brief in-button confirmation and clears any previous one. */
   const showAddedFeedback = () => {
     setAddedFeedback(true);
     if (feedbackTimer.current != null) {
@@ -177,13 +202,6 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     feedbackTimer.current = setTimeout(() => setAddedFeedback(false), FEEDBACK_MS);
   };
 
-  /**
-   * Shared entry point for both footer actions.
-   *
-   * Guests never get a local/guest cart: they are sent to Login. Sellers and
-   * admins must not call the customer-only Cart API. The POST quantity is a
-   * DELTA, so a 409 can still happen even when the product stock check passed.
-   */
   const addSelectionToCart = async (): Promise<Cart | null> => {
     if (busy) {
       return null;
@@ -199,12 +217,8 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     const amount = maxQuantity == null ? quantity : Math.min(quantity, maxQuantity);
     setActionError(null);
     try {
-      // The Cart POST returns the full authoritative cart. Buy Now resolves
-      // the resulting cart-item id from that response (never items[0]).
       return await addItem(product.id, amount);
     } catch (error) {
-      // Use the normalized backend message (e.g. insufficient stock) instead
-      // of re-deriving the rule in the frontend.
       setActionError(toApiError(error).message);
       return null;
     }
@@ -232,7 +246,12 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
 
       const line = findCartLineByProductId(updatedCart.items, product.id);
       if (line == null) {
-        setActionError('The product could not be found in your cart. Please try again.');
+        setActionError(
+          t(
+            'product.notFoundInCart',
+            'The product could not be found in your cart. Please try again.',
+          ),
+        );
         return;
       }
 
@@ -242,7 +261,6 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     }
   };
 
-  // The owning seller, when the backend provided one.
   const sellerId = product.sellerId;
 
   const handleOpenChat = async () => {
@@ -260,7 +278,7 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
     }
 
     if (!sellerId) {
-      setChatError('Không tìm thấy thông tin người bán.');
+      setChatError(t('product.sellerInfoNotFound', 'Không tìm thấy thông tin người bán.'));
       return;
     }
 
@@ -280,7 +298,10 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
       });
     } catch (err: unknown) {
       const apiErr = toApiError(err);
-      setChatError(apiErr.message || 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.');
+      setChatError(
+        apiErr.message ||
+          t('product.cannotOpenChat', 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.'),
+      );
     } finally {
       isOpeningChatRef.current = false;
     }
@@ -294,113 +315,208 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="product-detail-screen"
+    >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.imageFrame}>
+        <View style={[styles.imageFrame, { backgroundColor: theme.surfaceAlt }]}>
           <ProductImage source={product.image} style={styles.imageFill} />
         </View>
 
         <View style={styles.detailTopRow}>
-          <View style={styles.categoryChip}><Text style={styles.categoryText}>{product.category}</Text></View>
+          <View
+            style={[
+              styles.categoryChip,
+              { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.categoryText, { color: theme.primary }]}>
+              {product.category}
+            </Text>
+          </View>
           <Rating rating={product.rating} reviewCount={product.reviewCount} size={16} />
         </View>
 
-        <Text style={styles.name}>{product.name}</Text>
+        <Text style={[styles.name, { color: theme.text }]}>{product.name}</Text>
         <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="lg" />
 
         {sellerId != null && (
-          <View style={styles.sellerSection}>
-          <Pressable
-            onPress={handleOpenShop}
-            style={({ pressed }) => [styles.sellerRow, pressed && styles.sellerRowPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={shop != null ? `View shop ${shop.name}` : 'View shop'}
+          <View
+            style={[
+              styles.sellerSection,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
           >
-            <ShopAvatar name={shop?.name} size={44} />
-            <View style={styles.sellerInfo}>
-              <Text style={styles.sellerLabel}>Sold by</Text>
-              <Text style={styles.sellerName} numberOfLines={1}>
-                {shop?.name ?? 'View shop'}
-              </Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-
-          {canShowChatAction && (
             <Pressable
-              onPress={handleOpenChat}
-              disabled={isOpeningChat}
-              style={({ pressed }) => [
-                styles.chatWithShopButton,
-                isOpeningChat && styles.chatWithShopButtonDisabled,
-                pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
-              ]}
+              onPress={handleOpenShop}
+              style={({ pressed }) => [styles.sellerRow, pressed && styles.sellerRowPressed]}
               accessibilityRole="button"
-              accessibilityLabel="Nhắn tin với shop"
+              accessibilityLabel={
+                shop != null
+                  ? t('product.viewShopName', `View shop ${shop.name}`, { name: shop.name })
+                  : t('product.viewShop', 'View shop')
+              }
             >
-              {isOpeningChat ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <>
-                  <Text style={styles.chatWithShopIcon}>💬</Text>
-                  <Text style={styles.chatWithShopText}>Nhắn tin với shop</Text>
-                </>
-              )}
+              <ShopAvatar name={shop?.name} size={44} />
+              <View style={styles.sellerInfo}>
+                <Text style={[styles.sellerLabel, { color: theme.textSecondary }]}>
+                  {t('product.soldBy', 'Sold by')}
+                </Text>
+                <Text style={[styles.sellerName, { color: theme.text }]} numberOfLines={1}>
+                  {shop?.name ?? t('product.viewShop', 'View shop')}
+                </Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.textSecondary }]}>›</Text>
             </Pressable>
-          )}
-          {chatError != null && <Text style={styles.chatErrorText}>{chatError}</Text>}
-        </View>
-      )}
+
+            {canShowChatAction && (
+              <Pressable
+                onPress={handleOpenChat}
+                disabled={isOpeningChat}
+                style={({ pressed }) => [
+                  styles.chatWithShopButton,
+                  { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+                  isOpeningChat && styles.chatWithShopButtonDisabled,
+                  pressed && !isOpeningChat && styles.chatWithShopButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('product.chatWithShop', 'Nhắn tin với shop')}
+              >
+                {isOpeningChat ? (
+                  <ActivityIndicator size="small" color={theme.primary} />
+                ) : (
+                  <>
+                    <Text style={styles.chatWithShopIcon}>💬</Text>
+                    <Text style={[styles.chatWithShopText, { color: theme.primary }]}>
+                      {t('product.chatWithShop', 'Nhắn tin với shop')}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
+            {chatError != null && (
+              <Text style={[styles.chatErrorText, { color: theme.danger }]}>{chatError}</Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.quantitySection}>
-          <Text style={styles.sectionTitle}>Quantity</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            {t('product.quantity', 'Quantity')}
+          </Text>
           <View style={styles.quantityRow}>
             <Pressable
               onPress={decreaseQuantity}
               disabled={!canDecrease}
               style={({ pressed }) => [
                 styles.quantityButton,
+                { backgroundColor: theme.surface, borderColor: theme.border },
                 !canDecrease && styles.quantityButtonDisabled,
                 pressed && canDecrease && styles.quantityButtonPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Decrease quantity"
+              accessibilityLabel={t('product.decreaseQuantity', 'Decrease quantity')}
               accessibilityState={{ disabled: !canDecrease }}
             >
-              <Text style={[styles.quantityButtonText, !canDecrease && styles.quantityButtonTextDisabled]}>-</Text>
+              <Text
+                style={[
+                  styles.quantityButtonText,
+                  { color: theme.text },
+                  !canDecrease && [styles.quantityButtonTextDisabled, { color: theme.textSecondary }],
+                ]}
+              >
+                -
+              </Text>
             </Pressable>
-            <Text style={styles.quantityValue}>{quantity}</Text>
+            <Text style={[styles.quantityValue, { color: theme.text }]}>{quantity}</Text>
             <Pressable
               onPress={increaseQuantity}
               disabled={!canIncrease}
               style={({ pressed }) => [
                 styles.quantityButton,
+                { backgroundColor: theme.surface, borderColor: theme.border },
                 !canIncrease && styles.quantityButtonDisabled,
                 pressed && canIncrease && styles.quantityButtonPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Increase quantity"
+              accessibilityLabel={t('product.increaseQuantity', 'Increase quantity')}
               accessibilityState={{ disabled: !canIncrease }}
             >
-              <Text style={[styles.quantityButtonText, !canIncrease && styles.quantityButtonTextDisabled]}>+</Text>
+              <Text
+                style={[
+                  styles.quantityButtonText,
+                  { color: theme.text },
+                  !canIncrease && [styles.quantityButtonTextDisabled, { color: theme.textSecondary }],
+                ]}
+              >
+                +
+              </Text>
             </Pressable>
             {maxQuantity != null && (
-              <Text style={styles.stockText}>{maxQuantity} available</Text>
+              <Text style={[styles.stockText, { color: theme.textSecondary }]}>
+                {t('product.availableStock', `${maxQuantity} available`, { count: maxQuantity })}
+              </Text>
             )}
           </View>
         </View>
 
-        <View style={styles.divider} />
-        <Text style={styles.sectionTitle}>Description</Text>
-        <Text style={styles.description}>{product.description}</Text>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          {t('product.description', 'Description')}
+        </Text>
+        <Text style={[styles.description, { color: theme.textSecondary }]}>
+          {product.description}
+        </Text>
         <View style={styles.featureGrid}>
-          <View style={styles.featureItem}><Text style={styles.featureIcon}>▧</Text><Text style={styles.featureText}>Secure delivery</Text></View>
-          <View style={styles.featureItem}><Text style={styles.featureIcon}>↩</Text><Text style={styles.featureText}>30-day free return</Text></View>
-          <View style={styles.featureItem}><Text style={styles.featureIcon}>☆</Text><Text style={styles.featureText}>Good reviews</Text></View>
-          <View style={styles.featureItem}><Text style={styles.featureIcon}>♙</Text><Text style={styles.featureText}>Authorized shop</Text></View>
+          <View
+            style={[
+              styles.featureItem,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.featureIcon, { color: theme.primary }]}>▧</Text>
+            <Text style={[styles.featureText, { color: theme.text }]}>
+              {t('product.secureDelivery', 'Secure delivery')}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.featureItem,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.featureIcon, { color: theme.primary }]}>↩</Text>
+            <Text style={[styles.featureText, { color: theme.text }]}>
+              {t('product.freeReturn30Days', '30-day free return')}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.featureItem,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.featureIcon, { color: theme.primary }]}>☆</Text>
+            <Text style={[styles.featureText, { color: theme.text }]}>
+              {t('product.goodReviews', 'Good reviews')}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.featureItem,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.featureIcon, { color: theme.primary }]}>♙</Text>
+            <Text style={[styles.featureText, { color: theme.text }]}>
+              {t('product.authorizedShop', 'Authorized shop')}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <ProductReviews
           productId={product.id}
           productName={product.name}
@@ -411,14 +527,27 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
         />
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          { backgroundColor: theme.surface, borderTopColor: theme.border },
+        ]}
+      >
         {isAuthenticated && cartDisabled && (
-          <Text style={styles.cartNotice}>Cart is available for customer accounts only.</Text>
+          <Text style={[styles.cartNotice, { color: theme.textSecondary }]}>
+            {t('product.cartCustomerOnly', 'Cart is available for customer accounts only.')}
+          </Text>
         )}
-        {actionError != null && <Text style={styles.actionError}>{actionError}</Text>}
+        {actionError != null && (
+          <Text style={[styles.actionError, { color: theme.danger }]}>{actionError}</Text>
+        )}
         <View style={styles.footerRow}>
           <Button
-            title={addedFeedback ? 'Added to Cart ✓' : 'Add to Cart'}
+            title={
+              addedFeedback
+                ? t('product.addedToCart', 'Added to Cart ✓')
+                : t('product.addToCart', 'Add to Cart')
+            }
             onPress={() => {
               void handleAddToCart();
             }}
@@ -428,7 +557,7 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
             loading={pendingAction === 'add'}
           />
           <Button
-            title="Buy Now"
+            title={t('product.buyNow', 'Buy Now')}
             onPress={() => {
               void handleBuyNow();
             }}
@@ -452,159 +581,123 @@ export default function ProductDetailScreen({ route, navigation }: AppNavigatorS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.md,
     paddingBottom: spacing.lg,
     gap: spacing.md,
   },
+  centerState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.xl,
+  },
+  centerText: {
+    fontSize: 14,
+  },
   imageFrame: {
     width: '100%',
-    aspectRatio: 1.22,
-    borderRadius: radii.lg,
+    aspectRatio: 1,
+    borderRadius: radii.md,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
   },
   imageFill: {
     ...StyleSheet.absoluteFill,
   },
+  detailTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   categoryChip: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   categoryText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
+    fontWeight: '700',
   },
   name: {
-    fontSize: 22,
-    lineHeight: 29,
+    fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.text,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: spacing.sm,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: colors.textSecondary,
   },
   sellerSection: {
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  sellerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
+  },
+  sellerRowPressed: {
+    opacity: 0.8,
+  },
+  sellerInfo: {
+    flex: 1,
+  },
+  sellerLabel: {
+    fontSize: 12,
+  },
+  sellerName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  chevron: {
+    fontSize: 22,
   },
   chatWithShopButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    gap: spacing.xs + 2,
+    marginTop: spacing.xs,
   },
   chatWithShopButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   chatWithShopButtonPressed: {
-    backgroundColor: '#E6F8FA',
+    opacity: 0.8,
   },
   chatWithShopIcon: {
-    fontSize: 16,
+    fontSize: 15,
   },
   chatWithShopText: {
-    fontSize: typography.sm,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.primary,
   },
   chatErrorText: {
-    fontSize: typography.xs,
-    color: colors.danger,
-    textAlign: 'center',
-  },
-  sellerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.sm,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: '#FFFFFF',
-  },
-  sellerRowPressed: {
-    opacity: 0.75,
-  },
-  sellerInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  sellerLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
-  },
-  sellerName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  chevron: {
-    fontSize: 24,
-    lineHeight: 26,
-    color: colors.textSecondary,
-  },
-  footer: {
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  cartNotice: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  actionError: {
-    fontSize: 13,
-    color: colors.danger,
-    textAlign: 'center',
-  },
-  footerButton: {
-    flex: 1,
+    marginTop: 2,
   },
   quantitySection: {
-    gap: spacing.sm,
+    gap: spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: typography.base,
+    fontWeight: '700',
   },
   quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   quantityButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radii.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   quantityButtonPressed: {
     opacity: 0.7,
@@ -613,85 +706,110 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   quantityButtonText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
+    lineHeight: 22,
   },
   quantityButtonTextDisabled: {
-    color: colors.textSecondary,
+    opacity: 0.5,
   },
   quantityValue: {
-    minWidth: 40,
+    fontSize: 16,
+    fontWeight: '700',
+    minWidth: 24,
     textAlign: 'center',
-    fontSize: typography.base,
-    fontWeight: '600',
-    color: colors.text,
   },
   stockText: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    marginLeft: spacing.xs,
+    fontSize: 13,
   },
-  centerState: {
+  divider: {
+    height: 1,
+    marginVertical: spacing.xs,
+  },
+  description: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  featureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+  },
+  featureIcon: {
+    fontSize: 14,
+  },
+  featureText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  footer: {
+    borderTopWidth: 1,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  cartNotice: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  actionError: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  footerButton: {
+    flex: 1,
+  },
+  notFound: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing.xl,
     gap: spacing.sm,
-    padding: spacing.lg,
   },
-  centerText: {
+  notFoundIcon: {
+    fontSize: 48,
+  },
+  notFoundTitle: {
+    fontSize: typography.xl,
+    fontWeight: '700',
+  },
+  notFoundText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    textAlign: 'center',
   },
   errorIcon: {
-    fontSize: 40,
+    fontSize: 48,
   },
   errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: typography.xl,
+    fontWeight: '700',
   },
   errorText: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.sm,
   },
   retryButtonText: {
-    color: colors.onPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
-  },
-  notFound: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  notFoundIcon: {
-    fontSize: 40,
-  },
-  notFoundTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  notFoundText: {
     fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
-
-  detailTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
-  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, paddingVertical: spacing.sm },
-  featureItem: { width: '46%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  featureIcon: { fontSize: 18, color: colors.primary },
-  featureText: { fontSize: 13, color: colors.textSecondary },
 });
