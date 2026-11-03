@@ -42,6 +42,8 @@ export type RootStackParamList = {
   Checkout: { cartItemIds: string[] };
   /** Public seller shop opened from a product detail; carries only the seller id. */
   SellerShop: { sellerId: string };
+  /** Tất cả voucher đang dùng được; công khai, kể cả Guest. */
+  Vouchers: undefined;
   /** Customer order history. */
   MyOrders: undefined;
   /** Customer order detail. */

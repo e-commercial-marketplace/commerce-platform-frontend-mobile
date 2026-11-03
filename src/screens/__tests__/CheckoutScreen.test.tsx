@@ -20,7 +20,7 @@ import type { OrderResponse } from '../../types/orderApi';
 import type { VoucherResponse } from '../../types/voucherApi';
 import { getCart } from '../../services/cartService';
 import { createOrder } from '../../services/orderService';
-import { validateVoucher } from '../../services/voucherService';
+import { getUsableVouchers, validateVoucher } from '../../services/voucherService';
 import * as WebBrowser from 'expo-web-browser';
 
 import { queryKeys } from '../../api/queryKeys';
@@ -55,11 +55,26 @@ jest.mock('../../services/orderService', () => ({
 
 jest.mock('../../services/voucherService', () => ({
   validateVoucher: jest.fn(),
+  getUsableVouchers: jest.fn(),
 }));
 
 const mockedGetCart = getCart as jest.MockedFunction<typeof getCart>;
 const mockedCreateOrder = createOrder as jest.MockedFunction<typeof createOrder>;
 const mockedValidateVoucher = validateVoucher as jest.MockedFunction<typeof validateVoucher>;
+const mockedGetUsableVouchers = getUsableVouchers as jest.MockedFunction<typeof getUsableVouchers>;
+
+const usablePage = (percents: number[]) => ({
+  content: percents.map((discountPercent) => ({
+    code: `SALE${discountPercent}`,
+    description: `${discountPercent}% off`,
+    discountPercent,
+    validTo: '2030-01-01T00:00:00Z',
+  })),
+  page: 0,
+  size: 20,
+  totalElements: percents.length,
+  totalPages: 1,
+});
 
 type Navigation = AppNavigatorScreenProps<'Checkout'>['navigation'];
 
@@ -225,6 +240,8 @@ describe('CheckoutScreen', () => {
     mockedGetCart.mockReset();
     mockedCreateOrder.mockReset();
     mockedValidateVoucher.mockReset();
+    mockedGetUsableVouchers.mockReset();
+    mockedGetUsableVouchers.mockResolvedValue(usablePage([]));
     mockedOpenAuthSessionAsync.mockReset();
     mockedCreateVnpayPayment.mockReset();
     mockedGetCart.mockResolvedValue(
@@ -1003,4 +1020,64 @@ describe('CheckoutScreen', () => {
     });
   });
 
+  describe('voucher suggestions', () => {
+    it('keeps the highest percent first and marks only the first as the best choice', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30, 20, 10, 5]));
+      const view = await renderReady();
+
+      const first = await view.findByLabelText('Lựa chọn tốt nhất. Apply voucher SALE30');
+      expect(first).toBeTruthy();
+      expect(view.getByLabelText('Apply voucher SALE20')).toBeTruthy();
+      expect(view.getByLabelText('Apply voucher SALE10')).toBeTruthy();
+      expect(view.queryByLabelText('Apply voucher SALE5')).toBeNull();
+      expect(view.getAllByText('Lựa chọn tốt nhất')).toHaveLength(1);
+      expect(mockedValidateVoucher).not.toHaveBeenCalled();
+    });
+
+    it('applies a suggestion through the normal validation', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30]));
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady();
+
+      fireEvent.press(await view.findByLabelText('Lựa chọn tốt nhất. Apply voucher SALE30'));
+
+      await waitFor(() => expect(mockedValidateVoucher).toHaveBeenCalledWith('SALE30'));
+    });
+
+    it('shows the usual error when a suggested code has just run out', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30]));
+      mockedValidateVoucher.mockRejectedValue(new ApiError('used up', 'VOUCHER_EXHAUSTED', 409));
+      const view = await renderReady();
+
+      fireEvent.press(await view.findByLabelText('Lựa chọn tốt nhất. Apply voucher SALE30'));
+
+      expect(await view.findByText('This voucher has reached its usage limit.')).toBeTruthy();
+    });
+
+    it('opens the full list', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30]));
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(await view.findByLabelText('View all vouchers'));
+
+      expect(navigation.navigate).toHaveBeenCalledWith('Vouchers');
+    });
+
+    it('hides suggestions when the list fails and manual entry still works', async () => {
+      mockedGetUsableVouchers.mockRejectedValue(new Error('offline'));
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady();
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(view.queryByLabelText('View all vouchers')).toBeNull();
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+
+      await waitFor(() => expect(mockedValidateVoucher).toHaveBeenCalledWith('WELCOME10'));
+    });
+  });
 });

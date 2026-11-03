@@ -30,19 +30,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toApiError } from '../api/errors';
 import { queryKeys } from '../api/queryKeys';
 import Button from '../components/Button';
+import VoucherRow from '../components/VoucherRow';
 import FormField from '../components/FormField';
 import ProductImage from '../components/ProductImage';
 import { colors, radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { useCheckout } from '../hooks/useCheckout';
-import { useValidateVoucher } from '../hooks/useVoucher';
+import { useUsableVouchers, useValidateVoucher } from '../hooks/useVoucher';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { CartLine } from '../types/cart';
 import type { OrderResponse, PaymentMethod } from '../types/orderApi';
 import type { VoucherResponse } from '../types/voucherApi';
 import { formatVND } from '../utils/format';
 import { markPaymentUrlHandled } from '../utils/paymentDeepLink';
+
+const CHECKOUT_VOUCHER_COUNT = 3;
+const BEST_VOUCHER_LABEL = 'Lựa chọn tốt nhất';
 
 const MAX_ADDRESS_LENGTH = 1000;
 
@@ -120,6 +124,9 @@ export default function CheckoutScreen({
   const { items, isLoading, isFetching, isError, error, refetch, isCustomer } = useCart();
   const { placeOrder, isPending } = useCheckout();
   const validateVoucherMutation = useValidateVoucher();
+  // API đã xếp % cao nhất trước, nên dòng đầu là lựa chọn tốt nhất; lỗi thì ẩn gợi ý, ô nhập vẫn dùng được.
+  const suggestedVouchers =
+    useUsableVouchers().data?.pages[0]?.content.slice(0, CHECKOUT_VOUCHER_COUNT) ?? [];
   const queryClient = useQueryClient();
 
   const { cartItemIds } = route.params;
@@ -170,8 +177,8 @@ export default function CheckoutScreen({
     setFormError(null);
   };
 
-  const handleApplyVoucher = async () => {
-    const trimmed = voucherInput.trim();
+  const handleApplyVoucher = async (code?: string) => {
+    const trimmed = (code ?? voucherInput).trim();
     if (trimmed.length === 0) {
       setVoucherError('Please enter a voucher code.');
       return;
@@ -617,6 +624,27 @@ export default function CheckoutScreen({
                 {voucherError != null && (
                   <Text style={styles.voucherErrorText}>{voucherError}</Text>
                 )}
+                {suggestedVouchers.map((voucher, index) => (
+                  <VoucherRow
+                    key={voucher.code}
+                    voucher={voucher}
+                    badge={index === 0 ? BEST_VOUCHER_LABEL : undefined}
+                    disabled={busy || isValidatingVoucher}
+                    onApply={() => {
+                      void handleApplyVoucher(voucher.code);
+                    }}
+                  />
+                ))}
+                {suggestedVouchers.length > 0 ? (
+                  <Pressable
+                    style={styles.viewAllVouchers}
+                    onPress={() => navigation.navigate('Vouchers')}
+                    accessibilityRole="button"
+                    accessibilityLabel="View all vouchers"
+                  >
+                    <Text style={styles.viewAllVouchersText}>View all</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : (
               <View style={styles.appliedVoucherCard}>
@@ -852,6 +880,16 @@ const styles = StyleSheet.create({
   // Voucher section styles
   voucherContainer: {
     gap: spacing.xs,
+  },
+  viewAllVouchers: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewAllVouchersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
   voucherInputRow: {
     flexDirection: 'row',
