@@ -6,8 +6,8 @@
  * - Outgoing vs incoming styling (senderId comparison)
  * - Safe image attachment rendering if imageUrl is present
  * - Formatted timestamp (formatChatTimestamp)
- * - Read indicator: subtle "Đã xem" for outgoing messages marked isRead: true
- *   (Strictly avoids fabricating "Đã gửi" or "Đã nhận")
+ * - Read indicator: subtle "Seen" for outgoing messages marked isRead: true
+ *   (Strictly avoids fabricating "Sent" or "Received")
  * - Retry button for failed messages
  */
 
@@ -31,7 +31,7 @@ export type ChatMessageBubbleProps = {
       });
   isOutgoing: boolean;
   isFailed?: boolean;
-  /** Tin đang gửi (cập nhật lạc quan): hiện mờ cho tới khi server xác nhận. */
+  /** Message being sent (optimistic update): shown faded until the server confirms. */
   isPending?: boolean;
   onRetry?: () => void;
 };
@@ -53,7 +53,7 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
         isOutgoing ? styles.outgoingContainer : styles.incomingContainer,
       ]}
       accessibilityRole="text"
-      accessibilityLabel={`${isOutgoing ? 'Bạn: ' : 'Đối tác: '}${message.content || 'Hình ảnh'}`}
+      accessibilityLabel={`${isOutgoing ? 'You: ' : 'Partner: '}${message.content || 'Image'}`}
     >
       <View
         style={[
@@ -70,7 +70,7 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
             style={styles.attachedImage}
             resizeMode="cover"
             onError={() => setImageError(true)}
-            accessibilityLabel="Hình ảnh đính kèm"
+            accessibilityLabel="Attached image"
           />
         ) : null}
 
@@ -97,15 +97,15 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
       >
         <Text style={styles.timestampText}>{formattedTime}</Text>
 
-        {/* Outgoing Read Indicator: Subtle "Đã xem" only when isRead is true */}
+        {/* Outgoing Read Indicator: Subtle "Seen" only when isRead is true */}
         {isOutgoing && !isFailed && message.isRead === true ? (
-          <Text style={styles.readStatusText}>Đã xem</Text>
+          <Text style={styles.readStatusText}>Seen</Text>
         ) : null}
 
         {/* Failure State & Retry Button */}
         {isFailed ? (
           <View style={styles.failedActionRow}>
-            <Text style={styles.failedNotice}>⚠️ Lỗi gửi</Text>
+            <Text style={styles.failedNotice}>⚠️ Send failed</Text>
             {onRetry ? (
               <Pressable
                 onPress={onRetry}
@@ -114,9 +114,9 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
                   pressed && styles.retryButtonPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại gửi tin nhắn"
+                accessibilityLabel="Retry sending message"
               >
-                <Text style={styles.retryButtonText}>Thử lại</Text>
+                <Text style={styles.retryButtonText}>Retry</Text>
               </Pressable>
             ) : null}
           </View>

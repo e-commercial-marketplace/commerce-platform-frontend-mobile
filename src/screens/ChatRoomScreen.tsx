@@ -8,7 +8,7 @@
  * - Outgoing messages sent via POST /conversations/{id}/messages with client Idempotency-Key.
  * - Retry capability for failed messages reusing the EXACT same idempotency key.
  * - Mark conversation read via PATCH /conversations/{id}/read.
- * - Real-time read receipts (MessagesReadEvent) reflected on outgoing messages ("Đã xem").
+ * - Real-time read receipts (MessagesReadEvent) reflected on outgoing messages ("Seen").
  * - Role-based authorization: CUSTOMER and SELLER only.
  * - Android/iOS responsive keyboard avoidance.
  */
@@ -52,7 +52,7 @@ export type FailedMessage = {
   tempId: string;
   idempotencyKey: string;
   content: string;
-  /** Ảnh đã upload xong: gửi lại không phải upload lần nữa. */
+  /** Image already uploaded: resending does not upload it again. */
   imageUrl?: string | null;
   createdAt: string;
   senderId: string;
@@ -91,15 +91,15 @@ export default function ChatRoomScreen({
       if (currentConversation?.sellerId) {
         return `Shop #${currentConversation.sellerId.slice(0, 8)}`;
       }
-      return 'Cửa hàng';
+      return 'Shop';
     }
     if (isSeller) {
       if (currentConversation?.customerId) {
-        return `Khách hàng #${currentConversation.customerId.slice(0, 8)}`;
+        return `Customer #${currentConversation.customerId.slice(0, 8)}`;
       }
-      return 'Khách hàng';
+      return 'Customer';
     }
-    return 'Trò chuyện';
+    return 'Chat';
   }, [counterpartName, isCustomer, isSeller, shop?.name, currentConversation]);
 
   // Synchronize screen title with resolved counterpart name
@@ -233,8 +233,8 @@ export default function ChatRoomScreen({
     [inputText, user, conversationId, sendMessageMutation],
   );
 
-  // Gửi ảnh ngay sau khi chọn. Upload lỗi chỉ báo lỗi; gửi lỗi tạo bong bóng để thử lại mà không upload lại.
-  // shortcut: nếu một tin khác đang gửi đúng lúc upload xong thì ảnh bị bỏ qua, người dùng chọn lại; thêm hàng đợi nếu gặp thật.
+  // Send the image right after picking. An upload error only reports the error; a send error creates a bubble to retry without uploading again.
+  // shortcut: if another message is sending exactly when the upload finishes, the image is dropped and the user picks again; add a queue if this happens for real.
   const handlePickImage = useCallback(async () => {
     if (imageUpload.isPending) return;
     try {
@@ -244,7 +244,7 @@ export default function ChatRoomScreen({
         await handleSendMessage('', undefined, uploadedUrl);
       }
     } catch (error) {
-      Alert.alert('Không gửi được ảnh', toApiError(error).message);
+      Alert.alert('Could not send the image', toApiError(error).message);
     }
   }, [imageUpload, handleSendMessage]);
 
@@ -261,17 +261,17 @@ export default function ChatRoomScreen({
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>🔒</Text>
-          <Text style={styles.emptyTitle}>Yêu cầu đăng nhập</Text>
+          <Text style={styles.emptyTitle}>Sign-in required</Text>
           <Text style={styles.subtitle}>
-            Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để tham gia trò chuyện.
+            You need to sign in with a Buyer or Seller account to join the chat.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel="Đăng nhập"
+            accessibilityLabel="Sign in"
           >
-            <Text style={styles.primaryButtonText}>Đăng nhập</Text>
+            <Text style={styles.primaryButtonText}>Sign in</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -296,16 +296,16 @@ export default function ChatRoomScreen({
           <View style={styles.connectionBanner} accessibilityRole="alert">
             <Text style={styles.connectionText}>
               {connectionState === 'reconnecting'
-                ? 'Đang kết nối lại thời gian thực…'
-                : 'Mất kết nối thời gian thực'}
+                ? 'Reconnecting in real time…'
+                : 'Real-time connection lost'}
             </Text>
             {connectionState === 'disconnected' ? (
               <Pressable
                 onPress={reconnect}
                 accessibilityRole="button"
-                accessibilityLabel="Kết nối lại"
+                accessibilityLabel="Reconnect"
               >
-                <Text style={styles.reconnectButtonText}>Kết nối lại</Text>
+                <Text style={styles.reconnectButtonText}>Reconnect</Text>
               </Pressable>
             ) : null}
           </View>
@@ -316,27 +316,27 @@ export default function ChatRoomScreen({
           {isLoading && displayItems.length === 0 ? (
             <View style={styles.centerState}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.subtitle}>Đang tải tin nhắn…</Text>
+              <Text style={styles.subtitle}>Loading messages…</Text>
             </View>
           ) : isError && displayItems.length === 0 ? (
             <View style={styles.centerState}>
               <Text style={styles.emptyEmoji}>⚠️</Text>
-              <Text style={styles.emptyTitle}>Không thể tải tin nhắn</Text>
+              <Text style={styles.emptyTitle}>Could not load messages</Text>
               <Pressable
                 style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
                 onPress={() => refetch()}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại"
+                accessibilityLabel="Retry"
               >
-                <Text style={styles.primaryButtonText}>Thử lại</Text>
+                <Text style={styles.primaryButtonText}>Retry</Text>
               </Pressable>
             </View>
           ) : displayItems.length === 0 ? (
             <View style={styles.centerState}>
               <Text style={styles.emptyEmoji}>💬</Text>
-              <Text style={styles.emptyTitle}>Chưa có tin nhắn</Text>
+              <Text style={styles.emptyTitle}>No messages yet</Text>
               <Text style={styles.subtitle}>
-                Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện.
+                Send the first message to start the conversation.
               </Text>
             </View>
           ) : (
@@ -374,7 +374,7 @@ export default function ChatRoomScreen({
                 isFetchingNextPage ? (
                   <View style={styles.loadingOlderContainer}>
                     <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.loadingOlderText}>Đang tải tin nhắn cũ hơn…</Text>
+                    <Text style={styles.loadingOlderText}>Loading older messages…</Text>
                   </View>
                 ) : undefined
               }
@@ -393,7 +393,7 @@ export default function ChatRoomScreen({
             }}
             disabled={imageUpload.isPending || sendMessageMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Gửi ảnh"
+            accessibilityLabel="Send image"
             accessibilityState={{ busy: imageUpload.isPending }}
           >
             {imageUpload.isPending ? (
@@ -407,12 +407,12 @@ export default function ChatRoomScreen({
             style={styles.composerInput}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Nhập tin nhắn..."
+            placeholder="Type a message..."
             placeholderTextColor={colors.textSecondary}
             multiline
             maxLength={2000}
             editable={!sendMessageMutation.isPending}
-            accessibilityLabel="Nhập tin nhắn"
+            accessibilityLabel="Enter a message"
           />
 
           <Pressable
@@ -420,7 +420,7 @@ export default function ChatRoomScreen({
             onPress={() => handleSendMessage()}
             disabled={isSendDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Gửi tin nhắn"
+            accessibilityLabel="Send message"
           >
             {sendMessageMutation.isPending ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />

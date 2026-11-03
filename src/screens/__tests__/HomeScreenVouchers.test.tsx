@@ -1,5 +1,5 @@
 /**
- * Khu voucher ở trang chủ: Guest cũng thấy; lỗi hoặc rỗng thì ẩn và sản phẩm vẫn hiển thị.
+ * Voucher section on the home page: Guests see it too; on error or empty it is hidden and products still show.
  */
 
 import React from 'react';

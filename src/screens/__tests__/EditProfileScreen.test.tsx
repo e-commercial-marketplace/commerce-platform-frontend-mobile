@@ -1,5 +1,5 @@
 /**
- * Màn sửa hồ sơ: điền sẵn dữ liệu, kiểm tra từng trường, xoá số điện thoại, lỗi backend, chống bấm hai lần.
+ * Edit-profile screen: prefilled data, per-field validation, clearing the phone number, backend errors, double-tap protection.
  */
 
 import React from 'react';

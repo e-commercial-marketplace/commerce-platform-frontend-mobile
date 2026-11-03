@@ -5,7 +5,7 @@
  * 1. Admin Role Guard: Only authenticated users with Role.ADMIN can access.
  * 2. Real Backend Data: GET /api/v1/admin/users
  * 3. Server-side text search (email / name) with debounce.
- * 4. Role filtering: Tất cả (undefined), Khách hàng (CUSTOMER), Người bán (SELLER), Quản trị viên (ADMIN).
+ * 4. Role filtering: All (undefined), Customer (CUSTOMER), Seller (SELLER), Admin (ADMIN).
  * 5. Zero-based pagination (Previous / Next) with state persistence.
  * 6. Pull-to-refresh and authoritative refetch.
  * 7. User presentation with Role badge, Account Active badge, and Seller Status badge.
@@ -47,10 +47,10 @@ type RoleFilterOption = {
 };
 
 const ROLE_FILTER_OPTIONS: RoleFilterOption[] = [
-  { key: 'ALL', label: 'Tất cả', value: undefined },
-  { key: 'CUSTOMER', label: 'Khách hàng', value: 'CUSTOMER' },
-  { key: 'SELLER', label: 'Người bán', value: 'SELLER' },
-  { key: 'ADMIN', label: 'Quản trị viên', value: 'ADMIN' },
+  { key: 'ALL', label: 'All', value: undefined },
+  { key: 'CUSTOMER', label: 'Customer', value: 'CUSTOMER' },
+  { key: 'SELLER', label: 'Seller', value: 'SELLER' },
+  { key: 'ADMIN', label: 'Admin', value: 'ADMIN' },
 ];
 
 const ROLE_BADGE_CONFIG: Record<
@@ -58,17 +58,17 @@ const ROLE_BADGE_CONFIG: Record<
   { label: string; backgroundColor: string; textColor: string }
 > = {
   CUSTOMER: {
-    label: 'Khách hàng',
+    label: 'Customer',
     backgroundColor: '#EFF8FF',
     textColor: '#175CD3',
   },
   SELLER: {
-    label: 'Người bán',
+    label: 'Seller',
     backgroundColor: '#F9F5FF',
     textColor: '#6941C6',
   },
   ADMIN: {
-    label: 'Quản trị viên',
+    label: 'Admin',
     backgroundColor: '#F2F4F7',
     textColor: '#344054',
   },
@@ -79,22 +79,22 @@ const SELLER_STATUS_CONFIG: Record<
   { label: string; backgroundColor: string; textColor: string }
 > = {
   PENDING: {
-    label: 'Chờ duyệt',
+    label: 'Pending',
     backgroundColor: '#FEF0C7',
     textColor: '#B54708',
   },
   APPROVED: {
-    label: 'Đã duyệt',
+    label: 'Approved',
     backgroundColor: '#ECFDF3',
     textColor: '#027A48',
   },
   SUSPENDED: {
-    label: 'Tạm ngưng',
+    label: 'Suspended',
     backgroundColor: '#FEF3F2',
     textColor: '#B42318',
   },
   REJECTED: {
-    label: 'Từ chối',
+    label: 'Rejected',
     backgroundColor: '#F2F4F7',
     textColor: '#475467',
   },
@@ -179,17 +179,17 @@ export default function AdminUserListScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền truy cập vào Quản lý người dùng.
+            Only system administrators can access User Management.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -205,8 +205,8 @@ export default function AdminUserListScreen({ navigation }: Props) {
 
     const isEnabled = item.enabled;
     const accountBadge = isEnabled
-      ? { label: 'Đang hoạt động', backgroundColor: '#ECFDF3', textColor: '#027A48' }
-      : { label: 'Đã vô hiệu hóa', backgroundColor: '#FEF3F2', textColor: '#B42318' };
+      ? { label: 'Active', backgroundColor: '#ECFDF3', textColor: '#027A48' }
+      : { label: 'Disabled', backgroundColor: '#FEF3F2', textColor: '#B42318' };
 
     const sellerStatusBadge =
       item.role === 'SELLER' && item.sellerStatus
@@ -218,7 +218,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
         style={({ pressed }) => [styles.userCard, pressed && styles.cardPressed]}
         onPress={() => navigation.navigate('AdminUserDetail', { userId: item.id })}
         accessibilityRole="button"
-        accessibilityLabel={`Người dùng ${item.name}`}
+        accessibilityLabel={`User ${item.name}`}
         testID={`user-item-${item.id}`}
       >
         <View style={styles.cardHeader}>
@@ -269,7 +269,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
 
         <View style={styles.cardFooter}>
           <Text style={styles.dateText}>
-            Ngày đăng ký: {formatDate(item.createdAt)}
+            Registered on: {formatDate(item.createdAt)}
           </Text>
         </View>
       </Pressable>
@@ -281,16 +281,16 @@ export default function AdminUserListScreen({ navigation }: Props) {
       {/* Top action bar: count & Create button */}
       <View style={styles.topActionBar}>
         <Text style={styles.totalCountText}>
-          {totalElements > 0 ? `Tổng cộng: ${totalElements} tài khoản` : 'Danh sách tài khoản'}
+          {totalElements > 0 ? `Total: ${totalElements} accounts` : 'Account list'}
         </Text>
         <Pressable
           style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
           onPress={() => navigation.navigate('AdminUserCreate')}
           accessibilityRole="button"
-          accessibilityLabel="Thêm người dùng"
+          accessibilityLabel="Add user"
           testID="create-user-button"
         >
-          <Text style={styles.createButtonText}>+ Thêm mới</Text>
+          <Text style={styles.createButtonText}>+ Add new</Text>
         </Pressable>
       </View>
 
@@ -299,7 +299,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm theo tên hoặc email…"
+          placeholder="Search by name or email…"
           placeholderTextColor={colors.textSecondary}
           value={searchText}
           onChangeText={handleSearchChange}
@@ -313,7 +313,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
             onPress={handleClearSearch}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Xóa tìm kiếm"
+            accessibilityLabel="Clear search"
             testID="clear-search-button"
           >
             <Text style={styles.clearIcon}>✕</Text>
@@ -331,7 +331,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
               style={[styles.filterChip, isSelected && styles.filterChipActive]}
               onPress={() => handleRoleChange(opt.value)}
               accessibilityRole="button"
-              accessibilityLabel={`Lọc theo ${opt.label}`}
+              accessibilityLabel={`Filter by ${opt.label}`}
               testID={`filter-role-${opt.key}`}
             >
               <Text
@@ -356,7 +356,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
           onPress={handlePrevPage}
           disabled={page === 0 || isLoading}
           accessibilityRole="button"
-          accessibilityLabel="Trang trước"
+          accessibilityLabel="Previous page"
           testID="prev-page-button"
         >
           <Text
@@ -365,7 +365,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
               page === 0 && styles.pageButtonTextDisabled,
             ]}
           >
-            ‹ Trước
+            ‹ Previous
           </Text>
         </Pressable>
 
@@ -402,17 +402,17 @@ export default function AdminUserListScreen({ navigation }: Props) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Đang tải danh sách người dùng…</Text>
+          <Text style={styles.loadingText}>Loading users…</Text>
         </View>
       );
     }
 
     if (isError) {
-      const errorMessage = error ? toApiError(error).message : 'Lỗi không xác định';
+      const errorMessage = error ? toApiError(error).message : 'Unknown error';
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải danh sách</Text>
+          <Text style={styles.errorTitle}>Could not load the list</Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -420,10 +420,10 @@ export default function AdminUserListScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel="Retry"
             testID="retry-button"
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
         </View>
       );
@@ -432,9 +432,9 @@ export default function AdminUserListScreen({ navigation }: Props) {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.stateIcon}>👥</Text>
-        <Text style={styles.emptyTitle}>Không tìm thấy người dùng nào</Text>
+        <Text style={styles.emptyTitle}>No users found</Text>
         <Text style={styles.emptySubtitle}>
-          {searchText ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc vai trò' : 'Hệ thống chưa có người dùng nào'}
+          {searchText ? 'Try changing the search keyword or the role filter' : 'The system has no users yet'}
         </Text>
       </View>
     );

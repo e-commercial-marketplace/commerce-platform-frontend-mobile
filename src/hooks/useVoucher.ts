@@ -13,7 +13,7 @@ import { queryKeys } from '../api/queryKeys';
 import { getUsableVouchers, validateVoucher } from '../services/voucherService';
 import type { VoucherResponse } from '../types/voucherApi';
 
-/** Voucher đang dùng được, tải thêm từng trang. Dữ liệu giống nhau với mọi người nên không gắn theo tài khoản. */
+/** Usable vouchers, loaded page by page. The data is the same for everyone so it is not keyed by account. */
 export function useUsableVouchers() {
   return useInfiniteQuery({
     queryKey: queryKeys.vouchers.usable(),

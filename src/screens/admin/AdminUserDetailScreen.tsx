@@ -46,17 +46,17 @@ const ROLE_BADGE_CONFIG: Record<
   { label: string; backgroundColor: string; textColor: string }
 > = {
   CUSTOMER: {
-    label: 'Khách hàng',
+    label: 'Customer',
     backgroundColor: '#EFF8FF',
     textColor: '#175CD3',
   },
   SELLER: {
-    label: 'Người bán',
+    label: 'Seller',
     backgroundColor: '#F9F5FF',
     textColor: '#6941C6',
   },
   ADMIN: {
-    label: 'Quản trị viên',
+    label: 'Admin',
     backgroundColor: '#F2F4F7',
     textColor: '#344054',
   },
@@ -67,22 +67,22 @@ const SELLER_STATUS_CONFIG: Record<
   { label: string; backgroundColor: string; textColor: string }
 > = {
   PENDING: {
-    label: 'Chờ duyệt',
+    label: 'Pending',
     backgroundColor: '#FEF0C7',
     textColor: '#B54708',
   },
   APPROVED: {
-    label: 'Đã duyệt',
+    label: 'Approved',
     backgroundColor: '#ECFDF3',
     textColor: '#027A48',
   },
   SUSPENDED: {
-    label: 'Tạm ngưng',
+    label: 'Suspended',
     backgroundColor: '#FEF3F2',
     textColor: '#B42318',
   },
   REJECTED: {
-    label: 'Từ chối',
+    label: 'Rejected',
     backgroundColor: '#F2F4F7',
     textColor: '#475467',
   },
@@ -128,17 +128,17 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền truy cập vào thông tin chi tiết người dùng.
+            Only system administrators can access user details.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -150,19 +150,19 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Đang tải thông tin người dùng…</Text>
+          <Text style={styles.loadingText}>Loading user information…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   if (isError || !user) {
-    const errorMessage = error ? toApiError(error).message : 'Người dùng không tồn tại';
+    const errorMessage = error ? toApiError(error).message : 'User does not exist';
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải thông tin</Text>
+          <Text style={styles.errorTitle}>Could not load information</Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -170,10 +170,10 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel="Retry"
             testID="retry-button"
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -187,8 +187,8 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
   };
 
   const accountBadge = user.enabled
-    ? { label: 'Đang hoạt động', backgroundColor: '#ECFDF3', textColor: '#027A48' }
-    : { label: 'Đã vô hiệu hóa', backgroundColor: '#FEF3F2', textColor: '#B42318' };
+    ? { label: 'Active', backgroundColor: '#ECFDF3', textColor: '#027A48' }
+    : { label: 'Disabled', backgroundColor: '#FEF3F2', textColor: '#B42318' };
 
   const sellerBadge =
     user.role === 'SELLER' && user.sellerStatus
@@ -197,24 +197,24 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
 
   const handleDisablePress = () => {
     if (isSelf) {
-      Alert.alert('Không thể thực hiện', 'Bạn không thể tự vô hiệu hoá tài khoản của chính mình.');
+      Alert.alert('Cannot perform action', 'You cannot disable your own account.');
       return;
     }
 
     Alert.alert(
-      'Vô hiệu hóa tài khoản',
-      `Bạn có chắc chắn muốn vô hiệu hóa tài khoản "${user.name}" không?\n\nNgười dùng sẽ không thể đăng nhập hoặc làm mới phiên, nhưng mọi dữ liệu đơn hàng và lịch sử sẽ được bảo lưu.`,
+      'Disable account',
+      `Are you sure you want to disable the account "${user.name}"?\n\nThe user will not be able to sign in or refresh the session, but all order data and history will be kept.`,
       [
-        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Vô hiệu hóa',
+          text: 'Disable',
           style: 'destructive',
           onPress: async () => {
             try {
               await disableMutation.mutateAsync(user.id);
-              Alert.alert('Thành công', 'Tài khoản đã được vô hiệu hóa.');
+              Alert.alert('Success', 'The account has been disabled.');
             } catch (err: unknown) {
-              Alert.alert('Lỗi', toApiError(err).message);
+              Alert.alert('Error', toApiError(err).message);
             }
           },
         },
@@ -224,21 +224,21 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
 
   const handleEnablePress = () => {
     Alert.alert(
-      'Kích hoạt lại tài khoản',
-      `Bạn có chắc chắn muốn kích hoạt lại tài khoản "${user.name}" không?\n\nNgười dùng sẽ có thể đăng nhập lại vào hệ thống.`,
+      'Reactivate account',
+      `Are you sure you want to reactivate the account "${user.name}"?\n\nThe user will be able to sign in again.`,
       [
-        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Kích hoạt',
+          text: 'Activate',
           onPress: async () => {
             try {
               await updateMutation.mutateAsync({
                 id: user.id,
                 payload: { enabled: true },
               });
-              Alert.alert('Thành công', 'Tài khoản đã được kích hoạt lại.');
+              Alert.alert('Success', 'The account has been reactivated.');
             } catch (err: unknown) {
-              Alert.alert('Lỗi', toApiError(err).message);
+              Alert.alert('Error', toApiError(err).message);
             }
           },
         },
@@ -296,17 +296,17 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
           <View style={styles.selfNoticeBox} testID="self-protection-notice">
             <Text style={styles.noticeIcon}>🛡️</Text>
             <Text style={styles.selfNoticeText}>
-              Đây là tài khoản của bạn. Để đảm bảo an toàn hệ thống, bạn không thể tự khoá hoặc hạ vai trò của chính mình.
+              This is your own account. For system safety, you cannot lock yourself or lower your own role.
             </Text>
           </View>
         ) : null}
 
         {/* Information Section */}
         <View style={styles.infoSection}>
-          <Text style={styles.sectionHeader}>Thông tin chi tiết</Text>
+          <Text style={styles.sectionHeader}>Detailed information</Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Mã định danh (ID)</Text>
+            <Text style={styles.infoLabel}>Identifier (ID)</Text>
             <Text style={styles.infoValue} selectable>
               {user.id}
             </Text>
@@ -318,42 +318,42 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Số điện thoại</Text>
+            <Text style={styles.infoLabel}>Phone number</Text>
             <Text style={styles.infoValue}>
-              {user.phone ? user.phone : 'Chưa cập nhật'}
+              {user.phone ? user.phone : 'Not updated'}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Địa chỉ</Text>
+            <Text style={styles.infoLabel}>Address</Text>
             <Text style={styles.infoValue}>
-              {user.address ? user.address : 'Chưa cập nhật'}
+              {user.address ? user.address : 'Not updated'}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Ngày tạo tài khoản</Text>
+            <Text style={styles.infoLabel}>Account created on</Text>
             <Text style={styles.infoValue}>{formatDateTime(user.createdAt)}</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Cập nhật lần cuối</Text>
+            <Text style={styles.infoLabel}>Last updated</Text>
             <Text style={styles.infoValue}>{formatDateTime(user.updatedAt)}</Text>
           </View>
         </View>
 
         {/* Actions Section */}
         <View style={styles.actionsSection}>
-          <Text style={styles.sectionHeader}>Thao tác quản lý</Text>
+          <Text style={styles.sectionHeader}>Management actions</Text>
 
           <Pressable
             style={({ pressed }) => [styles.actionButton, styles.editButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.navigate('AdminUserEdit', { userId: user.id })}
             accessibilityRole="button"
-            accessibilityLabel="Chỉnh sửa thông tin"
+            accessibilityLabel="Edit information"
             testID="edit-user-button"
           >
-            <Text style={styles.actionButtonText}>Chỉnh sửa thông tin</Text>
+            <Text style={styles.actionButtonText}>Edit information</Text>
           </Pressable>
 
           {!isSelf && user.enabled ? (
@@ -367,13 +367,13 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
               onPress={handleDisablePress}
               disabled={disableMutation.isPending}
               accessibilityRole="button"
-              accessibilityLabel="Vô hiệu hóa tài khoản"
+              accessibilityLabel="Disable account"
               testID="disable-user-button"
             >
               {disableMutation.isPending ? (
                 <ActivityIndicator size="small" color={colors.onPrimary} />
               ) : (
-                <Text style={styles.actionButtonText}>Vô hiệu hóa tài khoản</Text>
+                <Text style={styles.actionButtonText}>Disable account</Text>
               )}
             </Pressable>
           ) : null}
@@ -389,13 +389,13 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
               onPress={handleEnablePress}
               disabled={updateMutation.isPending}
               accessibilityRole="button"
-              accessibilityLabel="Kích hoạt lại tài khoản"
+              accessibilityLabel="Reactivate account"
               testID="enable-user-button"
             >
               {updateMutation.isPending ? (
                 <ActivityIndicator size="small" color={colors.onPrimary} />
               ) : (
-                <Text style={styles.actionButtonText}>Kích hoạt lại tài khoản</Text>
+                <Text style={styles.actionButtonText}>Reactivate account</Text>
               )}
             </Pressable>
           ) : null}

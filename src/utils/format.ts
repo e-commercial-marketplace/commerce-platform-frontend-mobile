@@ -18,7 +18,7 @@ export function formatVND(amount: number): string {
 /**
  * Formats a chat timestamp in a Vietnamese-friendly, stable format without heavy libraries:
  * - Today: 'HH:mm' (e.g. '14:30')
- * - Yesterday: 'Hôm qua'
+ * - Yesterday: 'Yesterday'
  * - Within current year: 'DD/MM' (e.g. '24/10')
  * - Earlier years: 'DD/MM/YYYY' (e.g. '15/08/2025')
  */
@@ -49,7 +49,7 @@ export function formatChatTimestamp(dateStr?: string | null): string {
       date.getFullYear() === yesterday.getFullYear();
 
     if (isYesterday) {
-      return 'Hôm qua';
+      return 'Yesterday';
     }
 
     const day = String(date.getDate()).padStart(2, '0');

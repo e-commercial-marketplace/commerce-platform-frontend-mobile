@@ -46,9 +46,9 @@ const mockCustomerUser = {
 };
 
 const mockCarriers: Carrier[] = [
-  { id: 'carrier-1', name: 'Giao Hàng Nhanh (GHN)', active: true },
+  { id: 'carrier-1', name: 'Fast Delivery (FD)', active: true },
   { id: 'carrier-2', name: 'Viettel Post', active: true },
-  { id: 'carrier-3', name: 'Giao Hàng Tiết Kiệm (GHTK)', active: false },
+  { id: 'carrier-3', name: 'Economy Delivery (ED)', active: false },
 ];
 
 describe('AdminCarrierScreen', () => {
@@ -97,7 +97,7 @@ describe('AdminCarrierScreen', () => {
       );
 
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
-      expect(getByText('Truy cập bị từ chối')).toBeTruthy();
+      expect(getByText('Access denied')).toBeTruthy();
     });
 
     it('renders unauthorized guard when user is unauthenticated', () => {
@@ -113,7 +113,7 @@ describe('AdminCarrierScreen', () => {
       expect(getByTestId('admin-unauthorized-guard')).toBeTruthy();
     });
 
-    it('calls navigation.goBack() when Quay lại is pressed on unauthorized guard', () => {
+    it('calls navigation.goBack() when Go back is pressed on unauthorized guard', () => {
       mockedUseAuth.mockReturnValue({
         user: mockCustomerUser,
         isAuthenticated: true,
@@ -123,7 +123,7 @@ describe('AdminCarrierScreen', () => {
         <AdminCarrierScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      fireEvent.press(getByRole('button', { name: 'Quay lại' }));
+      fireEvent.press(getByRole('button', { name: 'Go back' }));
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
@@ -134,8 +134,8 @@ describe('AdminCarrierScreen', () => {
         <AdminCarrierScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Đơn vị vận chuyển')).toBeTruthy();
-      expect(getByText(/Tổng: 3 • Hoạt động: 2 • Tạm ngừng: 1/)).toBeTruthy();
+      expect(getByText('Carriers')).toBeTruthy();
+      expect(getByText(/Total: 3 • Active: 2 • Suspended: 1/)).toBeTruthy();
     });
 
     it('renders carrier cards with name, status badge, and action buttons', () => {
@@ -147,9 +147,9 @@ describe('AdminCarrierScreen', () => {
       expect(getByTestId('admin-carrier-card-carrier-2')).toBeTruthy();
       expect(getByTestId('admin-carrier-card-carrier-3')).toBeTruthy();
 
-      expect(getByText('Giao Hàng Nhanh (GHN)')).toBeTruthy();
+      expect(getByText('Fast Delivery (FD)')).toBeTruthy();
       expect(getByText('Viettel Post')).toBeTruthy();
-      expect(getByText('Giao Hàng Tiết Kiệm (GHTK)')).toBeTruthy();
+      expect(getByText('Economy Delivery (ED)')).toBeTruthy();
 
       // Status badges
       expect(getByTestId('admin-carrier-status-badge-carrier-1')).toBeTruthy();
@@ -172,7 +172,7 @@ describe('AdminCarrierScreen', () => {
       expect(queryByTestId('admin-carrier-delete-btn-carrier-1')).toBeNull();
       expect(queryByTestId('admin-carrier-delete-btn-carrier-2')).toBeNull();
       expect(queryByTestId('admin-carrier-delete-btn-carrier-3')).toBeNull();
-      expect(queryByText(/xóa đơn vị/i)).toBeNull();
+      expect(queryByText(/delete carrier/i)).toBeNull();
     });
   });
 
@@ -268,12 +268,12 @@ describe('AdminCarrierScreen', () => {
       );
 
       expect(getByTestId('admin-carrier-empty')).toBeTruthy();
-      expect(getByText('Chưa có đơn vị vận chuyển nào')).toBeTruthy();
+      expect(getByText('No carriers yet')).toBeTruthy();
     });
   });
 
   describe('Create Carrier Modal', () => {
-    it('opens create modal when ＋ Thêm đơn vị is pressed and validates empty input', async () => {
+    it('opens create modal when ＋ Add carrier is pressed and validates empty input', async () => {
       const { getByTestId, getByText } = render(
         <AdminCarrierScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -281,13 +281,13 @@ describe('AdminCarrierScreen', () => {
       fireEvent.press(getByTestId('admin-carrier-create-btn'));
 
       expect(getByTestId('admin-carrier-create-modal')).toBeTruthy();
-      expect(getByText('Thêm đơn vị vận chuyển')).toBeTruthy();
+      expect(getByText('Add carrier')).toBeTruthy();
 
       // Submit with empty name
       fireEvent.press(getByTestId('admin-carrier-create-submit-btn'));
 
       expect(getByTestId('admin-carrier-create-error')).toBeTruthy();
-      expect(getByText('Vui lòng nhập tên đơn vị vận chuyển.')).toBeTruthy();
+      expect(getByText('Please enter the carrier name.')).toBeTruthy();
       expect(mockCreateMutateAsync).not.toHaveBeenCalled();
     });
 
@@ -310,7 +310,7 @@ describe('AdminCarrierScreen', () => {
       });
 
       expect(mockCreateMutateAsync).toHaveBeenCalledWith({ name: 'Shopee Xpress' });
-      expect(Alert.alert).toHaveBeenCalledWith('Thành công', 'Đã thêm đơn vị vận chuyển "Shopee Xpress".');
+      expect(Alert.alert).toHaveBeenCalledWith('Success', 'Added carrier "Shopee Xpress".');
     });
 
     it('handles duplicate carrier name error gracefully', async () => {
@@ -331,11 +331,11 @@ describe('AdminCarrierScreen', () => {
 
       expect(getByTestId('admin-carrier-create-error')).toBeTruthy();
       expect(
-        getByText('Tên đơn vị vận chuyển đã tồn tại trên hệ thống. Vui lòng chọn tên khác.'),
+        getByText('The carrier name already exists in the system. Please choose another name.'),
       ).toBeTruthy();
     });
 
-    it('closes create modal when Hủy is pressed', () => {
+    it('closes create modal when Cancel is pressed', () => {
       const { getByTestId } = render(
         <AdminCarrierScreen navigation={mockNavigation as any} route={{} as any} />,
       );
@@ -356,9 +356,9 @@ describe('AdminCarrierScreen', () => {
       fireEvent.press(getByTestId('admin-carrier-rename-btn-carrier-1'));
 
       expect(getByTestId('admin-carrier-edit-modal')).toBeTruthy();
-      expect(getByText('Chỉnh sửa đơn vị vận chuyển')).toBeTruthy();
+      expect(getByText('Edit carrier')).toBeTruthy();
       expect(getByTestId('admin-carrier-edit-name-input').props.value).toBe(
-        'Giao Hàng Nhanh (GHN)',
+        'Fast Delivery (FD)',
       );
     });
 
@@ -389,8 +389,8 @@ describe('AdminCarrierScreen', () => {
         },
       });
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Thành công',
-        'Đã cập nhật thông tin đơn vị vận chuyển.',
+        'Success',
+        'Carrier information updated.',
       );
     });
 
@@ -426,7 +426,7 @@ describe('AdminCarrierScreen', () => {
 
       expect(getByTestId('admin-carrier-edit-error')).toBeTruthy();
       expect(
-        getByText('Tên đơn vị vận chuyển đã tồn tại trên hệ thống. Vui lòng chọn tên khác.'),
+        getByText('The carrier name already exists in the system. Please choose another name.'),
       ).toBeTruthy();
     });
   });
@@ -440,8 +440,8 @@ describe('AdminCarrierScreen', () => {
       fireEvent.press(getByTestId('admin-carrier-toggle-btn-carrier-1'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Xác nhận tạm ngừng',
-        expect.stringContaining('Giao Hàng Nhanh (GHN)'),
+        'Confirm suspension',
+        expect.stringContaining('Fast Delivery (FD)'),
         expect.any(Array),
       );
     });
@@ -449,7 +449,7 @@ describe('AdminCarrierScreen', () => {
     it('executes deactivation when confirmed in alert', async () => {
       mockUpdateMutateAsync.mockResolvedValueOnce({
         id: 'carrier-1',
-        name: 'Giao Hàng Nhanh (GHN)',
+        name: 'Fast Delivery (FD)',
         active: false,
       });
 
@@ -463,7 +463,7 @@ describe('AdminCarrierScreen', () => {
 
       // Extract and invoke the destructive confirm action
       const buttons = alertSpy.mock.calls[0][2];
-      const confirmButton = buttons?.find((b: any) => b.text === 'Tạm ngừng');
+      const confirmButton = buttons?.find((b: any) => b.text === 'Suspend');
       expect(confirmButton).toBeDefined();
 
       await act(async () => {
@@ -479,7 +479,7 @@ describe('AdminCarrierScreen', () => {
     it('prompts confirmation and executes reactivation when activating an inactive carrier', async () => {
       mockUpdateMutateAsync.mockResolvedValueOnce({
         id: 'carrier-3',
-        name: 'Giao Hàng Tiết Kiệm (GHTK)',
+        name: 'Economy Delivery (ED)',
         active: true,
       });
 
@@ -492,13 +492,13 @@ describe('AdminCarrierScreen', () => {
       fireEvent.press(getByTestId('admin-carrier-toggle-btn-carrier-3'));
 
       expect(alertSpy).toHaveBeenCalledWith(
-        'Xác nhận kích hoạt',
-        expect.stringContaining('Giao Hàng Tiết Kiệm (GHTK)'),
+        'Confirm activation',
+        expect.stringContaining('Economy Delivery (ED)'),
         expect.any(Array),
       );
 
       const buttons = alertSpy.mock.calls[0][2];
-      const confirmButton = buttons?.find((b: any) => b.text === 'Kích hoạt');
+      const confirmButton = buttons?.find((b: any) => b.text === 'Activate');
       expect(confirmButton).toBeDefined();
 
       await act(async () => {

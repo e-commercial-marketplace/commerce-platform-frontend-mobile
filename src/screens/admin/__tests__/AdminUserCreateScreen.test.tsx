@@ -76,9 +76,9 @@ describe('AdminUserCreateScreen', () => {
 
       fireEvent.press(getByTestId('submit-create-user-button'));
 
-      expect(getByText('Vui lòng nhập địa chỉ email')).toBeTruthy();
-      expect(getByText('Vui lòng nhập mật khẩu')).toBeTruthy();
-      expect(getByText('Vui lòng nhập họ và tên')).toBeTruthy();
+      expect(getByText('Please enter an email address')).toBeTruthy();
+      expect(getByText('Please enter a password')).toBeTruthy();
+      expect(getByText('Please enter your full name')).toBeTruthy();
       expect(mockMutateCreate).not.toHaveBeenCalled();
     });
 
@@ -94,9 +94,9 @@ describe('AdminUserCreateScreen', () => {
 
       fireEvent.press(getByTestId('submit-create-user-button'));
 
-      expect(getByText('Mật khẩu phải từ 8 đến 72 ký tự')).toBeTruthy();
+      expect(getByText('Password must be 8 to 72 characters')).toBeTruthy();
       expect(
-        getByText('Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)'),
+        getByText('Invalid Vietnamese mobile phone number (e.g. 0912345678)'),
       ).toBeTruthy();
       expect(mockMutateCreate).not.toHaveBeenCalled();
     });
@@ -106,9 +106,9 @@ describe('AdminUserCreateScreen', () => {
         <AdminUserCreateScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Hiện')).toBeTruthy();
+      expect(getByText('Show')).toBeTruthy();
       fireEvent.press(getByTestId('toggle-password-visibility'));
-      expect(getByText('Ẩn')).toBeTruthy();
+      expect(getByText('Hide')).toBeTruthy();
     });
 
     it('submits valid form and creates user successfully', async () => {
@@ -146,8 +146,8 @@ describe('AdminUserCreateScreen', () => {
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Thành công',
-          'Đã tạo tài khoản người dùng mới thành công.',
+          'Success',
+          'New user account created successfully.',
           expect.any(Array),
         );
       });

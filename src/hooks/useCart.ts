@@ -4,8 +4,8 @@
  * This replaces the old local CartContext as the single source of truth:
  * the cache entry `queryKeys.cart.current()` holds the raw `CartDto` returned
  * by the backend, and every mutation replaces it with the authoritative cart
- * from the response. Đổi số lượng và xoá dòng cập nhật lạc quan: giao diện đổi ngay,
- * response thay bản dự đoán, lỗi thì khôi phục. Thêm vào giỏ và xoá toàn giỏ thì không.
+ * from the response. Changing the quantity and removing a line are optimistic updates: the UI changes immediately,
+ * the response replaces the predicted copy and an error rolls it back. Adding to the cart and clearing the whole cart are not optimistic.
  *
  * The query is enabled only for an authenticated CUSTOMER, matching the
  * backend rule that `/api/v1/cart/**` is customer-only. Guests, sellers and
@@ -31,7 +31,7 @@ import { useAuth } from './useAuth';
 /** Stable empty value so consumers can read `items` before/without data. */
 const EMPTY_CART: Cart = { items: [], subtotal: 0, totalItems: 0 };
 
-/** Dữ liệu để hoàn tác một cập nhật lạc quan. */
+/** Data needed to roll back an optimistic update. */
 type CartRollback = { previous: CartDto; predicted: CartDto | undefined };
 
 type UpdateQuantityInput = {
@@ -66,7 +66,7 @@ export function useCart() {
     queryClient.setQueryData(queryKeys.cart.current(), cart);
   };
 
-  /** Dừng lần tải đang chạy để nó không ghi đè bản dự đoán, rồi ghi bản dự đoán vào cache. */
+  /** Cancel the running fetch so it does not overwrite the predicted copy, then write the predicted copy into the cache. */
   const applyPrediction = async (
     predict: (cart: CartDto) => CartDto,
   ): Promise<CartRollback | undefined> => {
@@ -82,8 +82,8 @@ export function useCart() {
   };
 
   const rollback = (_error: unknown, _input: unknown, context: CartRollback | undefined) => {
-    // Chỉ khôi phục khi cache vẫn là bản dự đoán: vừa đăng xuất thì cache đã bị xoá,
-    // không được đưa giỏ của người cũ trở lại.
+    // Only restore while the cache is still the predicted copy: right after sign-out the cache has been cleared,
+    // and the previous user cart must not be brought back.
     if (context != null && queryClient.getQueryData(queryKeys.cart.current()) === context.predicted) {
       queryClient.setQueryData(queryKeys.cart.current(), context.previous);
     }

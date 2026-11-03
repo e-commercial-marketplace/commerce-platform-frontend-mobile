@@ -57,22 +57,22 @@ export async function setupAndroidNotificationChannels(): Promise<void> {
   }
 
   await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_DEFAULT, {
-    name: 'Thông báo chung',
-    description: 'Thông báo chung từ hệ thống',
+    name: 'General notifications',
+    description: 'General notifications from the system',
     importance: Notifications.AndroidImportance.DEFAULT,
   });
 
   await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_CHAT, {
-    name: 'Tin nhắn trò chuyện',
-    description: 'Thông báo tin nhắn mới từ người mua hoặc người bán',
+    name: 'Chat messages',
+    description: 'Notifications about new messages from buyers or sellers',
     importance: Notifications.AndroidImportance.HIGH,
     sound: 'default',
     vibrationPattern: [0, 250, 250, 250],
   });
 
   await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ORDERS, {
-    name: 'Cập nhật đơn hàng',
-    description: 'Thông báo cập nhật trạng thái đơn hàng và thanh toán',
+    name: 'Order updates',
+    description: 'Notifications about order status and payment updates',
     importance: Notifications.AndroidImportance.HIGH,
     sound: 'default',
   });

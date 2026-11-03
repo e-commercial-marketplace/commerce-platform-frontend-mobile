@@ -92,7 +92,7 @@ export default function SellerProductFormScreen({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  // Giữ một object ổn định để ProductImage nhớ đúng ảnh nào đã tải lỗi.
+  // Keep a stable object so ProductImage remembers which image failed to load.
   const imageSource = useMemo(() => ({ uri: imageUrl }), [imageUrl]);
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
@@ -230,7 +230,7 @@ export default function SellerProductFormScreen({
     };
   };
 
-  // Chọn ảnh rồi upload ngay; chỉ đổi imageUrl khi upload thành công, nên lỗi không làm mất ảnh cũ.
+  // Pick an image and upload right away; imageUrl only changes when the upload succeeds, so an error never loses the old image.
   const handlePickImage = async () => {
     if (imageUpload.isPending || isSubmitting) {
       return;

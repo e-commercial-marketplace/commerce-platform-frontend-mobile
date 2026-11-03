@@ -345,12 +345,12 @@ describe('CheckoutScreen', () => {
     mockedCreateOrder.mockResolvedValue(ORDER);
     const view = await renderReady();
 
-    await fillAddress(view, '  Gò Vấp  ');
+    await fillAddress(view, '  District 1  ');
     fireEvent.press(view.getByLabelText('Place Order'));
     await waitFor(() =>
       expect(mockedCreateOrder).toHaveBeenCalledWith({
         cartItemIds: ['a'],
-        shippingAddress: 'Gò Vấp',
+        shippingAddress: 'District 1',
         paymentMethod: 'COD',
       }),
     );
@@ -358,12 +358,12 @@ describe('CheckoutScreen', () => {
     mockedCreateOrder.mockResolvedValue(ORDER);
     const view2 = renderScreen(CUSTOMER, ['a']);
     await view2.findByText('Selected items');
-    await fillAddress(view2, '12 Nguyễn Văn Bảo');
+    await fillAddress(view2, '12 Main Street');
     fireEvent.press(view2.getByLabelText('Place Order'));
     await waitFor(() =>
       expect(mockedCreateOrder).toHaveBeenLastCalledWith({
         cartItemIds: ['a'],
-        shippingAddress: '12 Nguyễn Văn Bảo',
+        shippingAddress: '12 Main Street',
         paymentMethod: 'COD',
       }),
     );
@@ -371,12 +371,12 @@ describe('CheckoutScreen', () => {
     mockedCreateOrder.mockResolvedValue(ORDER);
     const view3 = renderScreen(CUSTOMER, ['a']);
     await view3.findByText('Selected items');
-    await fillAddress(view3, '12/5 Nguyễn Văn Bảo, Gò Vấp');
+    await fillAddress(view3, '12/5 Main Street, District 1');
     fireEvent.press(view3.getByLabelText('Place Order'));
     await waitFor(() =>
       expect(mockedCreateOrder).toHaveBeenLastCalledWith({
         cartItemIds: ['a'],
-        shippingAddress: '12/5 Nguyễn Văn Bảo, Gò Vấp',
+        shippingAddress: '12/5 Main Street, District 1',
         paymentMethod: 'COD',
       }),
     );
@@ -384,12 +384,12 @@ describe('CheckoutScreen', () => {
     mockedCreateOrder.mockResolvedValue(ORDER);
     const view4 = renderScreen(CUSTOMER, ['a']);
     await view4.findByText('Selected items');
-    await fillAddress(view4, 'KTX Đại học Công nghiệp');
+    await fillAddress(view4, 'University Dormitory');
     fireEvent.press(view4.getByLabelText('Place Order'));
     await waitFor(() =>
       expect(mockedCreateOrder).toHaveBeenLastCalledWith({
         cartItemIds: ['a'],
-        shippingAddress: 'KTX Đại học Công nghiệp',
+        shippingAddress: 'University Dormitory',
         paymentMethod: 'COD',
       }),
     );
@@ -1034,12 +1034,12 @@ describe('CheckoutScreen', () => {
       mockedGetUsableVouchers.mockResolvedValue(usablePage([30, 20, 10, 5]));
       const view = await renderReady();
 
-      const first = await view.findByLabelText('Lựa chọn tốt nhất. Apply voucher SALE30');
+      const first = await view.findByLabelText('Best choice. Apply voucher SALE30');
       expect(first).toBeTruthy();
       expect(view.getByLabelText('Apply voucher SALE20')).toBeTruthy();
       expect(view.getByLabelText('Apply voucher SALE10')).toBeTruthy();
       expect(view.queryByLabelText('Apply voucher SALE5')).toBeNull();
-      expect(view.getAllByText('Lựa chọn tốt nhất')).toHaveLength(1);
+      expect(view.getAllByText('Best choice')).toHaveLength(1);
       expect(mockedValidateVoucher).not.toHaveBeenCalled();
     });
 
@@ -1048,7 +1048,7 @@ describe('CheckoutScreen', () => {
       mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
       const view = await renderReady();
 
-      fireEvent.press(await view.findByLabelText('Lựa chọn tốt nhất. Apply voucher SALE30'));
+      fireEvent.press(await view.findByLabelText('Best choice. Apply voucher SALE30'));
 
       await waitFor(() => expect(mockedValidateVoucher).toHaveBeenCalledWith('SALE30'));
     });
@@ -1058,7 +1058,7 @@ describe('CheckoutScreen', () => {
       mockedValidateVoucher.mockRejectedValue(new ApiError('used up', 'VOUCHER_EXHAUSTED', 409));
       const view = await renderReady();
 
-      fireEvent.press(await view.findByLabelText('Lựa chọn tốt nhất. Apply voucher SALE30'));
+      fireEvent.press(await view.findByLabelText('Best choice. Apply voucher SALE30'));
 
       expect(await view.findByText('This voucher has reached its usage limit.')).toBeTruthy();
     });
@@ -1091,7 +1091,7 @@ describe('CheckoutScreen', () => {
   });
 
   describe('saved address option', () => {
-    const SAVED = '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh';
+    const SAVED = '12 Main Street, District 1, Metropolis';
     const saved = () => mockedGetCurrentUser.mockResolvedValue({ ...CUSTOMER, phone: null, address: SAVED });
 
     it('shows the full saved address but does not select it by default', async () => {
@@ -1123,11 +1123,11 @@ describe('CheckoutScreen', () => {
       saved();
       const view = await renderReady();
 
-      await fillAddress(view, '99 Lê Lợi, Huế');
+      await fillAddress(view, '99 Park Avenue, Springfield');
       fireEvent.press(await view.findByLabelText(`Use my saved address: ${SAVED}`));
       fireEvent.press(view.getByLabelText('Enter a different address'));
 
-      expect(view.getByDisplayValue('99 Lê Lợi, Huế')).toBeTruthy();
+      expect(view.getByDisplayValue('99 Park Avenue, Springfield')).toBeTruthy();
     });
 
     it('has no option without a saved address', async () => {

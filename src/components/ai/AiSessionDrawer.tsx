@@ -6,7 +6,7 @@
  *
  * Contract:
  * - GET /api/v1/ai/sessions returns: { id, userId, createdAt }[]
- * - Deterministic date-based label: "Cuộc trò chuyện 30/10/2026, 08:30"
+ * - Deterministic date-based label: "Conversation 30/10/2026, 08:30"
  * - Does not display raw UUID prominently.
  * - Supports loading, error with retry, and empty states.
  */
@@ -83,14 +83,14 @@ export default function AiSessionDrawer({
           style={styles.backdropDismiss}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel="Đóng lịch sử trò chuyện"
+          accessibilityLabel="Close conversation history"
         />
 
         <SafeAreaView style={styles.sheet} edges={['bottom', 'top']}>
           {/* Drawer Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>Lịch sử trò chuyện</Text>
+              <Text style={styles.headerTitle}>Conversation history</Text>
             </View>
 
             <View style={styles.headerActions}>
@@ -98,16 +98,16 @@ export default function AiSessionDrawer({
                 style={styles.newChatHeaderBtn}
                 onPress={onNewChat}
                 accessibilityRole="button"
-                accessibilityLabel="Đoạn chat mới"
+                accessibilityLabel="New chat"
               >
-                <Text style={styles.newChatHeaderBtnText}>＋ Đoạn chat mới</Text>
+                <Text style={styles.newChatHeaderBtnText}>＋ New chat</Text>
               </Pressable>
 
               <Pressable
                 style={styles.closeBtn}
                 onPress={onClose}
                 accessibilityRole="button"
-                accessibilityLabel="Đóng lịch sử"
+                accessibilityLabel="Close history"
               >
                 <Text style={styles.closeBtnText}>✕</Text>
               </Pressable>
@@ -125,26 +125,26 @@ export default function AiSessionDrawer({
           {isLoading ? (
             <View style={styles.stateContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.stateText}>Đang tải lịch sử...</Text>
+              <Text style={styles.stateText}>Loading history...</Text>
             </View>
           ) : isError ? (
             <View style={styles.stateContainer}>
               <Text style={styles.errorIcon}>⚠️</Text>
-              <Text style={styles.errorText}>Không thể tải danh sách phiên trò chuyện.</Text>
+              <Text style={styles.errorText}>Could not load the conversation sessions.</Text>
               <Pressable
                 style={styles.retryBtn}
                 onPress={() => refetch()}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại"
+                accessibilityLabel="Retry"
               >
-                <Text style={styles.retryBtnText}>Thử lại</Text>
+                <Text style={styles.retryBtnText}>Retry</Text>
               </Pressable>
             </View>
           ) : sortedSessions.length === 0 ? (
             <View style={styles.stateContainer}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyTitle}>Chưa có cuộc trò chuyện nào.</Text>
-              <Text style={styles.emptySubtitle}>Các cuộc trò chuyện của bạn sẽ được lưu tại đây.</Text>
+              <Text style={styles.emptyTitle}>No conversations yet.</Text>
+              <Text style={styles.emptySubtitle}>Your conversations will be saved here.</Text>
             </View>
           ) : (
             <FlatList
@@ -155,7 +155,7 @@ export default function AiSessionDrawer({
                 const isActive = item.id === activeSessionId;
                 const isRestoring = item.id === restoringSessionId;
                 const dateLabel = formatSessionDate(item.createdAt);
-                const displayTitle = `Cuộc trò chuyện ${dateLabel}`;
+                const displayTitle = `Conversation ${dateLabel}`;
 
                 return (
                   <Pressable
@@ -183,7 +183,7 @@ export default function AiSessionDrawer({
                     <View style={styles.sessionCardRight}>
                       {isActive ? (
                         <View style={styles.activeBadge}>
-                          <Text style={styles.activeBadgeText}>Đang mở</Text>
+                          <Text style={styles.activeBadgeText}>Open</Text>
                         </View>
                       ) : null}
 

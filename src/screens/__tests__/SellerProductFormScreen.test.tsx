@@ -76,7 +76,7 @@ const mockedPickImage = pickImage as jest.MockedFunction<typeof pickImage>;
 const mockUploadMutateAsync = jest.fn();
 const pickedImage = { uri: 'file:///photo.jpg', name: 'image.jpg', type: 'image/jpeg' };
 
-/** Chọn ảnh qua nút như người dùng thật; upload giả trả về url, rồi chờ ảnh xem trước xuất hiện. */
+/** Pick an image through the button like a real user; the fake upload returns a url, then wait for the preview to appear. */
 async function chooseImage(getByTestId: (id: string) => any, url: string) {
   mockedPickImage.mockResolvedValueOnce(pickedImage);
   mockUploadMutateAsync.mockResolvedValueOnce(url);

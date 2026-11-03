@@ -18,15 +18,15 @@ export type User = {
   role: Role;
 };
 
-/** UserProfileResponse của GET và PATCH /users/me: thêm thông tin liên hệ so với User. */
+/** UserProfileResponse of GET and PATCH /users/me: adds contact info compared with User. */
 export type UserProfile = User & {
-  /** Số điện thoại; null khi chưa đặt. */
+  /** Phone number; null when not set. */
   phone: string | null;
-  /** Địa chỉ; null khi chưa đặt. */
+  /** Address; null when not set. */
   address: string | null;
 };
 
-/** Body của PATCH /users/me. Trường không gửi thì giữ nguyên; chuỗi rỗng xoá phone hoặc address. */
+/** Body of PATCH /users/me. A field that is not sent stays unchanged; an empty string clears phone or address. */
 export type UpdateProfileRequest = {
   name?: string;
   phone?: string;

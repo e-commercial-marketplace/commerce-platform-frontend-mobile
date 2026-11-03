@@ -85,17 +85,17 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền quản lý danh mục sản phẩm.
+            Only system administrators can manage product categories.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -119,11 +119,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   const handleSubmitCreate = async () => {
     const trimmed = createName.trim();
     if (!trimmed) {
-      setCreateError('Vui lòng nhập tên danh mục.');
+      setCreateError('Please enter the category name.');
       return;
     }
     if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) {
-      setCreateError(`Tên danh mục không được vượt quá ${MAX_CATEGORY_NAME_LENGTH} ký tự.`);
+      setCreateError(`Category name must not exceed ${MAX_CATEGORY_NAME_LENGTH} characters.`);
       return;
     }
 
@@ -132,7 +132,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       setIsCreateModalOpen(false);
       setCreateName('');
       setCreateError(null);
-      Alert.alert('Thành công', `Đã thêm danh mục "${trimmed}".`);
+      Alert.alert('Success', `Added category "${trimmed}".`);
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
@@ -140,12 +140,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
       if (
         combinedMsg.includes('already exists') ||
-        combinedMsg.includes('trùng') ||
         apiError.code === 'VALIDATION_ERROR'
       ) {
-        setCreateError('Tên danh mục đã tồn tại trên hệ thống. Vui lòng chọn tên khác.');
+        setCreateError('The category name already exists in the system. Please choose another name.');
       } else {
-        setCreateError(rawMsg || apiError.message || 'Không thể tạo danh mục. Vui lòng thử lại.');
+        setCreateError(rawMsg || apiError.message || 'Could not create the category. Please try again.');
       }
     }
   };
@@ -168,11 +167,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
     if (!editingCategory) return;
     const trimmed = renameName.trim();
     if (!trimmed) {
-      setRenameError('Vui lòng nhập tên danh mục.');
+      setRenameError('Please enter the category name.');
       return;
     }
     if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) {
-      setRenameError(`Tên danh mục không được vượt quá ${MAX_CATEGORY_NAME_LENGTH} ký tự.`);
+      setRenameError(`Category name must not exceed ${MAX_CATEGORY_NAME_LENGTH} characters.`);
       return;
     }
 
@@ -190,7 +189,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       setEditingCategory(null);
       setRenameName('');
       setRenameError(null);
-      Alert.alert('Thành công', `Đã đổi tên danh mục thành "${trimmed}".`);
+      Alert.alert('Success', `Renamed category to "${trimmed}".`);
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
@@ -198,12 +197,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
       if (
         combinedMsg.includes('already exists') ||
-        combinedMsg.includes('trùng') ||
         apiError.code === 'VALIDATION_ERROR'
       ) {
-        setRenameError('Tên danh mục đã tồn tại trên hệ thống. Vui lòng chọn tên khác.');
+        setRenameError('The category name already exists in the system. Please choose another name.');
       } else {
-        setRenameError(rawMsg || apiError.message || 'Không thể đổi tên danh mục. Vui lòng thử lại.');
+        setRenameError(rawMsg || apiError.message || 'Could not rename the category. Please try again.');
       }
     }
   };
@@ -211,17 +209,17 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   // Handle Delete
   const handleDeletePress = (category: CategorySummaryDto) => {
     Alert.alert(
-      'Xác nhận xóa danh mục',
-      `Bạn có chắc chắn muốn xóa danh mục "${category.name}"? Thao tác này không thể hoàn tác.`,
+      'Confirm category deletion',
+      `Are you sure you want to delete the category "${category.name}"? This action cannot be undone.`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteMutation.mutateAsync(category.id);
-              Alert.alert('Thành công', `Đã xóa danh mục "${category.name}".`);
+              Alert.alert('Success', `Deleted category "${category.name}".`);
             } catch (err: unknown) {
               const rawMsg = err instanceof Error ? err.message : '';
               const apiError = toApiError(err);
@@ -229,17 +227,16 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
               if (
                 combinedMsg.includes('still has products') ||
-                combinedMsg.includes('product') ||
-                combinedMsg.includes('sản phẩm')
+                combinedMsg.includes('product')
               ) {
                 Alert.alert(
-                  'Không thể xóa danh mục',
-                  'Danh mục này đang có sản phẩm liên kết (kể cả sản phẩm đã ẩn). Vui lòng chuyển hoặc xóa các sản phẩm thuộc danh mục này trước.',
+                  'Cannot delete category',
+                  'This category still has linked products (including hidden ones). Please move or delete the products in this category first.',
                 );
               } else {
                 Alert.alert(
-                  'Lỗi',
-                  rawMsg || apiError.message || 'Không thể xóa danh mục. Vui lòng thử lại sau.',
+                  'Error',
+                  rawMsg || apiError.message || 'Could not delete the category. Please try again later.',
                 );
               }
             }
@@ -270,20 +267,20 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           style={({ pressed }) => [styles.actionButton, styles.renameButton, pressed && styles.buttonPressed]}
           onPress={() => handleOpenRenameModal(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Đổi tên danh mục ${item.name}`}
+          accessibilityLabel={`Rename category ${item.name}`}
           testID={`admin-category-rename-btn-${item.id}`}
         >
-          <Text style={styles.renameButtonText}>✏️ Đổi tên</Text>
+          <Text style={styles.renameButtonText}>✏️ Rename</Text>
         </Pressable>
 
         <Pressable
           style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.buttonPressed]}
           onPress={() => handleDeletePress(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Xóa danh mục ${item.name}`}
+          accessibilityLabel={`Delete category ${item.name}`}
           testID={`admin-category-delete-btn-${item.id}`}
         >
-          <Text style={styles.deleteButtonText}>🗑️ Xóa</Text>
+          <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
         </Pressable>
       </View>
     </View>
@@ -294,19 +291,19 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       {/* Top Banner & Action */}
       <View style={styles.topContainer}>
         <View style={styles.topTextGroup}>
-          <Text style={styles.topTitle}>Danh mục sản phẩm</Text>
+          <Text style={styles.topTitle}>Product categories</Text>
           <Text style={styles.topSubtitle}>
-            {categories.length} danh mục • Hệ thống danh mục phẳng, không phân cấp
+            {categories.length} categories • Flat category system, no hierarchy
           </Text>
         </View>
         <Pressable
           style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
           onPress={handleOpenCreateModal}
           accessibilityRole="button"
-          accessibilityLabel="Thêm danh mục mới"
+          accessibilityLabel="Add new category"
           testID="admin-category-create-button"
         >
-          <Text style={styles.createButtonText}>＋ Thêm mới</Text>
+          <Text style={styles.createButtonText}>＋ Add new</Text>
         </Pressable>
       </View>
 
@@ -314,14 +311,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       {isLoading ? (
         <View style={styles.centerContainer} testID="admin-category-loading">
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Đang tải danh sách danh mục...</Text>
+          <Text style={styles.loadingText}>Loading categories...</Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer} testID="admin-category-error">
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Không thể tải danh mục</Text>
+          <Text style={styles.errorTitle}>Could not load categories</Text>
           <Text style={styles.errorMessage}>
-            Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại.
+            An error occurred while connecting to the server. Please try again.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -329,18 +326,18 @@ export default function AdminCategoryScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Thử lại"
+            accessibilityLabel="Retry"
             testID="admin-category-retry-btn"
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
         </View>
       ) : categories.length === 0 ? (
         <View style={styles.centerContainer} testID="admin-category-empty">
           <Text style={styles.emptyIcon}>📂</Text>
-          <Text style={styles.emptyTitle}>Chưa có danh mục nào</Text>
+          <Text style={styles.emptyTitle}>No categories yet</Text>
           <Text style={styles.emptyMessage}>
-            Hiện chưa có danh mục sản phẩm nào trong hệ thống. Nhấn &quot;Thêm mới&quot; để tạo danh mục đầu tiên.
+            There are no product categories in the system yet. Tap &quot;Add new&quot; to create the first category.
           </Text>
         </View>
       ) : (
@@ -378,32 +375,32 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           <Pressable style={styles.modalDismissArea} onPress={handleCloseCreateModal} />
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Thêm danh mục mới</Text>
+              <Text style={styles.modalTitle}>Add new category</Text>
               <Pressable
                 onPress={handleCloseCreateModal}
                 disabled={createMutation.isPending}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
-                accessibilityLabel="Đóng hộp thoại"
+                accessibilityLabel="Close dialog"
               >
                 <Text style={styles.modalCloseButtonText}>✕</Text>
               </Pressable>
             </View>
 
             <Text style={styles.modalSubtitle}>
-              Tên danh mục dùng chung cho toàn bộ sản phẩm trên hệ thống.
+              The category name is shared across all products in the system.
             </Text>
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
-                <Text style={styles.inputLabel}>Tên danh mục *</Text>
+                <Text style={styles.inputLabel}>Category name *</Text>
                 <Text style={styles.charCounter}>
                   {createName.trim().length}/{MAX_CATEGORY_NAME_LENGTH}
                 </Text>
               </View>
               <TextInput
                 style={[styles.textInput, createError ? styles.textInputError : null]}
-                placeholder="Ví dụ: Thiết bị điện tử, Đồ gia dụng..."
+                placeholder="e.g. Electronics, Home appliances..."
                 placeholderTextColor={colors.textSecondary}
                 value={createName}
                 onChangeText={(text) => {
@@ -428,7 +425,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 disabled={createMutation.isPending}
                 testID="admin-category-cancel-create-btn"
               >
-                <Text style={styles.modalCancelBtnText}>Hủy</Text>
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
@@ -443,7 +440,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 {createMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalSubmitBtnText}>Tạo danh mục</Text>
+                  <Text style={styles.modalSubmitBtnText}>Create category</Text>
                 )}
               </Pressable>
             </View>
@@ -466,32 +463,32 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           <Pressable style={styles.modalDismissArea} onPress={handleCloseRenameModal} />
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Đổi tên danh mục</Text>
+              <Text style={styles.modalTitle}>Rename category</Text>
               <Pressable
                 onPress={handleCloseRenameModal}
                 disabled={updateMutation.isPending}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
-                accessibilityLabel="Đóng hộp thoại đổi tên"
+                accessibilityLabel="Close rename dialog"
               >
                 <Text style={styles.modalCloseButtonText}>✕</Text>
               </Pressable>
             </View>
 
             <Text style={styles.modalSubtitle}>
-              Cập nhật tên danh mục &quot;{editingCategory?.name}&quot;. Tên mới sẽ hiển thị trên tất cả sản phẩm liên quan.
+              Update the name of category &quot;{editingCategory?.name}&quot;. The new name will be shown on all related products.
             </Text>
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
-                <Text style={styles.inputLabel}>Tên danh mục mới *</Text>
+                <Text style={styles.inputLabel}>New category name *</Text>
                 <Text style={styles.charCounter}>
                   {renameName.trim().length}/{MAX_CATEGORY_NAME_LENGTH}
                 </Text>
               </View>
               <TextInput
                 style={[styles.textInput, renameError ? styles.textInputError : null]}
-                placeholder="Nhập tên mới..."
+                placeholder="Enter a new name..."
                 placeholderTextColor={colors.textSecondary}
                 value={renameName}
                 onChangeText={(text) => {
@@ -516,7 +513,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 disabled={updateMutation.isPending}
                 testID="admin-category-cancel-rename-btn"
               >
-                <Text style={styles.modalCancelBtnText}>Hủy</Text>
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
@@ -531,7 +528,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 {updateMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalSubmitBtnText}>Lưu thay đổi</Text>
+                  <Text style={styles.modalSubmitBtnText}>Save changes</Text>
                 )}
               </Pressable>
             </View>

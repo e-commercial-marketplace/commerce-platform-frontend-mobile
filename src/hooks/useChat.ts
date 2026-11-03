@@ -48,7 +48,7 @@ export type SendMessageVariables = {
   conversationId: string;
   request: SendMessageRequest;
   idempotencyKey: string;
-  /** Người gửi, để hiện tin tạm đúng phía trong lúc chờ server. */
+  /** Sender, so the temporary message shows on the correct side while waiting for the server. */
   senderId: string;
 };
 
@@ -127,8 +127,8 @@ export function useOpenConversation() {
  * Mutation hook for sending a message.
  *
  * Expects caller-supplied `idempotencyKey` so retries can reuse the exact same key.
- * Cập nhật lạc quan: tin tạm hiện ngay, thành công thì thay bằng tin thật, lỗi thì xoá để màn hình tạo
- * bong bóng gửi lại. Invalidates message history and conversation list (due to lastMessageAt update).
+ * Optimistic update: the temporary message shows immediately, is replaced by the real one on success and removed on error so the screen creates
+ * a retry bubble. Invalidates message history and conversation list (due to lastMessageAt update).
  */
 export function useSendMessage() {
   const queryClient = useQueryClient();

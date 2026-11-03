@@ -178,9 +178,9 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               }}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
               accessibilityRole="button"
-              accessibilityLabel="Tin nhắn"
+              accessibilityLabel="Messages"
             >
-              <Text style={styles.menuButtonText}>Tin nhắn</Text>
+              <Text style={styles.menuButtonText}>Messages</Text>
             </Pressable>
           </>
         ) : null}
@@ -215,9 +215,9 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               }}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
               accessibilityRole="button"
-              accessibilityLabel="Tin nhắn khách hàng"
+              accessibilityLabel="Customer messages"
             >
-              <Text style={styles.menuButtonText}>Tin nhắn khách hàng</Text>
+              <Text style={styles.menuButtonText}>Customer messages</Text>
             </Pressable>
           </>
         ) : null}
@@ -230,10 +230,10 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               }}
               style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
               accessibilityRole="button"
-              accessibilityLabel="Quản trị hệ thống"
+              accessibilityLabel="System administration"
               testID="admin-portal-button"
             >
-              <Text style={styles.menuButtonText}>Quản trị hệ thống</Text>
+              <Text style={styles.menuButtonText}>System administration</Text>
             </Pressable>
           </>
         ) : null}

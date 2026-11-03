@@ -32,8 +32,8 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
-  // Trang gắn với cặp từ khoá + danh mục: khi cặp này đổi, `page` về 0 ngay trong
-  // cùng lần render, nên không bao giờ gửi request từ khoá mới kèm số trang cũ.
+  // Page is tied to the keyword + category pair: when this pair changes, `page` goes back to 0 within
+  // the same render, so a new keyword is never sent with an old page number.
   const searchScope = `${debouncedQuery}|${selectedCategoryId}`;
   const [pageState, setPageState] = useState({ scope: searchScope, page: 0 });
   const page = pageState.scope === searchScope ? pageState.page : 0;

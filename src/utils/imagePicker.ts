@@ -1,4 +1,4 @@
-/** Chọn một ảnh từ thư viện và thu nhỏ trước khi upload. Không dùng camera. */
+/** Pick one image from the library and shrink it before upload. The camera is not used. */
 
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
@@ -9,7 +9,7 @@ import type { PickedImage } from '../types/uploadApi';
 const MAX_WIDTH = 1600;
 const JPEG_QUALITY = 0.8;
 
-/** Trả về ảnh đã chọn, hoặc null khi người dùng huỷ (huỷ không phải là lỗi). */
+/** Returns the picked image, or null when the user cancels (cancelling is not an error). */
 export async function pickImage(): Promise<PickedImage | null> {
   const permission = await requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
@@ -22,7 +22,7 @@ export async function pickImage(): Promise<PickedImage | null> {
     return null;
   }
 
-  // Chỉ thu nhỏ ảnh rộng hơn giới hạn; luôn lưu JPEG để khớp định dạng backend cho phép.
+  // Only shrink images wider than the limit; always save as JPEG to match the formats the backend allows.
   const resize = asset.width > MAX_WIDTH ? [{ resize: { width: MAX_WIDTH } }] : [];
   const output = await manipulateAsync(asset.uri, resize, { compress: JPEG_QUALITY, format: SaveFormat.JPEG });
   return { uri: output.uri, name: 'image.jpg', type: 'image/jpeg' };

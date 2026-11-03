@@ -81,7 +81,7 @@ const mockMessage1: MessageResponse = {
   id: 'msg-1',
   conversationId: 'conv-1111',
   senderId: 'cust-1111',
-  content: 'Tin nhắn 1',
+  content: 'Message 1',
   imageUrl: null,
   isRead: false,
   createdAt: '2026-10-30T10:05:00Z',
@@ -91,7 +91,7 @@ const mockMessage2: MessageResponse = {
   id: 'msg-2',
   conversationId: 'conv-1111',
   senderId: 'seller-2222',
-  content: 'Tin nhắn 2',
+  content: 'Message 2',
   imageUrl: null,
   isRead: true,
   createdAt: '2026-10-30T10:06:00Z',
@@ -262,7 +262,7 @@ describe('useChat hooks', () => {
 
       const variables: SendMessageVariables = {
         conversationId: 'conv-1111',
-        request: { content: 'Xin chào' },
+        request: { content: 'Hello' },
         idempotencyKey: 'caller-key-xyz-123',
         senderId: 'cust-1111',
       };
@@ -271,7 +271,7 @@ describe('useChat hooks', () => {
 
       expect(mockedSendMessage).toHaveBeenCalledWith(
         'conv-1111',
-        { content: 'Xin chào' },
+        { content: 'Hello' },
         'caller-key-xyz-123',
       );
 
@@ -296,7 +296,7 @@ describe('useChat hooks', () => {
 
       const variables: SendMessageVariables = {
         conversationId: 'conv-1111',
-        request: { content: 'Thử lại' },
+        request: { content: 'Retry' },
         idempotencyKey: 'same-stable-key-456',
         senderId: 'cust-1111',
       };
@@ -305,7 +305,7 @@ describe('useChat hooks', () => {
       await expect(result.current.mutateAsync(variables)).rejects.toThrow('Network error');
       expect(mockedSendMessage).toHaveBeenLastCalledWith(
         'conv-1111',
-        { content: 'Thử lại' },
+        { content: 'Retry' },
         'same-stable-key-456',
       );
 
@@ -313,7 +313,7 @@ describe('useChat hooks', () => {
       await result.current.mutateAsync(variables);
       expect(mockedSendMessage).toHaveBeenLastCalledWith(
         'conv-1111',
-        { content: 'Thử lại' },
+        { content: 'Retry' },
         'same-stable-key-456',
       );
       expect(mockedSendMessage).toHaveBeenCalledTimes(2);
@@ -345,11 +345,11 @@ describe('useChat hooks', () => {
     const TEMP = `temp_${KEY}`;
     const variables: SendMessageVariables = {
       conversationId: 'conv-1111',
-      request: { content: 'Xin chào' },
+      request: { content: 'Hello' },
       idempotencyKey: KEY,
       senderId: 'cust-1111',
     };
-    const real: MessageResponse = { ...mockMessage1, id: 'msg-real', content: 'Xin chào' };
+    const real: MessageResponse = { ...mockMessage1, id: 'msg-real', content: 'Hello' };
 
     const seededClient = () => {
       const client = makeClient();
@@ -415,7 +415,7 @@ describe('useChat hooks', () => {
       await act(async () => {
         await result.current.mutateAsync(variables);
       });
-      expect(mockedSendMessage).toHaveBeenLastCalledWith('conv-1111', { content: 'Xin chào' }, KEY);
+      expect(mockedSendMessage).toHaveBeenLastCalledWith('conv-1111', { content: 'Hello' }, KEY);
       expect(ids(client)).toEqual(['msg-real', 'msg-2']);
     });
 

@@ -51,7 +51,7 @@ const mockProductSummary: ProductSummaryDto = {
   active: true,
   category: {
     id: '22222222-2222-4222-8222-000000000001',
-    name: 'Điện thoại',
+    name: 'Phones',
   },
   sellerId: '11111111-1111-4111-8111-000000000002',
 };

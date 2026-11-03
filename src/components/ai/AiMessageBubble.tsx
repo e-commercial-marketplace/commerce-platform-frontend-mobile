@@ -3,12 +3,12 @@
  *
  * Distinct styling for USER vs ASSISTANT turns:
  * - USER: right-aligned, primary blue theme, white text.
- *   When send fails (isFailed === true): red background, "Gửi không thành công" status, and explicit "Thử lại" action.
+ *   When send fails (isFailed === true): red background, "Failed to send" status, and explicit "Retry" action.
  * - ASSISTANT: left-aligned, light neutral surface, dark text, subtle answer-source indicator.
  *
  * Source indicator:
  * - answeredBy === 'AI'    -> "AI" (✨)
- * - answeredBy === 'RULES' -> "Trả lời nhanh" (⚡ - valid backend rule-based fallback, never shown as error)
+ * - answeredBy === 'RULES' -> "Quick reply" (⚡ - valid backend rule-based fallback, never shown as error)
  * - answeredBy === undefined -> No badge (historical restored messages)
  *
  * Rich Product Recommendations:
@@ -58,15 +58,15 @@ export default function AiMessageBubble({
 
         {message.isFailed ? (
           <View style={styles.failedRow}>
-            <Text style={styles.failedText}>Gửi không thành công</Text>
+            <Text style={styles.failedText}>Failed to send</Text>
             {onRetry ? (
               <Pressable
                 onPress={() => onRetry(message)}
                 style={styles.retryBubbleBtn}
                 accessibilityRole="button"
-                accessibilityLabel="Thử lại gửi câu hỏi"
+                accessibilityLabel="Retry sending question"
               >
-                <Text style={styles.retryBubbleBtnText}>Thử lại</Text>
+                <Text style={styles.retryBubbleBtnText}>Retry</Text>
               </Pressable>
             ) : null}
           </View>
@@ -86,7 +86,7 @@ export default function AiMessageBubble({
         {message.answeredBy ? (
           <View style={styles.sourceTag}>
             <Text style={styles.sourceTagIcon}>{isRules ? '⚡' : '✨'}</Text>
-            <Text style={styles.sourceTagText}>{isRules ? 'Trả lời nhanh' : 'AI'}</Text>
+            <Text style={styles.sourceTagText}>{isRules ? 'Quick reply' : 'AI'}</Text>
           </View>
         ) : null}
       </View>

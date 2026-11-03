@@ -46,11 +46,11 @@ describe('formatChatTimestamp', () => {
     expect(formatChatTimestamp(today.toISOString())).toBe('14:30');
   });
 
-  it('formats yesterday timestamp as "Hôm qua"', () => {
+  it('formats yesterday timestamp as "Yesterday"', () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(9, 15, 0, 0);
-    expect(formatChatTimestamp(yesterday.toISOString())).toBe('Hôm qua');
+    expect(formatChatTimestamp(yesterday.toISOString())).toBe('Yesterday');
   });
 
   it('formats older dates in current year as DD/MM', () => {

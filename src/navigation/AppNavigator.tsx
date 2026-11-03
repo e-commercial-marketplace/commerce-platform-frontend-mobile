@@ -234,7 +234,7 @@ export default function AppNavigator() {
         component={AiAssistantScreen}
         options={{
           headerShown: true,
-          title: 'Trợ lý AI',
+          title: 'AI assistant',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -246,7 +246,7 @@ export default function AppNavigator() {
         component={ConversationListScreen}
         options={{
           headerShown: true,
-          title: 'Tin nhắn',
+          title: 'Messages',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -258,7 +258,7 @@ export default function AppNavigator() {
         component={ChatRoomScreen}
         options={({ route }) => ({
           headerShown: true,
-          title: route.params.counterpartName ?? 'Trò chuyện',
+          title: route.params.counterpartName ?? 'Chat',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -270,7 +270,7 @@ export default function AppNavigator() {
         component={AdminPortalScreen}
         options={{
           headerShown: true,
-          title: 'Quản trị hệ thống',
+          title: 'System administration',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -282,7 +282,7 @@ export default function AppNavigator() {
         component={AdminSellerApprovalScreen}
         options={{
           headerShown: true,
-          title: 'Quản lý người bán',
+          title: 'Seller management',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -294,7 +294,7 @@ export default function AppNavigator() {
         component={AdminUserListScreen}
         options={{
           headerShown: true,
-          title: 'Quản lý người dùng',
+          title: 'User management',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -306,7 +306,7 @@ export default function AppNavigator() {
         component={AdminUserDetailScreen}
         options={{
           headerShown: true,
-          title: 'Chi tiết người dùng',
+          title: 'User details',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -318,7 +318,7 @@ export default function AppNavigator() {
         component={AdminUserCreateScreen}
         options={{
           headerShown: true,
-          title: 'Thêm người dùng mới',
+          title: 'Add new user',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -330,7 +330,7 @@ export default function AppNavigator() {
         component={AdminUserEditScreen}
         options={{
           headerShown: true,
-          title: 'Chỉnh sửa người dùng',
+          title: 'Edit user',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -342,7 +342,7 @@ export default function AppNavigator() {
         component={AdminCategoryScreen}
         options={{
           headerShown: true,
-          title: 'Quản lý danh mục',
+          title: 'Category management',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -354,7 +354,7 @@ export default function AppNavigator() {
         component={AdminVoucherScreen}
         options={{
           headerShown: true,
-          title: 'Quản lý mã giảm giá',
+          title: 'Voucher management',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },
@@ -366,7 +366,7 @@ export default function AppNavigator() {
         component={AdminCarrierScreen}
         options={{
           headerShown: true,
-          title: 'Quản lý đơn vị vận chuyển',
+          title: 'Carrier management',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: '600' },

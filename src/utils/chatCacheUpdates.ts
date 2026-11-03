@@ -20,7 +20,7 @@ type MessagesCache = InfiniteData<PageResponse<MessageResponse>>;
 
 const TEMP_MESSAGE_PREFIX = 'temp_';
 
-/** Id của tin tạm theo Idempotency-Key, nên gửi lại vẫn ra cùng một id. */
+/** Id of the temporary message derived from the Idempotency-Key, so resending yields the same id. */
 export function tempMessageId(idempotencyKey: string): string {
   return `${TEMP_MESSAGE_PREFIX}${idempotencyKey}`;
 }
@@ -29,7 +29,7 @@ export function isTempMessage(id: string): boolean {
   return id.startsWith(TEMP_MESSAGE_PREFIX);
 }
 
-/** Thêm tin vào đầu trang mới nhất nếu chưa có id này. */
+/** Add the message to the top of the newest page if this id is not there yet. */
 function prependUnique(data: MessagesCache, message: MessageResponse): MessagesCache {
   if (data.pages.some((page) => page.content.some((m) => m.id === message.id))) {
     return data;
@@ -44,7 +44,7 @@ function prependUnique(data: MessagesCache, message: MessageResponse): MessagesC
   };
 }
 
-/** Hiện tin đang gửi ngay trong danh sách. Cache chưa tải thì bỏ qua. */
+/** Show the message being sent right in the list. Skipped if the cache is not loaded. */
 export function addTempMessage(queryClient: QueryClient, temp: MessageResponse): void {
   queryClient.setQueryData<MessagesCache>(queryKeys.chat.messages(temp.conversationId), (data) =>
     data?.pages?.length ? prependUnique(data, temp) : data,
@@ -52,8 +52,8 @@ export function addTempMessage(queryClient: QueryClient, temp: MessageResponse):
 }
 
 /**
- * Xoá tin tạm; có `real` thì đưa tin thật vào. WebSocket có thể đã đưa tin thật vào trước,
- * nên `prependUnique` kiểm tra id để không bị trùng.
+ * Removes the temporary message; if `real` is given, it inserts the real message. The WebSocket may already have inserted the real message,
+ * so `prependUnique` checks the id so it is not duplicated.
  */
 export function settleTempMessage(
   queryClient: QueryClient,

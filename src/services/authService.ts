@@ -63,7 +63,7 @@ export async function getCurrentUser(): Promise<UserProfile> {
   return unwrapData(response);
 }
 
-/** PATCH /users/me — sửa tên, số điện thoại, địa chỉ của chính người đang đăng nhập. */
+/** PATCH /users/me - edit the name, phone number and address of the signed-in user. */
 export async function updateProfile(body: UpdateProfileRequest): Promise<UserProfile> {
   const response = await apiClient.patch<ApiResponse<UserProfile>>('/users/me', body);
   return unwrapData(response);

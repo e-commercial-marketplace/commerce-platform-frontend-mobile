@@ -162,8 +162,8 @@ describe('AdminUserEditScreen', () => {
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Thành công',
-          'Đã cập nhật thông tin người dùng thành công.',
+          'Success',
+          'User information updated successfully.',
           expect.any(Array),
         );
       });
@@ -191,16 +191,16 @@ describe('AdminUserEditScreen', () => {
       fireEvent.press(getByTestId('submit-edit-user-button'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Xác nhận thay đổi vai trò',
-        expect.stringContaining('Khách hàng'),
+        'Confirm role change',
+        expect.stringContaining('Customer'),
         expect.arrayContaining([
-          expect.objectContaining({ text: 'Huỷ', style: 'cancel' }),
-          expect.objectContaining({ text: 'Đồng ý' }),
+          expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
+          expect.objectContaining({ text: 'Agree' }),
         ]),
       );
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const confirmAction = alertButtons.find((b: any) => b.text === 'Đồng ý');
+      const confirmAction = alertButtons.find((b: any) => b.text === 'Agree');
 
       await act(async () => {
         await confirmAction.onPress();

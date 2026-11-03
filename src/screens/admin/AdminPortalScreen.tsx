@@ -2,8 +2,8 @@
  * Admin Portal — Landing Hub Screen.
  *
  * Central navigation menu for administrative features:
- * 1. User Management (Quản lý người dùng)
- * 2. Seller Approval & Suspension (Quản lý người bán)
+ * 1. User Management
+ * 2. Seller Approval & Suspension
  *
  * Role Guard: Authenticated users with Role.ADMIN only.
  * Blocked for CUSTOMER, SELLER, and guest users.
@@ -44,17 +44,17 @@ export default function AdminPortalScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền truy cập vào Cổng Quản trị.
+            Only system administrators can access the Admin Portal.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -64,40 +64,40 @@ export default function AdminPortalScreen({ navigation }: Props) {
   const menuItems: MenuItem[] = [
     {
       id: 'users',
-      title: 'Quản lý người dùng',
-      description: 'Xem danh sách, tìm kiếm, phân quyền và quản lý tài khoản người dùng',
+      title: 'User management',
+      description: 'View the list, search, assign roles and manage user accounts',
       symbol: '👥',
       testID: 'admin-portal-user-management-btn',
       onPress: () => navigation.navigate('AdminUserList'),
     },
     {
       id: 'sellers',
-      title: 'Quản lý người bán',
-      description: 'Xét duyệt hồ sơ đăng ký người bán và tạm ngưng hoạt động',
+      title: 'Seller management',
+      description: 'Review seller registration applications and suspend activity',
       symbol: '🏪',
       testID: 'admin-portal-seller-management-btn',
       onPress: () => navigation.navigate('AdminSellerApproval'),
     },
     {
       id: 'categories',
-      title: 'Quản lý danh mục',
-      description: 'Thêm, đổi tên và quản lý danh mục sản phẩm toàn sàn',
+      title: 'Category management',
+      description: 'Add, rename and manage product categories across the platform',
       symbol: '📁',
       testID: 'admin-portal-category-management-btn',
       onPress: () => navigation.navigate('AdminCategory'),
     },
     {
       id: 'vouchers',
-      title: 'Quản lý mã giảm giá',
-      description: 'Tạo mã, thiết lập tỷ lệ giảm giá, thời hạn và quản lý voucher toàn sàn',
+      title: 'Voucher management',
+      description: 'Create codes, set discount rates and validity periods and manage platform-wide vouchers',
       symbol: '🎟️',
       testID: 'admin-portal-voucher-management-btn',
       onPress: () => navigation.navigate('AdminVoucher'),
     },
     {
       id: 'carriers',
-      title: 'Quản lý đơn vị vận chuyển',
-      description: 'Thêm mới, đổi tên và bật/tắt hoạt động của các đơn vị giao hàng toàn sàn',
+      title: 'Carrier management',
+      description: 'Add, rename and enable/disable delivery carriers across the platform',
       symbol: '🚚',
       testID: 'admin-portal-carrier-management-btn',
       onPress: () => navigation.navigate('AdminCarrier'),
@@ -108,9 +108,9 @@ export default function AdminPortalScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerBox}>
-          <Text style={styles.headerTitle}>Quản trị hệ thống</Text>
+          <Text style={styles.headerTitle}>System administration</Text>
           <Text style={styles.headerSubtitle}>
-            Xin chào, {user?.name || 'Quản trị viên'}. Chọn phân hệ quản lý bên dưới:
+            Hello, {user?.name || 'Admin'}. Choose a management module below:
           </Text>
         </View>
 

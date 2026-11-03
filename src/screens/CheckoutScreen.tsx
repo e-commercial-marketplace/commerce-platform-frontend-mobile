@@ -47,7 +47,7 @@ import { formatVND } from '../utils/format';
 import { markPaymentUrlHandled } from '../utils/paymentDeepLink';
 
 const CHECKOUT_VOUCHER_COUNT = 3;
-const BEST_VOUCHER_LABEL = 'Lựa chọn tốt nhất';
+const BEST_VOUCHER_LABEL = 'Best choice';
 
 const MAX_ADDRESS_LENGTH = 1000;
 
@@ -125,7 +125,7 @@ export default function CheckoutScreen({
   const { items, isLoading, isFetching, isError, error, refetch, isCustomer } = useCart();
   const { placeOrder, isPending } = useCheckout();
   const validateVoucherMutation = useValidateVoucher();
-  // API đã xếp % cao nhất trước, nên dòng đầu là lựa chọn tốt nhất; lỗi thì ẩn gợi ý, ô nhập vẫn dùng được.
+  // The API already sorts the highest % first, so the first row is the best choice; on error the suggestion is hidden and the input still works.
   const suggestedVouchers =
     useUsableVouchers().data?.pages[0]?.content.slice(0, CHECKOUT_VOUCHER_COUNT) ?? [];
   const queryClient = useQueryClient();
@@ -133,9 +133,9 @@ export default function CheckoutScreen({
   const { cartItemIds } = route.params;
   const [address, setAddress] = useState('');
   const { data: profile } = useCurrentUser(isCustomer);
-  // Hồ sơ đang tải, lỗi hoặc chưa có địa chỉ thì không có lựa chọn này, chỉ còn ô nhập.
+  // While the profile is loading, failed or has no address, this choice is absent and only the input remains.
   const savedAddress = profile?.address?.trim() || null;
-  // Mặc định không dùng địa chỉ hồ sơ để khách không vô tình giao đến địa chỉ cũ.
+  // The profile address is not used by default so a customer does not accidentally ship to an old address.
   const [useSavedAddress, setUseSavedAddress] = useState(false);
   const usingSavedAddress = useSavedAddress && savedAddress != null;
   const selectedAddress = usingSavedAddress ? savedAddress : address;

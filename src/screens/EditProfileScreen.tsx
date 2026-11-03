@@ -1,6 +1,6 @@
 /**
- * Màn sửa hồ sơ của người đang đăng nhập (PATCH /users/me). Dùng chung cho Customer, Seller và Admin.
- * Email chỉ hiển thị: backend không cho đổi email, vai trò hay trạng thái qua API này.
+ * Edit-profile screen of the signed-in user (PATCH /users/me). Shared by Customer, Seller and Admin.
+ * Email is display-only: the backend does not allow changing email, role or status through this API.
  */
 
 import { useEffect, useState } from 'react';
@@ -26,7 +26,7 @@ import type { AppNavigatorScreenProps } from '../navigation/types';
 
 const NAME_MAX_LENGTH = 255;
 const ADDRESS_MAX_LENGTH = 500;
-// Cùng luật với backend (VietnamesePhone): số di động Việt Nam, bắt đầu bằng 0 hoặc +84.
+// Same rule as the backend (VietnamesePhone): Vietnamese mobile number starting with 0 or +84.
 const VIETNAMESE_PHONE = /^(0|\+84)[35789]\d{8}$/;
 
 type ProfileFieldErrors = {
@@ -48,7 +48,7 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
   const [formError, setFormError] = useState<string | null>(null);
   const [filled, setFilled] = useState(false);
 
-  // Chỉ điền form một lần, để lần làm mới dữ liệu sau đó không xoá chữ người dùng đang sửa.
+  // Fill the form only once so a later data refresh does not erase what the user is editing.
   useEffect(() => {
     if (profile != null && !filled) {
       setName(profile.name);
@@ -87,7 +87,7 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
     }
 
     try {
-      // Chuỗi rỗng nghĩa là xoá số điện thoại hoặc địa chỉ (theo contract).
+      // An empty string means clearing the phone number or address (per the contract).
       const updated = await updateProfile.mutateAsync({
         name: trimmedName,
         phone: trimmedPhone,

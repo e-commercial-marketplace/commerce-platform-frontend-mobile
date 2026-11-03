@@ -90,7 +90,7 @@ const mockProduct: ProductDetailDto = {
   active: true,
   category: {
     id: 'cat-uuid-1',
-    name: 'Máy tính bảng',
+    name: 'Tablets',
   },
   sellerId: 'seller-uuid-1',
 };

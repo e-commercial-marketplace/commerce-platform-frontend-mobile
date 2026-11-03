@@ -42,7 +42,7 @@ export type RootStackParamList = {
   Checkout: { cartItemIds: string[] };
   /** Public seller shop opened from a product detail; carries only the seller id. */
   SellerShop: { sellerId: string };
-  /** Tất cả voucher đang dùng được; công khai, kể cả Guest. */
+  /** All usable vouchers; public, including Guests. */
   Vouchers: undefined;
   /** Customer order history. */
   MyOrders: undefined;
@@ -67,7 +67,7 @@ export type RootStackParamList = {
   ResetPassword: { email?: string } | undefined;
   /** Authenticated user password change. */
   ChangePassword: undefined;
-  /** Sửa tên, số điện thoại, địa chỉ của người đang đăng nhập. */
+  /** Edit the name, phone number and address of the signed-in user. */
   EditProfile: undefined;
   /** AI shopping assistant. */
   AiAssistant: undefined;

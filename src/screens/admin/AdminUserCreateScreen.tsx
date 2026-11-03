@@ -47,9 +47,9 @@ import type { Role } from '../../types/auth';
 type Props = AppNavigatorScreenProps<'AdminUserCreate'>;
 
 const ROLE_OPTIONS: { role: Role; label: string; desc: string }[] = [
-  { role: 'CUSTOMER', label: 'Khách hàng', desc: 'Mua sắm và đặt hàng trên nền tảng' },
-  { role: 'SELLER', label: 'Người bán', desc: 'Mở gian hàng và bán sản phẩm (Bắt đầu ở trạng thái Chờ duyệt)' },
-  { role: 'ADMIN', label: 'Quản trị viên', desc: 'Toàn quyền quản trị hệ thống' },
+  { role: 'CUSTOMER', label: 'Customer', desc: 'Shop and place orders on the platform' },
+  { role: 'SELLER', label: 'Seller', desc: 'Open a shop and sell products (starts in Pending status)' },
+  { role: 'ADMIN', label: 'Admin', desc: 'Full system administration rights' },
 ];
 
 const VIETNAMESE_PHONE_REGEX = /^(0|\+84)[35789]\d{8}$/;
@@ -78,17 +78,17 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Truy cập bị từ chối</Text>
+          <Text style={styles.unauthorizedTitle}>Access denied</Text>
           <Text style={styles.unauthorizedMessage}>
-            Chỉ Quản trị viên hệ thống mới có quyền tạo người dùng.
+            Only system administrators can create users.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
           >
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Text style={styles.backButtonText}>Go back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -100,31 +100,31 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      errors.email = 'Vui lòng nhập địa chỉ email';
+      errors.email = 'Please enter an email address';
     } else if (!trimmedEmail.includes('@') || trimmedEmail.length > 255) {
-      errors.email = 'Email không hợp lệ';
+      errors.email = 'Invalid email';
     }
 
     if (!password) {
-      errors.password = 'Vui lòng nhập mật khẩu';
+      errors.password = 'Please enter a password';
     } else if (password.length < 8 || password.length > 72) {
-      errors.password = 'Mật khẩu phải từ 8 đến 72 ký tự';
+      errors.password = 'Password must be 8 to 72 characters';
     }
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = 'Vui lòng nhập họ và tên';
+      errors.name = 'Please enter your full name';
     } else if (trimmedName.length > 255) {
-      errors.name = 'Họ và tên tối đa 255 ký tự';
+      errors.name = 'Full name must be at most 255 characters';
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
-      errors.phone = 'Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)';
+      errors.phone = 'Invalid Vietnamese mobile phone number (e.g. 0912345678)';
     }
 
     if (address.length > 500) {
-      errors.address = 'Địa chỉ tối đa 500 ký tự';
+      errors.address = 'Address must be at most 500 characters';
     }
 
     setFormErrors(errors);
@@ -146,7 +146,7 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
         address: address.trim() || undefined,
       });
 
-      Alert.alert('Thành công', 'Đã tạo tài khoản người dùng mới thành công.', [
+      Alert.alert('Success', 'New user account created successfully.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err: unknown) {
@@ -196,12 +196,12 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Password field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Mật khẩu ban đầu <Text style={styles.requiredStar}>* (8-72 ký tự)</Text>
+              Initial password <Text style={styles.requiredStar}>* (8-72 characters)</Text>
             </Text>
             <View style={[styles.passwordContainer, formErrors.password ? styles.inputError : null]}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Nhập mật khẩu"
+                placeholder="Enter password"
                 placeholderTextColor={colors.textSecondary}
                 value={password}
                 onChangeText={(text) => {
@@ -218,10 +218,10 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
                 hitSlop={8}
                 style={styles.eyeButton}
                 accessibilityRole="button"
-                accessibilityLabel={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 testID="toggle-password-visibility"
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Ẩn' : 'Hiện'}</Text>
+                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
               </Pressable>
             </View>
             {formErrors.password ? (
@@ -232,11 +232,11 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Full Name field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Họ và tên <Text style={styles.requiredStar}>*</Text>
+              Full name <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
-              placeholder="Nguyễn Văn A"
+              placeholder="John Doe"
               placeholderTextColor={colors.textSecondary}
               value={name}
               onChangeText={(text) => {
@@ -253,7 +253,7 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Vai trò <Text style={styles.requiredStar}>*</Text>
+              Role <Text style={styles.requiredStar}>*</Text>
             </Text>
             <View style={styles.roleOptionsContainer}>
               {ROLE_OPTIONS.map((item) => {
@@ -285,7 +285,7 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
           {/* Phone field */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Số điện thoại (tùy chọn)</Text>
+            <Text style={styles.label}>Phone number (optional)</Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
               placeholder="0912345678"
@@ -305,10 +305,10 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
           {/* Address field */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Địa chỉ (tùy chọn)</Text>
+            <Text style={styles.label}>Address (optional)</Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder="Địa chỉ liên hệ"
+              placeholder="Contact address"
               placeholderTextColor={colors.textSecondary}
               value={address}
               onChangeText={(text) => {
@@ -326,9 +326,9 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Enabled switch */}
           <View style={styles.switchGroup}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Kích hoạt tài khoản ngay</Text>
+              <Text style={styles.switchLabel}>Activate account immediately</Text>
               <Text style={styles.switchSubtext}>
-                Tài khoản có thể đăng nhập ngay sau khi tạo
+                The account can sign in right after creation
               </Text>
             </View>
             <Switch
@@ -350,13 +350,13 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
             onPress={handleSubmit}
             disabled={createMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Tạo người dùng"
+            accessibilityLabel="Create user"
             testID="submit-create-user-button"
           >
             {createMutation.isPending ? (
               <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
-              <Text style={styles.submitButtonText}>Tạo người dùng</Text>
+              <Text style={styles.submitButtonText}>Create user</Text>
             )}
           </Pressable>
         </ScrollView>

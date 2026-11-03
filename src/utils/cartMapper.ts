@@ -57,7 +57,7 @@ export function mapCartDtoToCart(dto: CartDto): Cart {
   };
 }
 
-/** Cùng quy tắc với CartResponse.of ở backend: subtotal chỉ cộng các dòng mua được. */
+/** Same rule as CartResponse.of on the backend: subtotal only adds purchasable lines. */
 function withRecalculatedSubtotal(items: CartItemDto[]): CartDto {
   const subtotal = items
     .filter((item) => item.active && item.quantity <= item.availableStock)
@@ -65,7 +65,7 @@ function withRecalculatedSubtotal(items: CartItemDto[]): CartDto {
   return { items, subtotal: subtotal.toFixed(2) };
 }
 
-/** Bản giỏ dự đoán sau khi đổi số lượng; response của server sẽ thay thế bản này. */
+/** Predicted cart after changing the quantity; the server response will replace this copy. */
 export function predictQuantityChange(cart: CartDto, id: string, quantity: number): CartDto {
   return withRecalculatedSubtotal(
     cart.items.map((item) =>
@@ -76,7 +76,7 @@ export function predictQuantityChange(cart: CartDto, id: string, quantity: numbe
   );
 }
 
-/** Bản giỏ dự đoán sau khi xoá một dòng; response của server sẽ thay thế bản này. */
+/** Predicted cart after removing a line; the server response will replace this copy. */
 export function predictLineRemoval(cart: CartDto, id: string): CartDto {
   return withRecalculatedSubtotal(cart.items.filter((item) => item.id !== id));
 }
