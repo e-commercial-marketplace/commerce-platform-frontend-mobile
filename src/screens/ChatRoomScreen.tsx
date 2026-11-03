@@ -44,6 +44,7 @@ import { useImageUpload } from '../hooks/useImageUpload';
 import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { MessageResponse } from '../types/chatApi';
+import { isTempMessage } from '../utils/chatCacheUpdates';
 import { generateClientMessageKey } from '../utils/chatIdempotency';
 import { pickImage } from '../utils/imagePicker';
 
@@ -208,6 +209,7 @@ export default function ChatRoomScreen({
           conversationId,
           request: imageUrl ? { imageUrl } : { content },
           idempotencyKey,
+          senderId: user.id,
         });
       } catch (error) {
         // Retain failed message with EXACT same idempotencyKey for subsequent retry
@@ -352,6 +354,7 @@ export default function ChatRoomScreen({
                     message={item as MessageResponse}
                     isOutgoing={isOutgoing}
                     isFailed={isFailed}
+                    isPending={!isFailed && isTempMessage((item as MessageResponse).id)}
                     onRetry={
                       isFailed
                         ? () =>

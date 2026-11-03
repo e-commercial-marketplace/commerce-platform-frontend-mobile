@@ -31,6 +31,8 @@ export type ChatMessageBubbleProps = {
       });
   isOutgoing: boolean;
   isFailed?: boolean;
+  /** Tin đang gửi (cập nhật lạc quan): hiện mờ cho tới khi server xác nhận. */
+  isPending?: boolean;
   onRetry?: () => void;
 };
 
@@ -38,6 +40,7 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
   message,
   isOutgoing,
   isFailed = false,
+  isPending = false,
   onRetry,
 }: ChatMessageBubbleProps) {
   const [imageError, setImageError] = useState(false);
@@ -57,6 +60,7 @@ export const ChatMessageBubble = React.memo(function ChatMessageBubble({
           styles.bubble,
           isOutgoing ? styles.outgoingBubble : styles.incomingBubble,
           isFailed && styles.failedBubble,
+          isPending && styles.pendingBubble,
         ]}
       >
         {/* Optional Attached Image (Render-only fallback, upload is unsupported) */}
@@ -151,6 +155,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderWidth: 1,
     borderBottomLeftRadius: 4,
+  },
+  pendingBubble: {
+    opacity: 0.6,
   },
   failedBubble: {
     backgroundColor: '#FDE8E8',
