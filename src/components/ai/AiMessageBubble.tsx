@@ -22,6 +22,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import AiProductCard from './AiProductCard';
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { AiAnswerSource, AiProductQueryResponse, AiProductResponse } from '../../types/aiApi';
 
 export type ChatUiMessage = {
@@ -47,26 +49,58 @@ export default function AiMessageBubble({
   onProductPress,
   onRetry,
 }: AiMessageBubbleProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const isUser = message.role === 'USER';
 
   if (isUser) {
     return (
       <View style={[styles.bubbleWrapper, styles.userBubbleWrapper]}>
-        <View style={[styles.bubble, styles.userBubble, message.isFailed && styles.failedBubble]}>
-          <Text style={styles.userText}>{message.content}</Text>
+        <View
+          style={[
+            styles.bubble,
+            styles.userBubble,
+            { backgroundColor: theme.primary },
+            message.isFailed && [
+              styles.failedBubble,
+              { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#DC2626' },
+            ],
+          ]}
+        >
+          <Text style={[styles.userText, { color: theme.onPrimary }]}>{message.content}</Text>
         </View>
 
         {message.isFailed ? (
           <View style={styles.failedRow}>
-            <Text style={styles.failedText}>Failed to send</Text>
+            <Text
+              style={[
+                styles.failedText,
+                { color: isDark ? '#FCA5A5' : '#DC2626' },
+              ]}
+            >
+              {t('ai.failedToSend', 'Failed to send')}
+            </Text>
             {onRetry ? (
               <Pressable
                 onPress={() => onRetry(message)}
-                style={styles.retryBubbleBtn}
+                style={[
+                  styles.retryBubbleBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2',
+                    borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+                  },
+                ]}
                 accessibilityRole="button"
-                accessibilityLabel="Retry sending question"
+                accessibilityLabel={t('ai.retryA11y', 'Retry sending question')}
               >
-                <Text style={styles.retryBubbleBtnText}>Retry</Text>
+                <Text
+                  style={[
+                    styles.retryBubbleBtnText,
+                    { color: isDark ? '#FCA5A5' : '#B91C1C' },
+                  ]}
+                >
+                  {t('ai.retry', 'Retry')}
+                </Text>
               </Pressable>
             ) : null}
           </View>
@@ -80,13 +114,29 @@ export default function AiMessageBubble({
 
   return (
     <View style={[styles.bubbleWrapper, styles.assistantBubbleWrapper]}>
-      <View style={[styles.bubble, styles.assistantBubble]}>
-        <Text style={styles.assistantText}>{message.content}</Text>
+      <View
+        style={[
+          styles.bubble,
+          styles.assistantBubble,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
+        <Text style={[styles.assistantText, { color: theme.text }]}>{message.content}</Text>
 
         {message.answeredBy ? (
-          <View style={styles.sourceTag}>
+          <View
+            style={[
+              styles.sourceTag,
+              {
+                backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                borderColor: theme.border,
+              },
+            ]}
+          >
             <Text style={styles.sourceTagIcon}>{isRules ? '⚡' : '✨'}</Text>
-            <Text style={styles.sourceTagText}>{isRules ? 'Quick reply' : 'AI'}</Text>
+            <Text style={[styles.sourceTagText, { color: theme.textSecondary }]}>
+              {isRules ? t('ai.answeredByRules', 'Quick reply') : t('ai.answeredByAi', 'AI')}
+            </Text>
           </View>
         ) : null}
       </View>

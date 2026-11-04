@@ -17,9 +17,10 @@
  *    - Handles backend restriction: categories with products (active or hidden) cannot be deleted.
  *      Presents clear Vietnamese alert and leaves category intact.
  * 6. Responsive UI states: Loading, Error with Retry, Empty, Pull-to-refresh.
+ * 7. Personalization: Theme-driven semantic styles & localized bilingual strings.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -37,7 +38,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { radii, spacing, typography } from '../../constants/theme';
 import {
   useCreateAdminCategory,
   useDeleteAdminCategory,
@@ -45,7 +46,9 @@ import {
 } from '../../hooks/useAdmin';
 import { useAuth } from '../../hooks/useAuth';
 import { useCategories } from '../../hooks/useProducts';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
+import { useAppTheme } from '../../theme';
 import type { CategorySummaryDto } from '../../types/productApi';
 
 type Props = AppNavigatorScreenProps<'AdminCategory'>;
@@ -55,6 +58,9 @@ const MAX_CATEGORY_NAME_LENGTH = 120;
 export default function AdminCategoryScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuth();
   const isAdmin = isAuthenticated && user?.role === 'ADMIN';
+
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
 
   // Catalog categories hook
   const {
@@ -82,20 +88,31 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   // Role Guard
   if (!isAdmin) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+        edges={['bottom', 'left', 'right']}
+      >
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Access denied</Text>
-          <Text style={styles.unauthorizedMessage}>
-            Only system administrators can manage product categories.
+          <Text style={[styles.unauthorizedTitle, { color: theme.text }]}>
+            {t('admin.portal.unauthorizedTitle', 'Access denied')}
+          </Text>
+          <Text style={[styles.unauthorizedMessage, { color: theme.textSecondary }]}>
+            {t('admin.categories.unauthorizedAdminOnly', 'Only system administrators can manage product categories.')}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.backButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('admin.portal.backButton', 'Go back')}
           >
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>
+              {t('admin.portal.backButton', 'Go back')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -119,11 +136,15 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   const handleSubmitCreate = async () => {
     const trimmed = createName.trim();
     if (!trimmed) {
-      setCreateError('Please enter the category name.');
+      setCreateError(t('admin.categories.validation.nameRequired', 'Please enter the category name.'));
       return;
     }
     if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) {
-      setCreateError(`Category name must not exceed ${MAX_CATEGORY_NAME_LENGTH} characters.`);
+      setCreateError(
+        t('admin.categories.validation.nameTooLong', 'Tên danh mục không được vượt quá {{max}} ký tự.', {
+          max: MAX_CATEGORY_NAME_LENGTH,
+        }),
+      );
       return;
     }
 
@@ -132,7 +153,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       setIsCreateModalOpen(false);
       setCreateName('');
       setCreateError(null);
-      Alert.alert('Success', `Added category "${trimmed}".`);
+      Alert.alert(
+        t('admin.common.success', 'Success'),
+        t('admin.categories.createSuccess', `Added category "${trimmed}".`, { name: trimmed }),
+      );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
@@ -140,11 +164,18 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
       if (
         combinedMsg.includes('already exists') ||
+        combinedMsg.includes('trùng') ||
         apiError.code === 'VALIDATION_ERROR'
       ) {
-        setCreateError('The category name already exists in the system. Please choose another name.');
+        setCreateError(
+          t('admin.categories.validation.nameExists', 'The category name already exists in the system. Please choose another name.'),
+        );
       } else {
-        setCreateError(rawMsg || apiError.message || 'Could not create the category. Please try again.');
+        setCreateError(
+          rawMsg ||
+            apiError.message ||
+            t('admin.categories.validation.createFailed', 'Could not create category. Please try again.'),
+        );
       }
     }
   };
@@ -167,11 +198,15 @@ export default function AdminCategoryScreen({ navigation }: Props) {
     if (!editingCategory) return;
     const trimmed = renameName.trim();
     if (!trimmed) {
-      setRenameError('Please enter the category name.');
+      setRenameError(t('admin.categories.validation.nameRequired', 'Please enter the category name.'));
       return;
     }
     if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) {
-      setRenameError(`Category name must not exceed ${MAX_CATEGORY_NAME_LENGTH} characters.`);
+      setRenameError(
+        t('admin.categories.validation.nameTooLong', 'Tên danh mục không được vượt quá {{max}} ký tự.', {
+          max: MAX_CATEGORY_NAME_LENGTH,
+        }),
+      );
       return;
     }
 
@@ -189,7 +224,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       setEditingCategory(null);
       setRenameName('');
       setRenameError(null);
-      Alert.alert('Success', `Renamed category to "${trimmed}".`);
+      Alert.alert(
+        t('admin.common.success', 'Success'),
+        t('admin.categories.renameSuccess', `Renamed category to "${trimmed}".`, { name: trimmed }),
+      );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
@@ -197,11 +235,18 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
       if (
         combinedMsg.includes('already exists') ||
+        combinedMsg.includes('trùng') ||
         apiError.code === 'VALIDATION_ERROR'
       ) {
-        setRenameError('The category name already exists in the system. Please choose another name.');
+        setRenameError(
+          t('admin.categories.validation.nameExists', 'The category name already exists in the system. Please choose another name.'),
+        );
       } else {
-        setRenameError(rawMsg || apiError.message || 'Could not rename the category. Please try again.');
+        setRenameError(
+          rawMsg ||
+            apiError.message ||
+            t('admin.categories.validation.renameFailed', 'Could not rename category. Please try again.'),
+        );
       }
     }
   };
@@ -209,17 +254,24 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   // Handle Delete
   const handleDeletePress = (category: CategorySummaryDto) => {
     Alert.alert(
-      'Confirm category deletion',
-      `Are you sure you want to delete the category "${category.name}"? This action cannot be undone.`,
+      t('admin.categories.deleteConfirmTitle', 'Confirm category deletion'),
+      t(
+        'admin.categories.deleteConfirmMessage',
+        `Are you sure you want to delete the category "${category.name}"? This action cannot be undone.`,
+        { name: category.name },
+      ),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('admin.common.actions.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteMutation.mutateAsync(category.id);
-              Alert.alert('Success', `Deleted category "${category.name}".`);
+              Alert.alert(
+                t('admin.common.success', 'Success'),
+                t('admin.categories.deleteSuccess', `Deleted category "${category.name}".`, { name: category.name }),
+              );
             } catch (err: unknown) {
               const rawMsg = err instanceof Error ? err.message : '';
               const apiError = toApiError(err);
@@ -227,16 +279,25 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
               if (
                 combinedMsg.includes('still has products') ||
-                combinedMsg.includes('product')
+                combinedMsg.includes('product') ||
+                combinedMsg.includes('sản phẩm')
               ) {
                 Alert.alert(
-                  'Cannot delete category',
-                  'This category still has linked products (including hidden ones). Please move or delete the products in this category first.',
+                  t('admin.categories.cannotDeleteTitle', 'Cannot delete category'),
+                  t(
+                    'admin.categories.cannotDeleteMessage',
+                    'This category still has linked products (including hidden ones). Please move or delete the products in this category first.',
+                  ),
                 );
               } else {
                 Alert.alert(
-                  'Error',
-                  rawMsg || apiError.message || 'Could not delete the category. Please try again later.',
+                  t('admin.common.error', 'Error'),
+                  rawMsg ||
+                    apiError.message ||
+                    t(
+                      'admin.categories.validation.deleteFailed',
+                      'Could not delete the category. Please try again later.',
+                    ),
                 );
               }
             }
@@ -246,98 +307,184 @@ export default function AdminCategoryScreen({ navigation }: Props) {
     );
   };
 
+  const dynamicStyles = useMemo(
+    () => ({
+      iconBoxBg: isDark ? 'rgba(8, 184, 204, 0.2)' : '#EEF4FF',
+      renameBtnBg: isDark ? 'rgba(8, 184, 204, 0.15)' : '#F0F5FF',
+      deleteBtnBg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF3F2',
+      deleteBtnBorder: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FDA29B',
+      deleteBtnText: isDark ? '#FCA5A5' : '#B42318',
+    }),
+    [isDark],
+  );
+
   const renderItem = ({ item }: { item: CategorySummaryDto }) => (
-    <View style={styles.categoryCard} testID={`admin-category-item-${item.id}`}>
+    <View
+      style={[
+        styles.categoryCard,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+        },
+      ]}
+      testID={`admin-category-item-${item.id}`}
+    >
       <View style={styles.cardHeader}>
-        <View style={styles.categoryIconBox}>
+        <View style={[styles.categoryIconBox, { backgroundColor: dynamicStyles.iconBoxBg }]}>
           <Text style={styles.categoryIcon}>📁</Text>
         </View>
         <View style={styles.categoryInfo}>
-          <Text style={styles.categoryName} testID={`admin-category-name-${item.id}`}>
+          <Text
+            style={[styles.categoryName, { color: theme.text }]}
+            testID={`admin-category-name-${item.id}`}
+          >
             {item.name}
           </Text>
-          <Text style={styles.categoryIdText} numberOfLines={1}>
+          <Text style={[styles.categoryIdText, { color: theme.textSecondary }]} numberOfLines={1}>
             ID: {item.id}
           </Text>
         </View>
       </View>
 
-      <View style={styles.cardActions}>
+      <View style={[styles.cardActions, { borderTopColor: theme.border }]}>
         <Pressable
-          style={({ pressed }) => [styles.actionButton, styles.renameButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.actionButton,
+            {
+              borderColor: theme.primary,
+              backgroundColor: dynamicStyles.renameBtnBg,
+            },
+            pressed && styles.buttonPressed,
+          ]}
           onPress={() => handleOpenRenameModal(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Rename category ${item.name}`}
+          accessibilityLabel={t('admin.categories.renameBtn', '✏️ Rename')}
+          accessibilityHint={t('admin.categories.renameModalSubtitle', 'Cập nhật tên danh mục "{{name}}"', {
+            name: item.name,
+          })}
           testID={`admin-category-rename-btn-${item.id}`}
         >
-          <Text style={styles.renameButtonText}>✏️ Rename</Text>
+          <Text style={[styles.renameButtonText, { color: theme.primary }]}>
+            {t('admin.categories.renameBtn', '✏️ Rename')}
+          </Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.actionButton,
+            {
+              borderColor: dynamicStyles.deleteBtnBorder,
+              backgroundColor: dynamicStyles.deleteBtnBg,
+            },
+            pressed && styles.buttonPressed,
+          ]}
           onPress={() => handleDeletePress(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Delete category ${item.name}`}
+          accessibilityLabel={t('admin.categories.deleteBtn', '🗑️ Delete')}
+          accessibilityHint={t(
+            'admin.categories.deleteConfirmMessage',
+            'Bạn có chắc chắn muốn xóa danh mục "{{name}}"?',
+            { name: item.name },
+          )}
           testID={`admin-category-delete-btn-${item.id}`}
         >
-          <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+          <Text style={[styles.deleteButtonText, { color: dynamicStyles.deleteBtnText }]}>
+            {t('admin.categories.deleteBtn', '🗑️ Delete')}
+          </Text>
         </Pressable>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+      edges={['bottom', 'left', 'right']}
+    >
       {/* Top Banner & Action */}
-      <View style={styles.topContainer}>
+      <View
+        style={[
+          styles.topContainer,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
         <View style={styles.topTextGroup}>
-          <Text style={styles.topTitle}>Product categories</Text>
-          <Text style={styles.topSubtitle}>
-            {categories.length} categories • Flat category system, no hierarchy
+          <Text style={[styles.topTitle, { color: theme.text }]}>
+            {t('admin.categories.title', 'Product categories')}
+          </Text>
+          <Text style={[styles.topSubtitle, { color: theme.textSecondary }]}>
+            {t('admin.categories.subtitle', `${categories.length} categories • Flat category system, no hierarchy`, { count: categories.length })}
           </Text>
         </View>
         <Pressable
-          style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.createButton,
+            { backgroundColor: theme.primary },
+            pressed && styles.buttonPressed,
+          ]}
           onPress={handleOpenCreateModal}
           accessibilityRole="button"
-          accessibilityLabel="Add new category"
+          accessibilityLabel={t('admin.categories.createBtn', '＋ Add new')}
           testID="admin-category-create-button"
         >
-          <Text style={styles.createButtonText}>＋ Add new</Text>
+          <Text style={styles.createButtonText}>
+            {t('admin.categories.createBtn', '＋ Add new')}
+          </Text>
         </Pressable>
       </View>
 
       {/* Main Content Area */}
       {isLoading ? (
         <View style={styles.centerContainer} testID="admin-category-loading">
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading categories...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('admin.categories.loading', 'Loading categories...')}
+          </Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer} testID="admin-category-error">
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Could not load categories</Text>
-          <Text style={styles.errorMessage}>
-            An error occurred while connecting to the server. Please try again.
+          <Text style={[styles.errorTitle, { color: theme.text }]}>
+            {t('admin.categories.errorTitle', 'Could not load categories')}
+          </Text>
+          <Text style={[styles.errorMessage, { color: theme.textSecondary }]}>
+            {t(
+              'admin.categories.errorMessage',
+              'Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại.',
+            )}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Retry"
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="admin-category-retry-btn"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>
+              {t('admin.common.actions.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       ) : categories.length === 0 ? (
         <View style={styles.centerContainer} testID="admin-category-empty">
           <Text style={styles.emptyIcon}>📂</Text>
-          <Text style={styles.emptyTitle}>No categories yet</Text>
-          <Text style={styles.emptyMessage}>
-            There are no product categories in the system yet. Tap &quot;Add new&quot; to create the first category.
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('admin.categories.emptyTitle', 'No categories yet')}
+          </Text>
+          <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
+            {t(
+              'admin.categories.emptyMessage',
+              'Hiện chưa có danh mục sản phẩm nào trong hệ thống. Nhấn "Thêm mới" để tạo danh mục đầu tiên.',
+            )}
           </Text>
         </View>
       ) : (
@@ -353,8 +500,8 @@ export default function AdminCategoryScreen({ navigation }: Props) {
               onRefresh={() => {
                 void refetch();
               }}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
             />
           }
         />
@@ -370,38 +517,63 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]}
         >
           <Pressable style={styles.modalDismissArea} onPress={handleCloseCreateModal} />
-          <View style={styles.modalCard}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+          >
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Add new category</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {t('admin.categories.createModalTitle', 'Add new category')}
+              </Text>
               <Pressable
                 onPress={handleCloseCreateModal}
                 disabled={createMutation.isPending}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
-                accessibilityLabel="Close dialog"
+                accessibilityLabel={t('admin.common.actions.close', 'Close dialog')}
               >
-                <Text style={styles.modalCloseButtonText}>✕</Text>
+                <Text style={[styles.modalCloseButtonText, { color: theme.textSecondary }]}>✕</Text>
               </Pressable>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              The category name is shared across all products in the system.
+            <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+              {t(
+                'admin.categories.createModalSubtitle',
+                'Tên danh mục dùng chung cho toàn bộ sản phẩm trên hệ thống.',
+              )}
             </Text>
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
-                <Text style={styles.inputLabel}>Category name *</Text>
-                <Text style={styles.charCounter}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.categories.nameLabel', 'Category name *')}
+                </Text>
+                <Text style={[styles.charCounter, { color: theme.textSecondary }]}>
                   {createName.trim().length}/{MAX_CATEGORY_NAME_LENGTH}
                 </Text>
               </View>
               <TextInput
-                style={[styles.textInput, createError ? styles.textInputError : null]}
-                placeholder="e.g. Electronics, Home appliances..."
-                placeholderTextColor={colors.textSecondary}
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: createError ? theme.danger : theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder={t(
+                  'admin.categories.namePlaceholder',
+                  'e.g. Electronics, Home appliances...',
+                )}
+                placeholderTextColor={theme.textSecondary}
                 value={createName}
                 onChangeText={(text) => {
                   setCreateName(text);
@@ -412,7 +584,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 testID="admin-category-name-input"
               />
               {createError ? (
-                <Text style={styles.inlineErrorText} testID="admin-category-create-error">
+                <Text
+                  style={[styles.inlineErrorText, { color: theme.danger }]}
+                  testID="admin-category-create-error"
+                >
                   {createError}
                 </Text>
               ) : null}
@@ -420,27 +595,43 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
             <View style={styles.modalButtonRow}>
               <Pressable
-                style={({ pressed }) => [styles.modalCancelBtn, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [
+                  styles.modalCancelBtn,
+                  {
+                    borderColor: theme.border,
+                    backgroundColor: theme.surface,
+                  },
+                  pressed && styles.buttonPressed,
+                ]}
                 onPress={handleCloseCreateModal}
                 disabled={createMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                 testID="admin-category-cancel-create-btn"
               >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                <Text style={[styles.modalCancelBtnText, { color: theme.text }]}>
+                  {t('admin.common.actions.cancel', 'Cancel')}
+                </Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
                   styles.modalSubmitBtn,
+                  { backgroundColor: theme.primary },
                   createMutation.isPending && styles.buttonDisabled,
                   pressed && styles.buttonPressed,
                 ]}
                 onPress={handleSubmitCreate}
                 disabled={createMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel={t('admin.categories.createBtn', 'Create category')}
                 testID="admin-category-submit-create-btn"
               >
                 {createMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalSubmitBtnText}>Create category</Text>
+                  <Text style={styles.modalSubmitBtnText}>
+                    {t('admin.categories.createModalTitle', 'Create category')}
+                  </Text>
                 )}
               </Pressable>
             </View>
@@ -458,38 +649,61 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]}
         >
           <Pressable style={styles.modalDismissArea} onPress={handleCloseRenameModal} />
-          <View style={styles.modalCard}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+          >
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Rename category</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {t('admin.categories.renameModalTitle', 'Rename category')}
+              </Text>
               <Pressable
                 onPress={handleCloseRenameModal}
                 disabled={updateMutation.isPending}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
-                accessibilityLabel="Close rename dialog"
+                accessibilityLabel={t('admin.common.actions.close', 'Close dialog')}
               >
-                <Text style={styles.modalCloseButtonText}>✕</Text>
+                <Text style={[styles.modalCloseButtonText, { color: theme.textSecondary }]}>✕</Text>
               </Pressable>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              Update the name of category &quot;{editingCategory?.name}&quot;. The new name will be shown on all related products.
+            <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+              {t(
+                'admin.categories.renameModalSubtitle',
+                'Cập nhật tên danh mục "{{name}}". Tên mới sẽ hiển thị trên tất cả sản phẩm liên quan.',
+                { name: editingCategory?.name },
+              )}
             </Text>
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
-                <Text style={styles.inputLabel}>New category name *</Text>
-                <Text style={styles.charCounter}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.categories.renameModalTitle', 'Tên danh mục mới *')}
+                </Text>
+                <Text style={[styles.charCounter, { color: theme.textSecondary }]}>
                   {renameName.trim().length}/{MAX_CATEGORY_NAME_LENGTH}
                 </Text>
               </View>
               <TextInput
-                style={[styles.textInput, renameError ? styles.textInputError : null]}
-                placeholder="Enter a new name..."
-                placeholderTextColor={colors.textSecondary}
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: renameError ? theme.danger : theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder={t('admin.categories.renamePlaceholder', 'Enter a new name...')}
+                placeholderTextColor={theme.textSecondary}
                 value={renameName}
                 onChangeText={(text) => {
                   setRenameName(text);
@@ -500,7 +714,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 testID="admin-category-rename-input"
               />
               {renameError ? (
-                <Text style={styles.inlineErrorText} testID="admin-category-rename-error">
+                <Text
+                  style={[styles.inlineErrorText, { color: theme.danger }]}
+                  testID="admin-category-rename-error"
+                >
                   {renameError}
                 </Text>
               ) : null}
@@ -508,27 +725,43 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 
             <View style={styles.modalButtonRow}>
               <Pressable
-                style={({ pressed }) => [styles.modalCancelBtn, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [
+                  styles.modalCancelBtn,
+                  {
+                    borderColor: theme.border,
+                    backgroundColor: theme.surface,
+                  },
+                  pressed && styles.buttonPressed,
+                ]}
                 onPress={handleCloseRenameModal}
                 disabled={updateMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                 testID="admin-category-cancel-rename-btn"
               >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                <Text style={[styles.modalCancelBtnText, { color: theme.text }]}>
+                  {t('admin.common.actions.cancel', 'Cancel')}
+                </Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
                   styles.modalSubmitBtn,
+                  { backgroundColor: theme.primary },
                   updateMutation.isPending && styles.buttonDisabled,
                   pressed && styles.buttonPressed,
                 ]}
                 onPress={handleSubmitRename}
                 disabled={updateMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel={t('admin.common.actions.save', 'Save changes')}
                 testID="admin-category-submit-rename-btn"
               >
                 {updateMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalSubmitBtnText}>Save changes</Text>
+                  <Text style={styles.modalSubmitBtnText}>
+                    {t('admin.common.actions.save', 'Save changes')}
+                  </Text>
                 )}
               </Pressable>
             </View>
@@ -542,7 +775,6 @@ export default function AdminCategoryScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   topContainer: {
     flexDirection: 'row',
@@ -550,9 +782,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   topTextGroup: {
     flex: 1,
@@ -561,15 +791,12 @@ const styles = StyleSheet.create({
   topTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
   },
   topSubtitle: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   createButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
@@ -584,12 +811,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   categoryCard: {
-    backgroundColor: colors.background,
     borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -604,7 +829,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radii.md,
-    backgroundColor: '#EEF4FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -618,11 +842,9 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: typography.md,
     fontWeight: '700',
-    color: colors.text,
   },
   categoryIdText: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   cardActions: {
@@ -631,7 +853,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
     gap: spacing.sm,
   },
   actionButton: {
@@ -640,21 +861,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
   },
-  renameButton: {
-    borderColor: colors.primary,
-    backgroundColor: '#F0F5FF',
-  },
   renameButtonText: {
-    color: colors.primary,
     fontSize: typography.sm,
     fontWeight: '600',
   },
-  deleteButton: {
-    borderColor: '#FDA29B',
-    backgroundColor: '#FEF3F2',
-  },
   deleteButtonText: {
-    color: '#B42318',
     fontSize: typography.sm,
     fontWeight: '600',
   },
@@ -667,7 +878,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.md,
-    color: colors.textSecondary,
   },
   errorIcon: {
     fontSize: 48,
@@ -676,17 +886,14 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   errorMessage: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
   retryButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
@@ -703,12 +910,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   emptyMessage: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -719,18 +924,15 @@ const styles = StyleSheet.create({
   unauthorizedTitle: {
     fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   unauthorizedMessage: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: spacing.lg,
   },
   backButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
@@ -748,7 +950,6 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     padding: spacing.lg,
   },
@@ -760,9 +961,9 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   modalCard: {
-    backgroundColor: colors.background,
     borderRadius: radii.lg,
     padding: spacing.lg,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -778,19 +979,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
   },
   modalCloseButton: {
     padding: spacing.xs,
   },
   modalCloseButtonText: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '700',
   },
   modalSubtitle: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     marginBottom: spacing.md,
     lineHeight: 18,
   },
@@ -806,28 +1004,19 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: typography.sm,
     fontWeight: '600',
-    color: colors.text,
   },
   charCounter: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
   },
   textInput: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: typography.md,
-    color: colors.text,
-  },
-  textInputError: {
-    borderColor: '#FDA29B',
   },
   inlineErrorText: {
     fontSize: typography.xs,
-    color: '#D92D20',
     marginTop: 4,
     fontWeight: '500',
   },
@@ -841,19 +1030,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   modalCancelBtnText: {
     fontSize: typography.sm,
-    color: colors.text,
     fontWeight: '600',
   },
   modalSubmitBtn: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
-    backgroundColor: colors.primary,
     minWidth: 100,
     alignItems: 'center',
     justifyContent: 'center',

@@ -23,12 +23,13 @@
  *    - usageLimit cannot be below timesUsed.
  * 6. Expire Voucher: DELETE /api/v1/admin/vouchers/{code}
  *    - Soft expiration (sets validTo = now to preserve audit trail).
- *    - Accurately labeled "Stop issuing" / "Expire now".
+ *    - Accurately labeled "Ngừng phát hành" / "Hết hạn ngay".
  * 7. Multi-cache Synchronization:
  *    - Invalidates admin voucher list and customer checkout voucher cache.
+ * 8. Personalization: Theme tokens (light/dark mode) and localized strings (vi/en).
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -47,7 +48,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { radii, spacing, typography } from '../../constants/theme';
 import {
   useAdminVouchers,
   useCreateAdminVoucher,
@@ -55,18 +56,20 @@ import {
   useUpdateAdminVoucher,
 } from '../../hooks/useAdmin';
 import { useAuth } from '../../hooks/useAuth';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
+import { useAppTheme } from '../../theme';
 import type { VoucherResponse } from '../../types/voucherApi';
+import {
+  getVoucherStatusBadgeConfig,
+  type VoucherDerivedStatus,
+} from '../../utils/adminPresentation';
 
 type Props = AppNavigatorScreenProps<'AdminVoucher'>;
 
 const PAGE_SIZE = 20;
 
-export type VoucherDerivedStatus =
-  | 'ACTIVE'
-  | 'NOT_YET_VALID'
-  | 'EXPIRED'
-  | 'USAGE_LIMIT_REACHED';
+export type { VoucherDerivedStatus };
 
 export function getVoucherDerivedStatus(
   voucher: VoucherResponse,
@@ -87,36 +90,6 @@ export function getVoucherDerivedStatus(
   return 'ACTIVE';
 }
 
-const VOUCHER_STATUS_CONFIG: Record<
-  VoucherDerivedStatus,
-  { label: string; backgroundColor: string; textColor: string; icon: string }
-> = {
-  ACTIVE: {
-    label: 'Active',
-    backgroundColor: '#D1FADF',
-    textColor: '#027A48',
-    icon: '🟢',
-  },
-  NOT_YET_VALID: {
-    label: 'Not started',
-    backgroundColor: '#EFF8FF',
-    textColor: '#175CD3',
-    icon: '⏳',
-  },
-  EXPIRED: {
-    label: 'Expired',
-    backgroundColor: '#F2F4F7',
-    textColor: '#344054',
-    icon: '⏹️',
-  },
-  USAGE_LIMIT_REACHED: {
-    label: 'Usage exhausted',
-    backgroundColor: '#FEF0C7',
-    textColor: '#B54708',
-    icon: '⚠️',
-  },
-};
-
 export function formatDateTimeDisplay(isoStr?: string | null): string {
   if (!isoStr) return '';
   try {
@@ -136,6 +109,9 @@ export function formatDateTimeDisplay(isoStr?: string | null): string {
 export default function AdminVoucherScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuth();
   const isAdmin = isAuthenticated && user?.role === 'ADMIN';
+
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
 
   const [page, setPage] = useState(0);
 
@@ -178,20 +154,31 @@ export default function AdminVoucherScreen({ navigation }: Props) {
   // Role Guard
   if (!isAdmin) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+        edges={['bottom', 'left', 'right']}
+      >
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Access denied</Text>
-          <Text style={styles.unauthorizedMessage}>
-            Only system administrators can manage platform-wide vouchers.
+          <Text style={[styles.unauthorizedTitle, { color: theme.text }]}>
+            {t('admin.portal.unauthorizedTitle', 'Access denied')}
+          </Text>
+          <Text style={[styles.unauthorizedMessage, { color: theme.textSecondary }]}>
+            {t('admin.vouchers.unauthorizedAdminOnly', 'Only system administrators have permission to manage platform-wide discount vouchers.')}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.backButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('admin.portal.backButton', 'Go back')}
           >
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>
+              {t('admin.portal.backButton', 'Go back')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -236,34 +223,46 @@ export default function AdminVoucherScreen({ navigation }: Props) {
   const handleSubmitCreate = async () => {
     const trimmedCode = createCode.trim().toUpperCase();
     if (!trimmedCode) {
-      setCreateError('Please enter the voucher code.');
+      setCreateError(t('admin.vouchers.validation.codeRequired', 'Please enter the voucher code.'));
       return;
     }
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(trimmedCode)) {
-      setCreateError('The voucher code may only contain letters, digits, hyphens (-) and underscores (_), up to 64 characters.');
+      setCreateError(
+        t(
+          'admin.vouchers.validation.codeInvalid',
+          'The voucher code may only contain letters, digits, hyphens (-) and underscores (_), up to 64 characters.',
+        ),
+      );
       return;
     }
 
     const discountNum = parseInt(createDiscountPercent, 10);
     if (isNaN(discountNum) || discountNum < 1 || discountNum > 100) {
-      setCreateError('The discount rate must be an integer from 1% to 100%.');
+      setCreateError(
+        t('admin.vouchers.validation.discountRange', 'The discount rate must be an integer from 1% to 100%.'),
+      );
       return;
     }
 
     const usageLimitNum = parseInt(createUsageLimit, 10);
     if (isNaN(usageLimitNum) || usageLimitNum < 1) {
-      setCreateError('The usage limit must be 1 or more.');
+      setCreateError(t('admin.vouchers.validation.limitMin', 'The usage limit must be 1 or more.'));
       return;
     }
 
     const fromDate = new Date(createValidFrom);
     const toDate = new Date(createValidTo);
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      setCreateError('The validity period is invalid.');
+      setCreateError(t('admin.vouchers.validation.dateInvalid', 'The validity period is invalid.'));
       return;
     }
     if (fromDate >= toDate) {
-      setCreateError('The start time (validFrom) must be before the end time (validTo).');
+      setCreateError(
+        t(
+          'admin.vouchers.validation.dateOrder',
+          'The start time (validFrom) must be before the end time (validTo).',
+        ),
+      );
       return;
     }
 
@@ -279,16 +278,31 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
       setIsCreateModalOpen(false);
       setCreateError(null);
-      Alert.alert('Success', `Created voucher "${trimmedCode}" successfully.`);
+      Alert.alert(
+        t('admin.common.success', 'Success'),
+        t('admin.vouchers.createSuccess', `Created voucher "${trimmedCode}" successfully.`, {
+          code: trimmedCode,
+        }),
+      );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
       const combined = `${apiError.message} ${rawMsg}`.toLowerCase();
 
-      if (combined.includes('already exists')) {
-        setCreateError(`Voucher code "${trimmedCode}" already exists. Please choose another code.`);
+      if (combined.includes('already exists') || combined.includes('trùng')) {
+        setCreateError(
+          t(
+            'admin.vouchers.validation.codeExists',
+            `Voucher code "${trimmedCode}" already exists. Please choose another code.`,
+            { code: trimmedCode },
+          ),
+        );
       } else {
-        setCreateError(rawMsg || apiError.message || 'Could not create the voucher. Please try again.');
+        setCreateError(
+          rawMsg ||
+            apiError.message ||
+            t('admin.vouchers.validation.createFailed', 'Could not create the voucher. Please try again.'),
+        );
       }
     }
   };
@@ -315,34 +329,49 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
     const discountNum = parseInt(editDiscountPercent, 10);
     if (isNaN(discountNum) || discountNum < 1 || discountNum > 100) {
-      setEditError('The discount rate must be from 1% to 100%.');
+      setEditError(
+        t('admin.vouchers.validation.discountRange', 'The discount rate must be from 1% to 100%.'),
+      );
       return;
     }
 
     // Backend constraint: if timesUsed > 0, discountPercent cannot change
     if (editingVoucher.timesUsed > 0 && discountNum !== editingVoucher.discountPercent) {
-      setEditError('This code has already been used, so the discount percentage cannot be changed according to system rules.');
+      setEditError(
+        t('admin.vouchers.lockedDiscountNote', 'This code has already been used, so the discount percentage cannot be changed according to system rules.'),
+      );
       return;
     }
 
     const usageLimitNum = parseInt(editUsageLimit, 10);
     if (isNaN(usageLimitNum) || usageLimitNum < 1) {
-      setEditError('The usage limit must be 1 or more.');
+      setEditError(t('admin.vouchers.validation.limitMin', 'The usage limit must be 1 or more.'));
       return;
     }
     if (usageLimitNum < editingVoucher.timesUsed) {
-      setEditError(`The usage limit cannot be lower than the number of uses so far (${editingVoucher.timesUsed}).`);
+      setEditError(
+        t(
+          'admin.vouchers.validation.limitBelowUsed',
+          `The usage limit cannot be lower than the number of uses so far (${editingVoucher.timesUsed}).`,
+          { used: editingVoucher.timesUsed },
+        ),
+      );
       return;
     }
 
     const fromDate = new Date(editValidFrom);
     const toDate = new Date(editValidTo);
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      setEditError('The validity period is invalid.');
+      setEditError(t('admin.vouchers.validation.dateInvalid', 'The validity period is invalid.'));
       return;
     }
     if (fromDate >= toDate) {
-      setEditError('The start time (validFrom) must be before the end time (validTo).');
+      setEditError(
+        t(
+          'admin.vouchers.validation.dateOrder',
+          'The start time (validFrom) must be before the end time (validTo).',
+        ),
+      );
       return;
     }
 
@@ -360,32 +389,55 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
       setEditingVoucher(null);
       setEditError(null);
-      Alert.alert('Success', `Updated voucher "${editingVoucher.code}".`);
+      Alert.alert(
+        t('admin.common.success', 'Success'),
+        t('admin.vouchers.updateSuccess', `Updated voucher "${editingVoucher.code}".`, {
+          code: editingVoucher.code,
+        }),
+      );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
       const apiError = toApiError(err);
-      setEditError(rawMsg || apiError.message || 'Could not update the voucher. Please try again.');
+      setEditError(
+        rawMsg ||
+          apiError.message ||
+          t('admin.vouchers.validation.updateFailed', 'Could not update the voucher. Please try again.'),
+      );
     }
   };
 
   // Handle Expire / Deactivate
   const handleExpirePress = (voucher: VoucherResponse) => {
     Alert.alert(
-      'Stop issuing voucher',
-      `Are you sure you want to stop issuing voucher "${voucher.code}" right away? The voucher will expire and customers can no longer apply it to new orders.`,
+      t('admin.vouchers.expireConfirmTitle', 'Stop issuing voucher'),
+      t(
+        'admin.vouchers.expireConfirmMsg',
+        `Are you sure you want to stop issuing voucher "${voucher.code}" right away? The voucher will expire and customers can no longer apply it to new orders.`,
+        { code: voucher.code },
+      ),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Confirm stop',
+          text: t('admin.vouchers.expireConfirmBtn', 'Confirm stop'),
           style: 'destructive',
           onPress: async () => {
             try {
               await expireMutation.mutateAsync(voucher.code);
-              Alert.alert('Success', `Stopped issuing voucher "${voucher.code}".`);
+              Alert.alert(
+                t('admin.common.success', 'Success'),
+                t('admin.vouchers.expireSuccess', `Stopped issuing voucher "${voucher.code}".`, {
+                  code: voucher.code,
+                }),
+              );
             } catch (err: unknown) {
               const rawMsg = err instanceof Error ? err.message : '';
               const apiError = toApiError(err);
-              Alert.alert('Error', rawMsg || apiError.message || 'Could not stop issuing the voucher.');
+              Alert.alert(
+                t('admin.common.error', 'Error'),
+                rawMsg ||
+                  apiError.message ||
+                  t('admin.vouchers.validation.expireFailed', 'Could not stop issuing the voucher.'),
+              );
             }
           },
         },
@@ -393,17 +445,53 @@ export default function AdminVoucherScreen({ navigation }: Props) {
     );
   };
 
+  const dynamicStyles = useMemo(
+    () => ({
+      codeBadgeBg: isDark ? 'rgba(8, 184, 204, 0.15)' : '#F0F5FF',
+      codeBadgeBorder: isDark ? 'rgba(8, 184, 204, 0.3)' : '#D0E0FF',
+      discountColor: isDark ? '#FB923C' : '#E04F16',
+      editBtnBg: isDark ? 'rgba(8, 184, 204, 0.15)' : '#F0F5FF',
+      expireBtnBg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF3F2',
+      expireBtnBorder: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FDA29B',
+      expireBtnText: isDark ? '#FCA5A5' : '#B42318',
+      presetChipBg: isDark ? 'rgba(56, 189, 248, 0.15)' : '#EFF8FF',
+      presetChipBorder: isDark ? 'rgba(56, 189, 248, 0.3)' : '#B2DDFF',
+      presetChipText: isDark ? '#38BDF8' : '#175CD3',
+    }),
+    [isDark],
+  );
+
   const renderItem = ({ item }: { item: VoucherResponse }) => {
     const status = getVoucherDerivedStatus(item);
-    const statusConfig = VOUCHER_STATUS_CONFIG[status];
+    const statusConfig = getVoucherStatusBadgeConfig(status, t, isDark);
     const isExpired = status === 'EXPIRED';
 
     return (
-      <View style={styles.voucherCard} testID={`admin-voucher-card-${item.code}`}>
+      <View
+        style={[
+          styles.voucherCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+        testID={`admin-voucher-card-${item.code}`}
+      >
         {/* Header row: Code + Status */}
         <View style={styles.cardHeaderRow}>
-          <View style={styles.codeBadge}>
-            <Text style={styles.codeText} testID={`admin-voucher-code-${item.code}`}>
+          <View
+            style={[
+              styles.codeBadge,
+              {
+                backgroundColor: dynamicStyles.codeBadgeBg,
+                borderColor: dynamicStyles.codeBadgeBorder,
+              },
+            ]}
+          >
+            <Text
+              style={[styles.codeText, { color: theme.primary }]}
+              testID={`admin-voucher-code-${item.code}`}
+            >
               {item.code}
             </Text>
           </View>
@@ -412,64 +500,101 @@ export default function AdminVoucherScreen({ navigation }: Props) {
             testID={`admin-voucher-status-${item.code}`}
           >
             <Text style={[styles.statusBadgeText, { color: statusConfig.textColor }]}>
-              {statusConfig.icon} {statusConfig.label}
+              {statusConfig.icon ? `${statusConfig.icon} ` : ''}
+              {statusConfig.label}
             </Text>
           </View>
         </View>
 
         {/* Discount Tag */}
         <View style={styles.discountRow}>
-          <Text style={styles.discountTagText}>🏷️ Discount {item.discountPercent}%</Text>
+          <Text style={[styles.discountTagText, { color: dynamicStyles.discountColor }]}>
+            {t('admin.vouchers.discountTag', `🏷️ Discount ${item.discountPercent}%`, {
+              percent: item.discountPercent,
+            })}
+          </Text>
         </View>
 
         {/* Description */}
         {item.description ? (
-          <Text style={styles.descriptionText} numberOfLines={2}>
+          <Text style={[styles.descriptionText, { color: theme.text }]} numberOfLines={2}>
             {item.description}
           </Text>
         ) : null}
 
         {/* Usage Stats */}
         <View style={styles.infoRow} testID={`admin-voucher-usage-${item.code}`}>
-          <Text style={styles.infoLabel}>Usage:</Text>
-          <Text style={styles.infoValue}>
-            {item.timesUsed} / {item.usageLimit} uses ({Math.min(100, Math.round((item.timesUsed / item.usageLimit) * 100))}%)
+          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+            {t('admin.vouchers.timesUsedLabel', 'Usage:')}
+          </Text>
+          <Text style={[styles.infoValue, { color: theme.text }]}>
+            {t(
+              'admin.vouchers.timesUsedValue',
+              `${item.timesUsed} / ${item.usageLimit} uses (${Math.min(100, Math.round((item.timesUsed / item.usageLimit) * 100))}%)`,
+              {
+                used: item.timesUsed,
+                limit: item.usageLimit,
+                percent: Math.min(100, Math.round((item.timesUsed / item.usageLimit) * 100)),
+              },
+            )}
           </Text>
         </View>
 
         {/* Validity Period */}
         <View style={styles.infoRow} testID={`admin-voucher-validity-${item.code}`}>
-          <Text style={styles.infoLabel}>Validity period:</Text>
-          <Text style={styles.infoValue}>
+          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+            {t('admin.vouchers.validityLabel', 'Validity period:')}
+          </Text>
+          <Text style={[styles.infoValue, { color: theme.text }]}>
             {formatDateTimeDisplay(item.validFrom)} - {formatDateTimeDisplay(item.validTo)}
           </Text>
         </View>
 
         {/* Actions row */}
-        <View style={styles.cardActionsRow}>
+        <View style={[styles.cardActionsRow, { borderTopColor: theme.border }]}>
           <Pressable
-            style={({ pressed }) => [styles.actionButton, styles.editButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.actionButton,
+              {
+                borderColor: theme.primary,
+                backgroundColor: dynamicStyles.editBtnBg,
+              },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => handleOpenEditModal(item)}
             accessibilityRole="button"
-            accessibilityLabel={`Edit voucher ${item.code}`}
+            accessibilityLabel={t('admin.vouchers.editBtn', '✏️ Edit')}
             testID={`admin-voucher-edit-btn-${item.code}`}
           >
-            <Text style={styles.editButtonText}>✏️ Edit</Text>
+            <Text style={[styles.editButtonText, { color: theme.primary }]}>
+              {t('admin.vouchers.editBtn', '✏️ Edit')}
+            </Text>
           </Pressable>
 
           {!isExpired ? (
             <Pressable
-              style={({ pressed }) => [styles.actionButton, styles.expireButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                {
+                  borderColor: dynamicStyles.expireBtnBorder,
+                  backgroundColor: dynamicStyles.expireBtnBg,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               onPress={() => handleExpirePress(item)}
               accessibilityRole="button"
-              accessibilityLabel={`Stop issuing voucher ${item.code}`}
+              accessibilityLabel={t('admin.vouchers.expireBtn', '⏹️ Stop issuing')}
               testID={`admin-voucher-expire-btn-${item.code}`}
             >
-              <Text style={styles.expireButtonText}>⏹️ Stop issuing</Text>
+              <Text style={[styles.expireButtonText, { color: dynamicStyles.expireBtnText }]}>
+                {t('admin.vouchers.expireBtn', '⏹️ Stop issuing')}
+              </Text>
             </Pressable>
           ) : (
             <View style={styles.expiredBadge}>
-              <Text style={styles.expiredBadgeText}>Ended</Text>
+              <Text style={[styles.expiredBadgeText, { color: theme.textSecondary }]}>
+                {t('admin.vouchers.expiredBadge', 'Ended')}
+              </Text>
             </View>
           )}
         </View>
@@ -482,57 +607,98 @@ export default function AdminVoucherScreen({ navigation }: Props) {
   const totalElements = voucherPage?.totalElements ?? 0;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+      edges={['bottom', 'left', 'right']}
+    >
       {/* Top Bar */}
-      <View style={styles.topContainer}>
+      <View
+        style={[
+          styles.topContainer,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
         <View style={styles.topTextGroup}>
-          <Text style={styles.topTitle}>Platform-wide vouchers</Text>
-          <Text style={styles.topSubtitle}>
-            {totalElements} vouchers • Applies to orders across the whole platform
+          <Text style={[styles.topTitle, { color: theme.text }]}>
+            {t('admin.vouchers.title', 'Platform-wide vouchers')}
+          </Text>
+          <Text style={[styles.topSubtitle, { color: theme.textSecondary }]}>
+            {t(
+              'admin.vouchers.subtitle',
+              `${totalElements} vouchers • Applies to orders across the whole platform`,
+              { count: totalElements },
+            )}
           </Text>
         </View>
         <Pressable
-          style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.createButton,
+            { backgroundColor: theme.primary },
+            pressed && styles.buttonPressed,
+          ]}
           onPress={handleOpenCreateModal}
           accessibilityRole="button"
-          accessibilityLabel="Create new voucher"
+          accessibilityLabel={t('admin.vouchers.createBtn', '＋ Create voucher')}
           testID="admin-voucher-create-btn"
         >
-          <Text style={styles.createButtonText}>＋ Create voucher</Text>
+          <Text style={styles.createButtonText}>
+            {t('admin.vouchers.createBtn', '＋ Create voucher')}
+          </Text>
         </Pressable>
       </View>
 
       {/* Main Content */}
       {isLoading ? (
         <View style={styles.centerContainer} testID="admin-voucher-loading">
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading vouchers...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('admin.vouchers.loading', 'Loading vouchers...')}
+          </Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer} testID="admin-voucher-error">
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Could not load the voucher list</Text>
-          <Text style={styles.errorMessage}>
-            An error occurred while connecting to the server. Please try again.
+          <Text style={[styles.errorTitle, { color: theme.text }]}>
+            {t('admin.vouchers.errorTitle', 'Could not load the voucher list')}
+          </Text>
+          <Text style={[styles.errorMessage, { color: theme.textSecondary }]}>
+            {t(
+              'admin.vouchers.errorMessage',
+              'Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại.',
+            )}
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             onPress={() => {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Retry"
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="admin-voucher-retry-btn"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>
+              {t('admin.common.actions.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       ) : vouchersList.length === 0 ? (
         <View style={styles.centerContainer} testID="admin-voucher-empty">
           <Text style={styles.emptyIcon}>🎟️</Text>
-          <Text style={styles.emptyTitle}>No vouchers yet</Text>
-          <Text style={styles.emptyMessage}>
-            No vouchers have been issued yet. Tap &quot;Create voucher&quot; to set up the first voucher.
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('admin.vouchers.emptyTitle', 'No vouchers yet')}
+          </Text>
+          <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
+            {t(
+              'admin.vouchers.emptyMessage',
+              'Chưa có voucher nào được phát hành. Nhấn "Tạo voucher" để thiết lập mã giảm giá đầu tiên.',
+            )}
           </Text>
         </View>
       ) : (
@@ -548,45 +714,66 @@ export default function AdminVoucherScreen({ navigation }: Props) {
               onRefresh={() => {
                 void refetch();
               }}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
             />
           }
           ListFooterComponent={
             totalPages > 1 ? (
-              <View style={styles.paginationRow} testID="admin-voucher-pagination">
+              <View
+                style={[styles.paginationRow, { borderTopColor: theme.border }]}
+                testID="admin-voucher-pagination"
+              >
                 <Pressable
                   style={({ pressed }) => [
                     styles.pageButton,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                    },
                     page === 0 && styles.pageButtonDisabled,
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                   accessibilityRole="button"
-                  accessibilityLabel="Previous page"
+                  accessibilityLabel={t('admin.common.actions.prev', '‹ Trang trước')}
                   testID="admin-voucher-prev-page-btn"
                 >
-                  <Text style={styles.pageButtonText}>‹ Previous page</Text>
+                  <Text style={[styles.pageButtonText, { color: theme.text }]}>
+                    {t('admin.common.actions.prev', '‹ Trang trước')}
+                  </Text>
                 </Pressable>
 
-                <Text style={styles.pageInfoText} testID="admin-voucher-page-info">
-                  Trang {page + 1} / {totalPages}
+                <Text
+                  style={[styles.pageInfoText, { color: theme.textSecondary }]}
+                  testID="admin-voucher-page-info"
+                >
+                  {t('admin.common.pageInfo', 'Trang {{current}} / {{total}}', {
+                    current: page + 1,
+                    total: totalPages,
+                  })}
                 </Text>
 
                 <Pressable
                   style={({ pressed }) => [
                     styles.pageButton,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                    },
                     page >= totalPages - 1 && styles.pageButtonDisabled,
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
                   accessibilityRole="button"
-                  accessibilityLabel="Trang sau"
+                  accessibilityLabel={t('admin.common.actions.next', 'Trang sau ›')}
                   testID="admin-voucher-next-page-btn"
                 >
-                  <Text style={styles.pageButtonText}>Trang sau ›</Text>
+                  <Text style={[styles.pageButtonText, { color: theme.text }]}>
+                    {t('admin.common.actions.next', 'Trang sau ›')}
+                  </Text>
                 </Pressable>
               </View>
             ) : undefined
@@ -604,35 +791,62 @@ export default function AdminVoucherScreen({ navigation }: Props) {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]}
         >
           <Pressable style={styles.modalDismissArea} onPress={handleCloseCreateModal} />
-          <View style={styles.modalCard}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>Create new voucher</Text>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t('admin.vouchers.createModalTitle', 'Create new voucher')}
+                </Text>
                 <Pressable
                   onPress={handleCloseCreateModal}
                   disabled={createMutation.isPending}
                   style={styles.modalCloseButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Close"
+                  accessibilityLabel={t('admin.common.actions.close', 'Close')}
                 >
-                  <Text style={styles.modalCloseButtonText}>✕</Text>
+                  <Text style={[styles.modalCloseButtonText, { color: theme.textSecondary }]}>✕</Text>
                 </Pressable>
               </View>
 
-              <Text style={styles.modalSubtitle}>
-                Platform-wide voucher. Customers enter this code when paying for an order.
+              <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+                {t(
+                  'admin.vouchers.createModalSubtitle',
+                  'Platform-wide voucher. Customers enter this code at checkout.',
+                )}
               </Text>
 
               {/* Code */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Voucher code (Code) *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.codeLabel', 'Voucher code (Code) *')}
+                </Text>
                 <TextInput
-                  style={[styles.textInput, styles.codeFormatInput]}
-                  placeholder="e.g. SALE2026, FREESHIP..."
-                  placeholderTextColor={colors.textSecondary}
+                  style={[
+                    styles.textInput,
+                    styles.codeFormatInput,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  placeholder={t(
+                    'admin.vouchers.codePlaceholder',
+                    'Ví dụ: SALE2026, FREESHIP...',
+                  )}
+                  placeholderTextColor={theme.textSecondary}
                   value={createCode}
                   onChangeText={(val) => {
                     setCreateCode(val.toUpperCase());
@@ -642,19 +856,31 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   maxLength={64}
                   testID="admin-voucher-code-input"
                 />
-                <Text style={styles.helperText}>
-                  Automatically converted to uppercase. Letters, digits, - and _ only (up to 64 characters).
+                <Text style={[styles.helperText, { color: theme.textSecondary }]}>
+                  {t(
+                    'admin.vouchers.codeHelp',
+                    'Tự động chuyển thành chữ hoa. Chỉ gồm chữ cái, số, - và _ (tối đa 64 ký tự).',
+                  )}
                 </Text>
               </View>
 
               {/* Discount Percent & Usage Limit */}
               <View style={styles.twoColumnRow}>
                 <View style={[styles.inputGroup, styles.flex1]}>
-                  <Text style={styles.inputLabel}>Discount (%) *</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    {t('admin.vouchers.discountLabel', 'Discount (%) *')}
+                  </Text>
                   <TextInput
-                    style={styles.textInput}
+                    style={[
+                      styles.textInput,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
                     placeholder="1 - 100"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={theme.textSecondary}
                     value={createDiscountPercent}
                     onChangeText={(val) => {
                       setCreateDiscountPercent(val);
@@ -667,11 +893,20 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                 </View>
 
                 <View style={[styles.inputGroup, styles.flex1]}>
-                  <Text style={styles.inputLabel}>Usage limit *</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    {t('admin.vouchers.limitLabel', 'Giới hạn lượt dùng *')}
+                  </Text>
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="Minimum 1"
-                    placeholderTextColor={colors.textSecondary}
+                    style={[
+                      styles.textInput,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
+                    placeholder="Tối thiểu 1"
+                    placeholderTextColor={theme.textSecondary}
                     value={createUsageLimit}
                     onChangeText={(val) => {
                       setCreateUsageLimit(val);
@@ -685,67 +920,132 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Validity Presets */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Quick validity period:</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.presetsLabel', 'Thời gian hiệu lực nhanh:')}
+                </Text>
                 <View style={styles.presetsRow}>
                   <Pressable
-                    style={styles.presetChip}
+                    style={[
+                      styles.presetChip,
+                      {
+                        backgroundColor: dynamicStyles.presetChipBg,
+                        borderColor: dynamicStyles.presetChipBorder,
+                      },
+                    ]}
                     onPress={() => applyDatePreset(7, setCreateValidFrom, setCreateValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+7 days</Text>
+                    <Text style={[styles.presetChipText, { color: dynamicStyles.presetChipText }]}>
+                      {t('admin.vouchers.preset7Days', '+7 days')}
+                    </Text>
                   </Pressable>
                   <Pressable
-                    style={styles.presetChip}
+                    style={[
+                      styles.presetChip,
+                      {
+                        backgroundColor: dynamicStyles.presetChipBg,
+                        borderColor: dynamicStyles.presetChipBorder,
+                      },
+                    ]}
                     onPress={() => applyDatePreset(30, setCreateValidFrom, setCreateValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+30 days</Text>
+                    <Text style={[styles.presetChipText, { color: dynamicStyles.presetChipText }]}>
+                      {t('admin.vouchers.preset30Days', '+30 days')}
+                    </Text>
                   </Pressable>
                   <Pressable
-                    style={styles.presetChip}
+                    style={[
+                      styles.presetChip,
+                      {
+                        backgroundColor: dynamicStyles.presetChipBg,
+                        borderColor: dynamicStyles.presetChipBorder,
+                      },
+                    ]}
                     onPress={() => applyDatePreset(90, setCreateValidFrom, setCreateValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+90 days</Text>
+                    <Text style={[styles.presetChipText, { color: dynamicStyles.presetChipText }]}>
+                      {t('admin.vouchers.preset90Days', '+90 days')}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
 
               {/* Valid From & Valid To inputs */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Start (validFrom) *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.validFromLabel', 'Start (validFrom) *')}
+                </Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   value={createValidFrom}
                   onChangeText={setCreateValidFrom}
                   placeholder="YYYY-MM-DDTHH:mm:ss.sssZ"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={theme.textSecondary}
                   testID="admin-voucher-from-input"
                 />
-                <Text style={styles.datePreviewText}>
-                  Shown as: {formatDateTimeDisplay(createValidFrom)}
+                <Text style={[styles.datePreviewText, { color: theme.primary }]}>
+                  {t(
+                    'admin.vouchers.previewDisplay',
+                    `Display: ${formatDateTimeDisplay(createValidFrom)}`,
+                    { time: formatDateTimeDisplay(createValidFrom) },
+                  )}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>End (validTo) *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.validToLabel', 'End (validTo) *')}
+                </Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   value={createValidTo}
                   onChangeText={setCreateValidTo}
                   placeholder="YYYY-MM-DDTHH:mm:ss.sssZ"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={theme.textSecondary}
                   testID="admin-voucher-to-input"
                 />
-                <Text style={styles.datePreviewText}>
-                  Shown as: {formatDateTimeDisplay(createValidTo)}
+                <Text style={[styles.datePreviewText, { color: theme.primary }]}>
+                  {t(
+                    'admin.vouchers.previewDisplay',
+                    `Display: ${formatDateTimeDisplay(createValidTo)}`,
+                    { time: formatDateTimeDisplay(createValidTo) },
+                  )}
                 </Text>
               </View>
 
               {/* Description */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Voucher description (Optional)</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.descLabel', 'Voucher description (Optional)')}
+                </Text>
                 <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="e.g. 10% off for the big shopping festival..."
-                  placeholderTextColor={colors.textSecondary}
+                  style={[
+                    styles.textInput,
+                    styles.textArea,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  placeholder={t(
+                    'admin.vouchers.descPlaceholder',
+                    'e.g. 10% off for the big shopping festival...',
+                  )}
+                  placeholderTextColor={theme.textSecondary}
                   value={createDescription}
                   onChangeText={setCreateDescription}
                   multiline
@@ -757,7 +1057,10 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Error */}
               {createError ? (
-                <Text style={styles.inlineErrorText} testID="admin-voucher-create-error">
+                <Text
+                  style={[styles.inlineErrorText, { color: theme.danger }]}
+                  testID="admin-voucher-create-error"
+                >
                   {createError}
                 </Text>
               ) : null}
@@ -765,27 +1068,43 @@ export default function AdminVoucherScreen({ navigation }: Props) {
               {/* Buttons */}
               <View style={styles.modalButtonRow}>
                 <Pressable
-                  style={({ pressed }) => [styles.modalCancelBtn, pressed && styles.buttonPressed]}
+                  style={({ pressed }) => [
+                    styles.modalCancelBtn,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.surface,
+                    },
+                    pressed && styles.buttonPressed,
+                  ]}
                   onPress={handleCloseCreateModal}
                   disabled={createMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                   testID="admin-voucher-cancel-create-btn"
                 >
-                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                  <Text style={[styles.modalCancelBtnText, { color: theme.text }]}>
+                    {t('admin.common.actions.cancel', 'Cancel')}
+                  </Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
                     styles.modalSubmitBtn,
+                    { backgroundColor: theme.primary },
                     createMutation.isPending && styles.buttonDisabled,
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={handleSubmitCreate}
                   disabled={createMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('admin.vouchers.createBtn', 'Tạo voucher')}
                   testID="admin-voucher-submit-create-btn"
                 >
                   {createMutation.isPending ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Create voucher</Text>
+                    <Text style={styles.modalSubmitBtnText}>
+                      {t('admin.vouchers.createBtn', 'Tạo voucher')}
+                    </Text>
                   )}
                 </Pressable>
               </View>
@@ -804,48 +1123,103 @@ export default function AdminVoucherScreen({ navigation }: Props) {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { backgroundColor: theme.overlay }]}
         >
           <Pressable style={styles.modalDismissArea} onPress={handleCloseEditModal} />
-          <View style={styles.modalCard}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>Edit voucher</Text>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t('admin.vouchers.editModalTitle', 'Edit voucher')}
+                </Text>
                 <Pressable
                   onPress={handleCloseEditModal}
                   disabled={updateMutation.isPending}
                   style={styles.modalCloseButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Close"
+                  accessibilityLabel={t('admin.common.actions.close', 'Close')}
                 >
-                  <Text style={styles.modalCloseButtonText}>✕</Text>
+                  <Text style={[styles.modalCloseButtonText, { color: theme.textSecondary }]}>✕</Text>
                 </Pressable>
               </View>
 
               {/* Readonly Code */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Voucher code (Fixed)</Text>
-                <View style={styles.readonlyCodeBox} testID="admin-voucher-code-readonly">
-                  <Text style={styles.readonlyCodeText}>{editingVoucher?.code}</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.codeReadonlyLabel', 'Voucher code (Fixed)')}
+                </Text>
+                <View
+                  style={[
+                    styles.readonlyCodeBox,
+                    {
+                      backgroundColor: dynamicStyles.codeBadgeBg,
+                      borderColor: dynamicStyles.codeBadgeBorder,
+                    },
+                  ]}
+                  testID="admin-voucher-code-readonly"
+                >
+                  <Text style={[styles.readonlyCodeText, { color: theme.primary }]}>
+                    {editingVoucher?.code}
+                  </Text>
                 </View>
-                <Text style={styles.helperText}>
-                  The voucher code is the primary identifier and cannot be changed after creation.
+                <Text style={[styles.helperText, { color: theme.textSecondary }]}>
+                  {t(
+                    'admin.vouchers.codeReadonlyHelp',
+                    'Mã voucher là khóa định danh chính và không thể thay đổi sau khi tạo.',
+                  )}
                 </Text>
               </View>
 
               {/* Discount Percent */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Discount (%) *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.discountLabel', 'Discount (%) *')}
+                </Text>
                 {editingVoucher && editingVoucher.timesUsed > 0 ? (
-                  <View style={styles.readonlyBox}>
-                    <Text style={styles.readonlyBoxText}>{editingVoucher.discountPercent}%</Text>
-                    <Text style={styles.restrictionNote}>
-                      ⚠️ This code has been used {editingVoucher.timesUsed} times so the discount percentage cannot be changed according to system rules.
+                  <View
+                    style={[
+                      styles.readonlyBox,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.readonlyBoxText, { color: theme.text }]}>
+                      {editingVoucher.discountPercent}%
+                    </Text>
+                    <Text
+                      style={[
+                        styles.restrictionNote,
+                        { color: isDark ? '#FBBF24' : '#B54708' },
+                      ]}
+                    >
+                      {t(
+                        'admin.vouchers.lockedDiscountNote',
+                        `⚠️ This code has been used ${editingVoucher.timesUsed} times so the discount percentage cannot be changed according to system rules.`,
+                        { used: editingVoucher.timesUsed },
+                      )}
                     </Text>
                   </View>
                 ) : (
                   <TextInput
-                    style={styles.textInput}
+                    style={[
+                      styles.textInput,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
                     value={editDiscountPercent}
                     onChangeText={(val) => {
                       setEditDiscountPercent(val);
@@ -860,9 +1234,18 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Usage Limit */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Usage limit *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.limitLabel', 'Giới hạn lượt dùng *')}
+                </Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   value={editUsageLimit}
                   onChangeText={(val) => {
                     setEditUsageLimit(val);
@@ -871,74 +1254,136 @@ export default function AdminVoucherScreen({ navigation }: Props) {
                   keyboardType="number-pad"
                   testID="admin-voucher-edit-limit-input"
                 />
-                <Text style={styles.helperText}>
-                  Already used: {editingVoucher?.timesUsed} uses. The new limit must be ≥ {editingVoucher?.timesUsed}.
+                <Text style={[styles.helperText, { color: theme.textSecondary }]}>
+                  {t('admin.vouchers.limitUsedHelp', `Already used: ${editingVoucher?.timesUsed ?? 0} uses. The new limit must be ≥ ${editingVoucher?.timesUsed ?? 0}.`, { used: editingVoucher?.timesUsed ?? 0 })}
                 </Text>
               </View>
 
               {/* Validity Presets */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Extend validity:</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.presetsExtendLabel', 'Extend validity:')}
+                </Text>
                 <View style={styles.presetsRow}>
                   <Pressable
-                    style={styles.presetChip}
+                    style={[
+                      styles.presetChip,
+                      {
+                        backgroundColor: dynamicStyles.presetChipBg,
+                        borderColor: dynamicStyles.presetChipBorder,
+                      },
+                    ]}
                     onPress={() => applyDatePreset(7, setEditValidFrom, setEditValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+7 days</Text>
+                    <Text style={[styles.presetChipText, { color: dynamicStyles.presetChipText }]}>
+                      {t('admin.vouchers.preset7Days', '+7 days')}
+                    </Text>
                   </Pressable>
                   <Pressable
-                    style={styles.presetChip}
+                    style={[
+                      styles.presetChip,
+                      {
+                        backgroundColor: dynamicStyles.presetChipBg,
+                        borderColor: dynamicStyles.presetChipBorder,
+                      },
+                    ]}
                     onPress={() => applyDatePreset(30, setEditValidFrom, setEditValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+30 days</Text>
+                    <Text style={[styles.presetChipText, { color: dynamicStyles.presetChipText }]}>
+                      {t('admin.vouchers.preset30Days', '+30 days')}
+                    </Text>
                   </Pressable>
                   <Pressable
-                    style={styles.presetChip}
+                    style={[
+                      styles.presetChip,
+                      {
+                        backgroundColor: dynamicStyles.presetChipBg,
+                        borderColor: dynamicStyles.presetChipBorder,
+                      },
+                    ]}
                     onPress={() => applyDatePreset(90, setEditValidFrom, setEditValidTo)}
                   >
-                    <Text style={styles.presetChipText}>+90 days</Text>
+                    <Text style={[styles.presetChipText, { color: dynamicStyles.presetChipText }]}>
+                      {t('admin.vouchers.preset90Days', '+90 days')}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
 
               {/* Valid From & Valid To inputs */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Start (validFrom) *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.validFromLabel', 'Start (validFrom) *')}
+                </Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   value={editValidFrom}
                   onChangeText={setEditValidFrom}
                   placeholder="YYYY-MM-DDTHH:mm:ss.sssZ"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={theme.textSecondary}
                   testID="admin-voucher-edit-from-input"
                 />
-                <Text style={styles.datePreviewText}>
-                  Shown as: {formatDateTimeDisplay(editValidFrom)}
+                <Text style={[styles.datePreviewText, { color: theme.primary }]}>
+                  {t(
+                    'admin.vouchers.previewDisplay',
+                    `Display: ${formatDateTimeDisplay(editValidFrom)}`,
+                    { time: formatDateTimeDisplay(editValidFrom) },
+                  )}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>End (validTo) *</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.validToLabel', 'End (validTo) *')}
+                </Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   value={editValidTo}
                   onChangeText={setEditValidTo}
                   placeholder="YYYY-MM-DDTHH:mm:ss.sssZ"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={theme.textSecondary}
                   testID="admin-voucher-edit-to-input"
                 />
-                <Text style={styles.datePreviewText}>
-                  Shown as: {formatDateTimeDisplay(editValidTo)}
+                <Text style={[styles.datePreviewText, { color: theme.primary }]}>
+                  {t(
+                    'admin.vouchers.previewDisplay',
+                    `Display: ${formatDateTimeDisplay(editValidTo)}`,
+                    { time: formatDateTimeDisplay(editValidTo) },
+                  )}
                 </Text>
               </View>
 
               {/* Description */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Voucher description (Optional)</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('admin.vouchers.descLabel', 'Voucher description (Optional)')}
+                </Text>
                 <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="Voucher description..."
-                  placeholderTextColor={colors.textSecondary}
+                  style={[
+                    styles.textInput,
+                    styles.textArea,
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  placeholder={t('admin.vouchers.descEditPlaceholder', 'Voucher description...')}
+                  placeholderTextColor={theme.textSecondary}
                   value={editDescription}
                   onChangeText={setEditDescription}
                   multiline
@@ -950,7 +1395,10 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 
               {/* Error */}
               {editError ? (
-                <Text style={styles.inlineErrorText} testID="admin-voucher-edit-error">
+                <Text
+                  style={[styles.inlineErrorText, { color: theme.danger }]}
+                  testID="admin-voucher-edit-error"
+                >
                   {editError}
                 </Text>
               ) : null}
@@ -958,27 +1406,43 @@ export default function AdminVoucherScreen({ navigation }: Props) {
               {/* Buttons */}
               <View style={styles.modalButtonRow}>
                 <Pressable
-                  style={({ pressed }) => [styles.modalCancelBtn, pressed && styles.buttonPressed]}
+                  style={({ pressed }) => [
+                    styles.modalCancelBtn,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.surface,
+                    },
+                    pressed && styles.buttonPressed,
+                  ]}
                   onPress={handleCloseEditModal}
                   disabled={updateMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                   testID="admin-voucher-cancel-edit-btn"
                 >
-                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                  <Text style={[styles.modalCancelBtnText, { color: theme.text }]}>
+                    {t('admin.common.actions.cancel', 'Cancel')}
+                  </Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
                     styles.modalSubmitBtn,
+                    { backgroundColor: theme.primary },
                     updateMutation.isPending && styles.buttonDisabled,
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={handleSubmitEdit}
                   disabled={updateMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('admin.common.actions.save', 'Save changes')}
                   testID="admin-voucher-submit-edit-btn"
                 >
                   {updateMutation.isPending ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Save changes</Text>
+                    <Text style={styles.modalSubmitBtnText}>
+                      {t('admin.common.actions.save', 'Save changes')}
+                    </Text>
                   )}
                 </Pressable>
               </View>
@@ -993,7 +1457,6 @@ export default function AdminVoucherScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   topContainer: {
     flexDirection: 'row',
@@ -1001,9 +1464,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   topTextGroup: {
     flex: 1,
@@ -1012,15 +1473,12 @@ const styles = StyleSheet.create({
   topTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
   },
   topSubtitle: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   createButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
@@ -1035,12 +1493,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   voucherCard: {
-    backgroundColor: colors.background,
     borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -1054,17 +1510,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   codeBadge: {
-    backgroundColor: '#F0F5FF',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: '#D0E0FF',
   },
   codeText: {
     fontSize: typography.md,
     fontWeight: '800',
-    color: colors.primary,
     letterSpacing: 0.5,
   },
   statusBadge: {
@@ -1082,11 +1535,9 @@ const styles = StyleSheet.create({
   discountTagText: {
     fontSize: typography.md,
     fontWeight: '700',
-    color: '#E04F16',
   },
   descriptionText: {
     fontSize: typography.sm,
-    color: colors.text,
     marginVertical: 4,
     lineHeight: 18,
   },
@@ -1098,12 +1549,10 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
   },
   infoValue: {
     fontSize: typography.xs,
     fontWeight: '600',
-    color: colors.text,
   },
   cardActionsRow: {
     flexDirection: 'row',
@@ -1112,7 +1561,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
     gap: spacing.sm,
   },
   actionButton: {
@@ -1121,21 +1569,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
   },
-  editButton: {
-    borderColor: colors.primary,
-    backgroundColor: '#F0F5FF',
-  },
   editButtonText: {
-    color: colors.primary,
     fontSize: typography.sm,
     fontWeight: '600',
   },
-  expireButton: {
-    borderColor: '#FDA29B',
-    backgroundColor: '#FEF3F2',
-  },
   expireButtonText: {
-    color: '#B42318',
     fontSize: typography.sm,
     fontWeight: '600',
   },
@@ -1145,7 +1583,6 @@ const styles = StyleSheet.create({
   },
   expiredBadgeText: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     fontStyle: 'italic',
   },
   paginationRow: {
@@ -1154,14 +1591,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.sm,
     paddingVertical: spacing.md,
+    borderTopWidth: 1,
   },
   pageButton: {
-    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   pageButtonDisabled: {
     opacity: 0.4,
@@ -1169,11 +1605,9 @@ const styles = StyleSheet.create({
   pageButtonText: {
     fontSize: typography.sm,
     fontWeight: '600',
-    color: colors.text,
   },
   pageInfoText: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
   },
   centerContainer: {
     flex: 1,
@@ -1184,7 +1618,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.md,
-    color: colors.textSecondary,
   },
   errorIcon: {
     fontSize: 48,
@@ -1193,17 +1626,14 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   errorMessage: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
   retryButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
@@ -1220,12 +1650,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   emptyMessage: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -1236,18 +1664,15 @@ const styles = StyleSheet.create({
   unauthorizedTitle: {
     fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   unauthorizedMessage: {
     fontSize: typography.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: spacing.lg,
   },
   backButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
@@ -1265,7 +1690,6 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     padding: spacing.md,
   },
@@ -1277,7 +1701,6 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   modalCard: {
-    backgroundColor: colors.background,
     borderRadius: radii.lg,
     padding: spacing.lg,
     maxHeight: '90%',
@@ -1296,19 +1719,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
   },
   modalCloseButton: {
     padding: spacing.xs,
   },
   modalCloseButtonText: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '700',
   },
   modalSubtitle: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     marginBottom: spacing.md,
     lineHeight: 18,
   },
@@ -1325,18 +1745,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: typography.sm,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 4,
   },
   textInput: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: typography.md,
-    color: colors.text,
   },
   codeFormatInput: {
     fontWeight: '700',
@@ -1347,9 +1763,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   readonlyCodeBox: {
-    backgroundColor: '#F0F5FF',
     borderWidth: 1,
-    borderColor: '#D0E0FF',
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -1357,12 +1771,9 @@ const styles = StyleSheet.create({
   readonlyCodeText: {
     fontSize: typography.md,
     fontWeight: '800',
-    color: colors.primary,
   },
   readonlyBox: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -1370,17 +1781,14 @@ const styles = StyleSheet.create({
   readonlyBoxText: {
     fontSize: typography.md,
     fontWeight: '700',
-    color: colors.text,
   },
   restrictionNote: {
     fontSize: typography.xs,
-    color: '#B54708',
     marginTop: 4,
     lineHeight: 16,
   },
   helperText: {
     fontSize: typography.xs,
-    color: colors.textSecondary,
     marginTop: 4,
     lineHeight: 16,
   },
@@ -1390,27 +1798,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   presetChip: {
-    backgroundColor: '#EFF8FF',
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: '#B2DDFF',
   },
   presetChipText: {
     fontSize: typography.xs,
     fontWeight: '600',
-    color: '#175CD3',
   },
   datePreviewText: {
     fontSize: typography.xs,
-    color: colors.primary,
     marginTop: 2,
     fontWeight: '500',
   },
   inlineErrorText: {
     fontSize: typography.xs,
-    color: '#D92D20',
     marginBottom: spacing.sm,
     fontWeight: '500',
   },
@@ -1425,19 +1828,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   modalCancelBtnText: {
     fontSize: typography.sm,
-    color: colors.text,
     fontWeight: '600',
   },
   modalSubmitBtn: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
-    backgroundColor: colors.primary,
     minWidth: 110,
     alignItems: 'center',
     justifyContent: 'center',

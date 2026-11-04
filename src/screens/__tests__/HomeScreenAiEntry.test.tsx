@@ -8,6 +8,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useCategories, useProductList } from '../../hooks/useProducts';
 import { useUsableVouchers } from '../../hooks/useVoucher';
+import { AppI18nProvider } from '../../i18n';
 import type { User } from '../../types/auth';
 import HomeScreen from '../HomeScreen';
 
@@ -45,6 +46,13 @@ describe('HomeScreen AI Entry Point', () => {
   const navigation = {
     navigate: mockNavigate,
   } as never;
+
+  const renderScreen = () =>
+    render(
+      <AppI18nProvider initialLanguage="en">
+        <HomeScreen navigation={navigation} route={{} as never} />
+      </AppI18nProvider>,
+    );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -87,9 +95,7 @@ describe('HomeScreen AI Entry Point', () => {
       updateUserName: jest.fn(),
     });
 
-    const { getByRole, getByText } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { getByRole, getByText } = renderScreen();
 
     const aiButton = getByRole('button', { name: 'Open AI assistant' });
     expect(aiButton).toBeTruthy();
@@ -112,9 +118,7 @@ describe('HomeScreen AI Entry Point', () => {
       updateUserName: jest.fn(),
     });
 
-    const { getByRole } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { getByRole } = renderScreen();
 
     expect(getByRole('button', { name: 'Open AI assistant' })).toBeTruthy();
   });
@@ -131,9 +135,7 @@ describe('HomeScreen AI Entry Point', () => {
       updateUserName: jest.fn(),
     });
 
-    const { queryByRole } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { queryByRole } = renderScreen();
 
     expect(queryByRole('button', { name: 'Open AI assistant' })).toBeNull();
   });
@@ -150,9 +152,7 @@ describe('HomeScreen AI Entry Point', () => {
       updateUserName: jest.fn(),
     });
 
-    const { queryByRole } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { queryByRole } = renderScreen();
 
     expect(queryByRole('button', { name: 'Open AI assistant' })).toBeNull();
   });

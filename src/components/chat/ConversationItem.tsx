@@ -16,6 +16,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import { useSellerShop } from '../../hooks/useSellers';
 import type { ConversationResponse } from '../../types/chatApi';
 import { formatChatTimestamp } from '../../utils/format';
@@ -31,59 +33,119 @@ export const ConversationItem = React.memo(function ConversationItem({
   isCustomer,
   onPress,
 }: ConversationItemProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+
   // If viewing as customer, attempt to resolve the seller's shop name via existing useSellerShop
   const { data: shop, isLoading: shopLoading } = useSellerShop(
     isCustomer ? item.sellerId : '',
   );
 
-  const fallbackShopName = `Shop #${item.sellerId.slice(0, 8)}`;
-  const displayName = isCustomer
-    ? shop?.name ?? (shopLoading ? 'Loading...' : fallbackShopName)
-    : `Customer #${item.customerId.slice(0, 8)}`;
+  const fallbackShopName = t('chat.fallbackShop', `Shop #${item.sellerId.slice(0, 8)}`, {
+    id: item.sellerId.slice(0, 8),
+  });
 
-  const avatarInitial = displayName.trim().charAt(0).toUpperCase() || (isCustomer ? 'S' : 'K');
+  const displayName = isCustomer
+    ? shop?.name ?? (shopLoading ? t('chat.loadingShop', 'Loading...') : fallbackShopName)
+    : t('chat.fallbackCustomer', `Customer #${item.customerId.slice(0, 8)}`, {
+        id: item.customerId.slice(0, 8),
+      });
+
+  const avatarInitial = displayName.trim().charAt(0).toUpperCase() || (isCustomer ? 'S' : 'C');
   const timestamp = formatChatTimestamp(item.lastMessageAt || item.createdAt);
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.container, pressed && styles.containerPressed]}
+      style={({ pressed }) => [
+        styles.container,
+        { backgroundColor: theme.background, borderBottomColor: theme.border },
+        pressed && [
+          styles.containerPressed,
+          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6' },
+        ],
+      ]}
       onPress={() => onPress?.(item)}
       accessibilityRole="button"
-      accessibilityLabel={`Conversation with ${displayName}`}
-      accessibilityHint="View conversation details"
+      accessibilityLabel={t('chat.conversationWith', `Conversation with ${displayName}`, {
+        name: displayName,
+      })}
+      accessibilityHint={t('chat.viewConversationHint', 'View conversation details')}
     >
       {/* Avatar Initial Circle */}
-      <View style={[styles.avatar, isCustomer ? styles.shopAvatar : styles.customerAvatar]}>
-        <Text style={styles.avatarText}>{avatarInitial}</Text>
+      <View
+        style={[
+          styles.avatar,
+          isCustomer
+            ? [
+                styles.shopAvatar,
+                { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#EEF2FF' },
+              ]
+            : [
+                styles.customerAvatar,
+                { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#F0FDF4' },
+              ],
+        ]}
+      >
+        <Text style={[styles.avatarText, { color: theme.primary }]}>{avatarInitial}</Text>
       </View>
 
       {/* Main Info */}
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
             {displayName}
           </Text>
-          {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
+          {timestamp ? (
+            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{timestamp}</Text>
+          ) : null}
         </View>
 
         {/* Optional Context Pills */}
         <View style={styles.contextRow}>
           {item.productId ? (
-            <View style={styles.contextBadge}>
-              <Text style={styles.contextBadgeText}>Product</Text>
+            <View
+              style={[
+                styles.contextBadge,
+                { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#E0E7FF' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.contextBadgeText,
+                  { color: isDark ? '#A5B4FC' : '#3730A3' },
+                ]}
+              >
+                {t('chat.contextProduct', 'Product')}
+              </Text>
             </View>
           ) : null}
 
           {item.orderId ? (
-            <View style={[styles.contextBadge, styles.orderBadge]}>
-              <Text style={styles.contextBadgeText} numberOfLines={1}>
-                Order #{item.orderId.slice(0, 8)}
+            <View
+              style={[
+                styles.contextBadge,
+                styles.orderBadge,
+                { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.contextBadgeText,
+                  { color: isDark ? '#FCD34D' : '#3730A3' },
+                ]}
+                numberOfLines={1}
+              >
+                {t('chat.contextOrder', `Order #${item.orderId.slice(0, 8)}`, {
+                  id: item.orderId.slice(0, 8),
+                })}
               </Text>
             </View>
           ) : null}
 
           {!item.productId && !item.orderId ? (
-            <Text style={styles.idleHint}>Direct chat</Text>
+            <Text style={[styles.idleHint, { color: theme.textSecondary }]}>
+              {t('chat.directChat', 'Direct chat')}
+            </Text>
           ) : null}
         </View>
       </View>

@@ -215,7 +215,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(getByText('Find noise-cancelling headphones under 2 million'));
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Find noise-cancelling headphones under 2 million',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nFind noise-cancelling headphones under 2 million',
       });
 
       await waitFor(() => {
@@ -282,7 +282,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Find headphones',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nFind headphones',
       });
 
       await waitFor(() => {
@@ -343,7 +343,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Find headphones',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nFind headphones',
       });
 
       await waitFor(() => {
@@ -355,7 +355,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Which one is the cheapest?',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nWhich one is the cheapest?',
         sessionId: 'session-cust-123',
       });
 
@@ -452,7 +452,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenLastCalledWith({
-        message: 'Turn 3',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTurn 3',
       });
     });
   });
@@ -748,7 +748,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'How much is it?',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nHow much is it?',
         sessionId: 'session-history-1',
       });
 
@@ -786,7 +786,7 @@ describe('AiAssistantScreen', () => {
       fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       expect(mockMutateAsync).toHaveBeenLastCalledWith({
-        message: 'Start a new chat',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nStart a new chat',
       });
     });
 

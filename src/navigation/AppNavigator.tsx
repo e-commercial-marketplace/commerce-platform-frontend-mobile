@@ -12,7 +12,7 @@
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { colors } from '../constants/theme';
+import { useAppLanguage } from '../i18n';
 import AiAssistantScreen from '../screens/AiAssistantScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
@@ -40,25 +40,34 @@ import AdminUserEditScreen from '../screens/admin/AdminUserEditScreen';
 import AdminCategoryScreen from '../screens/admin/AdminCategoryScreen';
 import AdminVoucherScreen from '../screens/admin/AdminVoucherScreen';
 import AdminCarrierScreen from '../screens/admin/AdminCarrierScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import { useAppTheme } from '../theme';
 import MainTabs from './MainTabs';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        headerStyle: { backgroundColor: theme.background },
+        headerTintColor: theme.text,
+        headerTitleStyle: { fontWeight: '600' },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen
         name="ProductDetail"
         component={ProductDetailScreen}
         options={{
           headerShown: true,
-          title: 'Product Detail',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.productDetail', 'Chi tiết sản phẩm'),
         }}
       />
       <Stack.Screen
@@ -66,11 +75,7 @@ export default function AppNavigator() {
         component={CheckoutScreen}
         options={{
           headerShown: true,
-          title: 'Checkout',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.checkout', 'Thanh toán'),
         }}
       />
       <Stack.Screen
@@ -78,11 +83,7 @@ export default function AppNavigator() {
         component={SellerShopScreen}
         options={{
           headerShown: true,
-          title: 'Shop',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.shop', 'Cửa hàng'),
         }}
       />
       <Stack.Screen
@@ -90,11 +91,7 @@ export default function AppNavigator() {
         component={VouchersScreen}
         options={{
           headerShown: true,
-          title: 'Vouchers',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.vouchers', 'Mã giảm giá'),
         }}
       />
       <Stack.Screen
@@ -102,11 +99,7 @@ export default function AppNavigator() {
         component={MyOrdersScreen}
         options={{
           headerShown: true,
-          title: 'My Orders',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.myOrders', 'Đơn hàng của tôi'),
         }}
       />
       <Stack.Screen
@@ -114,11 +107,7 @@ export default function AppNavigator() {
         component={OrderDetailScreen}
         options={{
           headerShown: true,
-          title: 'Order Detail',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.orderDetail', 'Chi tiết đơn hàng'),
         }}
       />
       <Stack.Screen
@@ -126,11 +115,7 @@ export default function AppNavigator() {
         component={SellerFulfillmentScreen}
         options={{
           headerShown: true,
-          title: 'Seller Orders',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.sellerOrders', 'Đơn bán hàng'),
         }}
       />
       <Stack.Screen
@@ -138,11 +123,7 @@ export default function AppNavigator() {
         component={SellerProductsScreen}
         options={{
           headerShown: true,
-          title: 'My Products',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.myProducts', 'Sản phẩm của tôi'),
         }}
       />
       <Stack.Screen
@@ -150,11 +131,10 @@ export default function AppNavigator() {
         component={SellerProductFormScreen}
         options={({ route }) => ({
           headerShown: true,
-          title: route.params.mode === 'edit' ? 'Edit Product' : 'New Product',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title:
+            route.params.mode === 'edit'
+              ? t('nav.editProduct', 'Chỉnh sửa sản phẩm')
+              : t('nav.newProduct', 'Thêm sản phẩm'),
         })}
       />
       <Stack.Screen
@@ -162,11 +142,7 @@ export default function AppNavigator() {
         component={LoginScreen}
         options={{
           headerShown: true,
-          title: 'Login',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.login', 'Đăng nhập'),
         }}
       />
       <Stack.Screen
@@ -174,11 +150,7 @@ export default function AppNavigator() {
         component={RegisterScreen}
         options={{
           headerShown: true,
-          title: 'Register',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.register', 'Đăng ký'),
         }}
       />
       <Stack.Screen
@@ -186,11 +158,7 @@ export default function AppNavigator() {
         component={ForgotPasswordScreen}
         options={{
           headerShown: true,
-          title: 'Forgot Password',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.forgotPassword', 'Quên mật khẩu'),
         }}
       />
       <Stack.Screen
@@ -198,11 +166,7 @@ export default function AppNavigator() {
         component={ResetPasswordScreen}
         options={{
           headerShown: true,
-          title: 'Reset Password',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.resetPassword', 'Đặt lại mật khẩu'),
         }}
       />
       <Stack.Screen
@@ -210,11 +174,7 @@ export default function AppNavigator() {
         component={EditProfileScreen}
         options={{
           headerShown: true,
-          title: 'Edit Profile',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.editProfile', 'Chỉnh sửa hồ sơ'),
         }}
       />
       <Stack.Screen
@@ -222,11 +182,7 @@ export default function AppNavigator() {
         component={ChangePasswordScreen}
         options={{
           headerShown: true,
-          title: 'Change Password',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.changePassword', 'Đổi mật khẩu'),
         }}
       />
       <Stack.Screen
@@ -234,11 +190,7 @@ export default function AppNavigator() {
         component={AiAssistantScreen}
         options={{
           headerShown: true,
-          title: 'AI assistant',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.aiAssistant', 'Trợ lý AI'),
         }}
       />
       <Stack.Screen
@@ -246,11 +198,7 @@ export default function AppNavigator() {
         component={ConversationListScreen}
         options={{
           headerShown: true,
-          title: 'Messages',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.messages', 'Tin nhắn'),
         }}
       />
       <Stack.Screen
@@ -258,11 +206,7 @@ export default function AppNavigator() {
         component={ChatRoomScreen}
         options={({ route }) => ({
           headerShown: true,
-          title: route.params.counterpartName ?? 'Chat',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: route.params.counterpartName ?? t('nav.chat', 'Trò chuyện'),
         })}
       />
       <Stack.Screen
@@ -270,11 +214,7 @@ export default function AppNavigator() {
         component={AdminPortalScreen}
         options={{
           headerShown: true,
-          title: 'System administration',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminPortal', 'Quản trị hệ thống'),
         }}
       />
       <Stack.Screen
@@ -282,11 +222,7 @@ export default function AppNavigator() {
         component={AdminSellerApprovalScreen}
         options={{
           headerShown: true,
-          title: 'Seller management',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminSellerApproval', 'Quản lý người bán'),
         }}
       />
       <Stack.Screen
@@ -294,11 +230,7 @@ export default function AppNavigator() {
         component={AdminUserListScreen}
         options={{
           headerShown: true,
-          title: 'User management',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminUserList', 'Quản lý người dùng'),
         }}
       />
       <Stack.Screen
@@ -306,11 +238,7 @@ export default function AppNavigator() {
         component={AdminUserDetailScreen}
         options={{
           headerShown: true,
-          title: 'User details',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminUserDetail', 'Chi tiết người dùng'),
         }}
       />
       <Stack.Screen
@@ -318,11 +246,7 @@ export default function AppNavigator() {
         component={AdminUserCreateScreen}
         options={{
           headerShown: true,
-          title: 'Add new user',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminUserCreate', 'Thêm người dùng mới'),
         }}
       />
       <Stack.Screen
@@ -330,11 +254,7 @@ export default function AppNavigator() {
         component={AdminUserEditScreen}
         options={{
           headerShown: true,
-          title: 'Edit user',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminUserEdit', 'Chỉnh sửa người dùng'),
         }}
       />
       <Stack.Screen
@@ -342,11 +262,7 @@ export default function AppNavigator() {
         component={AdminCategoryScreen}
         options={{
           headerShown: true,
-          title: 'Category management',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminCategory', 'Quản lý danh mục'),
         }}
       />
       <Stack.Screen
@@ -354,11 +270,7 @@ export default function AppNavigator() {
         component={AdminVoucherScreen}
         options={{
           headerShown: true,
-          title: 'Voucher management',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminVoucher', 'Quản lý mã giảm giá'),
         }}
       />
       <Stack.Screen
@@ -366,11 +278,15 @@ export default function AppNavigator() {
         component={AdminCarrierScreen}
         options={{
           headerShown: true,
-          title: 'Carrier management',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          title: t('nav.adminCarrier', 'Quản lý đơn vị vận chuyển'),
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          headerShown: true,
+          title: t('nav.settings', 'Cài đặt'),
         }}
       />
     </Stack.Navigator>

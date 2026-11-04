@@ -1,11 +1,14 @@
 /**
- * Controlled search input. Holds no business state of its own — the parent
- * screen owns the query and combines it with other filters.
+ * Controlled search input with icon and clear action.
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
+ * Localized search placeholder and clear action.
  */
 
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppLanguage } from '../i18n';
+import { useAppTheme } from '../theme';
 
 type SearchBarProps = {
   /** Current query value (controlled). */
@@ -14,22 +17,42 @@ type SearchBarProps = {
   onChangeText: (text: string) => void;
   /** Optional placeholder override. */
   placeholder?: string;
+  testID?: string;
 };
 
-export default function SearchBar({ value, onChangeText, placeholder = 'Search for product' }: SearchBarProps) {
+export default function SearchBar({
+  value,
+  onChangeText,
+  placeholder,
+  testID,
+}: SearchBarProps) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+  const defaultPlaceholder = t('common.search', 'Search for product');
+  const effectivePlaceholder = placeholder ?? defaultPlaceholder;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.icon}>⌕</Text>
+    <View
+      testID={testID}
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+        },
+      ]}
+    >
+      <Text style={[styles.icon, { color: theme.textSecondary }]}>⌕</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: theme.text }]}
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
+        placeholder={effectivePlaceholder}
+        placeholderTextColor={theme.textSecondary}
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
-        accessibilityLabel="Search products"
+        accessibilityLabel={effectivePlaceholder}
       />
       {value.length > 0 && (
         <Pressable
@@ -37,9 +60,9 @@ export default function SearchBar({ value, onChangeText, placeholder = 'Search f
           hitSlop={spacing.sm}
           style={styles.clearButton}
           accessibilityRole="button"
-          accessibilityLabel="Clear search"
+          accessibilityLabel={t('common.clear', 'Clear search')}
         >
-          <Text style={styles.clearIcon}>✕</Text>
+          <Text style={[styles.clearIcon, { color: theme.textSecondary }]}>✕</Text>
         </Pressable>
       )}
     </View>
@@ -50,10 +73,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     minHeight: 46,
   },
@@ -64,7 +85,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
     paddingVertical: spacing.sm,
   },
   clearButton: {
@@ -73,7 +93,6 @@ const styles = StyleSheet.create({
   },
   clearIcon: {
     fontSize: 14,
-    color: colors.textSecondary,
     fontWeight: '600',
   },
 });

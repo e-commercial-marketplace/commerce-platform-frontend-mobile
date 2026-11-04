@@ -1,18 +1,23 @@
 /**
  * All usable vouchers, loaded as you scroll. Public, including Guests.
  * This screen only views and copies codes; applying a voucher happens at checkout, where sign-in is required.
+ * Theme & Language aware.
  */
 
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import VoucherRow from '../components/VoucherRow';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useUsableVouchers } from '../hooks/useVoucher';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 
 export default function VouchersScreen({ navigation }: AppNavigatorScreenProps<'Vouchers'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { isAuthenticated } = useAuth();
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useUsableVouchers();
@@ -21,32 +26,36 @@ export default function VouchersScreen({ navigation }: AppNavigatorScreenProps<'
 
   if (isLoading && vouchers.length === 0) {
     return (
-      <SafeAreaView style={[styles.container, styles.centerState]} edges={['bottom']}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <SafeAreaView style={[styles.container, styles.centerState, { backgroundColor: theme.background }]} edges={['bottom']}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </SafeAreaView>
     );
   }
 
   if (isError && vouchers.length === 0) {
     return (
-      <SafeAreaView style={[styles.container, styles.centerState]} edges={['bottom']}>
-        <Text style={styles.title}>Couldn't load vouchers</Text>
+      <SafeAreaView style={[styles.container, styles.centerState, { backgroundColor: theme.background }]} edges={['bottom']}>
+        <Text style={[styles.title, { color: theme.text }]}>
+          {t('catalog.errorLoadingVouchers', "Couldn't load vouchers")}
+        </Text>
         <Pressable
           onPress={() => {
             void refetch();
           }}
-          style={styles.primaryButton}
+          style={[styles.primaryButton, { backgroundColor: theme.primary }]}
           accessibilityRole="button"
-          accessibilityLabel="Retry"
+          accessibilityLabel={t('common.retry', 'Retry')}
         >
-          <Text style={styles.primaryButtonText}>Retry</Text>
+          <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
+            {t('common.retry', 'Retry')}
+          </Text>
         </Pressable>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom']}>
       <FlatList
         data={vouchers}
         keyExtractor={(item) => item.code}
@@ -54,27 +63,35 @@ export default function VouchersScreen({ navigation }: AppNavigatorScreenProps<'
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           !isAuthenticated ? (
-            <View style={styles.signInCard}>
-              <Text style={styles.signInText}>Sign in to use a voucher at checkout</Text>
+            <View style={[styles.signInCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.signInText, { color: theme.textSecondary }]}>
+                {t('catalog.signInToUseVoucher', 'Sign in to use a voucher at checkout')}
+              </Text>
               <Pressable
                 onPress={() => navigation.navigate('Login')}
-                style={styles.primaryButton}
+                style={[styles.primaryButton, { backgroundColor: theme.primary }]}
                 accessibilityRole="button"
-                accessibilityLabel="Sign in"
+                accessibilityLabel={t('common.signIn', 'Sign in')}
               >
-                <Text style={styles.primaryButtonText}>Sign in</Text>
+                <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
+                  {t('common.signIn', 'Sign in')}
+                </Text>
               </Pressable>
             </View>
           ) : undefined
         }
         ListEmptyComponent={
           <View style={styles.centerState}>
-            <Text style={styles.title}>No vouchers right now</Text>
-            <Text style={styles.subtitle}>Please check back later.</Text>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('catalog.noVouchersTitle', 'No vouchers right now')}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {t('catalog.noVouchersDesc', 'Please check back later.')}
+            </Text>
           </View>
         }
         ListFooterComponent={
-          isFetchingNextPage ? <ActivityIndicator size="small" color={colors.primary} /> : undefined
+          isFetchingNextPage ? <ActivityIndicator size="small" color={theme.primary} /> : undefined
         }
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) {
@@ -90,7 +107,6 @@ export default function VouchersScreen({ navigation }: AppNavigatorScreenProps<'
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   centerState: {
     flex: 1,
@@ -100,43 +116,38 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   listContent: {
-    flexGrow: 1,
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  signInCard: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  signInText: {
+    fontSize: typography.sm,
   },
   title: {
     fontSize: typography.lg,
     fontWeight: '700',
-    color: colors.text,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: typography.md,
-    color: colors.textSecondary,
-  },
-  signInCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-  },
-  signInText: {
-    flex: 1,
-    fontSize: typography.md,
-    color: colors.text,
+    textAlign: 'center',
   },
   primaryButton: {
+    alignSelf: 'stretch',
+    borderRadius: radii.md,
     minHeight: 44,
-    paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radii.md,
-    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
   },
   primaryButtonText: {
     fontSize: typography.md,
     fontWeight: '700',
-    color: colors.onPrimary,
   },
 });

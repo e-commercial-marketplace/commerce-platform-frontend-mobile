@@ -1,15 +1,16 @@
 /**
  * Labeled text input with inline validation message and a built-in
- * show/hide toggle for password fields (text-only, no icon dependency).
- * Presentation-only: the parent screen owns the value, the validation logic
- * and the error text, which keeps it reusable across Login and Register.
- * Styling follows the existing SearchBar input shell (surface + border).
+ * show/hide toggle for password fields.
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
+ * Localized Show/Hide toggle.
  */
 
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppLanguage } from '../i18n';
+import { useAppTheme } from '../theme';
 
 type FormFieldProps = {
   /** Label rendered above the input. */
@@ -29,6 +30,7 @@ type FormFieldProps = {
   autoCapitalize?: TextInputProps['autoCapitalize'];
   returnKeyType?: TextInputProps['returnKeyType'];
   onSubmitEditing?: TextInputProps['onSubmitEditing'];
+  testID?: string;
 };
 
 export default function FormField({
@@ -43,25 +45,35 @@ export default function FormField({
   autoCapitalize = 'sentences',
   returnKeyType,
   onSubmitEditing,
+  testID,
 }: FormFieldProps) {
   const [hidden, setHidden] = useState(secureTextEntry);
+  const [isFocused, setIsFocused] = useState(false);
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
+  const showLabel = t('common.show', 'Show');
+  const hideLabel = t('common.hide', 'Hide');
 
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={styles.field} testID={testID}>
+      <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
       <View
         style={[
           styles.inputShell,
+          {
+            backgroundColor: theme.surface,
+            borderColor: error != null ? theme.danger : isFocused ? theme.primary : theme.border,
+          },
           !editable && styles.inputShellLocked,
-          error != null && styles.inputShellError,
         ]}
       >
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: theme.text }]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry={hidden}
           editable={editable}
           keyboardType={keyboardType}
@@ -69,6 +81,8 @@ export default function FormField({
           autoCorrect={false}
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           accessibilityLabel={label}
         />
         {secureTextEntry && (
@@ -77,13 +91,17 @@ export default function FormField({
             hitSlop={spacing.sm}
             style={styles.toggleButton}
             accessibilityRole="button"
-            accessibilityLabel={hidden ? 'Show password' : 'Hide password'}
+            accessibilityLabel={hidden ? `${showLabel} password` : `${hideLabel} password`}
           >
-            <Text style={styles.toggleText}>{hidden ? 'Show' : 'Hide'}</Text>
+            <Text style={[styles.toggleText, { color: theme.primary }]}>
+              {hidden ? showLabel : hideLabel}
+            </Text>
           </Pressable>
         )}
       </View>
-      {error != null && <Text style={styles.errorText}>{error}</Text>}
+      {error != null && (
+        <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text>
+      )}
     </View>
   );
 }
@@ -95,28 +113,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   inputShell: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     minHeight: 48,
   },
   inputShellLocked: {
     opacity: 0.6,
   },
-  inputShellError: {
-    borderColor: colors.danger,
-  },
   input: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
     paddingVertical: spacing.sm,
   },
   toggleButton: {
@@ -127,10 +138,8 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.primary,
   },
   errorText: {
     fontSize: 12,
-    color: colors.danger,
   },
 });

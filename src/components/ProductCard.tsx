@@ -1,11 +1,13 @@
 /**
  * Product card used by both catalog layouts. Receives a Product and an
  * onPress callback — navigation stays in the screen, not here.
+ * Theme-aware and supports semantic tokens for dark and light modes.
  */
 
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppTheme } from '../theme';
 import type { Product } from '../types/product';
 import PriceDisplay from './PriceDisplay';
 import ProductImage from './ProductImage';
@@ -21,6 +23,7 @@ type ProductCardProps = {
 };
 
 export default function ProductCard({ product, viewMode, onPress }: ProductCardProps) {
+  const { theme } = useAppTheme();
   const handlePress = () => onPress(product);
   const accessibilityLabel = `${product.name}, ${product.rating.toFixed(1)} stars`;
 
@@ -28,13 +31,20 @@ export default function ProductCard({ product, viewMode, onPress }: ProductCardP
     return (
       <Pressable
         onPress={handlePress}
-        style={({ pressed }) => [styles.listCard, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.listCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+          pressed && styles.pressed,
+        ]}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
       >
         <ProductImage source={product.image} style={styles.listImage} />
         <View style={styles.listBody}>
-          <Text style={styles.listName} numberOfLines={2}>
+          <Text style={[styles.listName, { color: theme.text }]} numberOfLines={2}>
             {product.name}
           </Text>
           <Rating rating={product.rating} reviewCount={product.reviewCount} />
@@ -47,14 +57,21 @@ export default function ProductCard({ product, viewMode, onPress }: ProductCardP
   return (
     <Pressable
       onPress={handlePress}
-      style={({ pressed }) => [styles.gridCard, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.gridCard,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+        },
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <View style={styles.gridImageFrame}>
+      <View style={[styles.gridImageFrame, { backgroundColor: theme.background }]}>
         <ProductImage source={product.image} style={styles.gridImage} />
       </View>
-      <Text style={styles.gridName} numberOfLines={2}>
+      <Text style={[styles.gridName, { color: theme.text }]} numberOfLines={2}>
         {product.name}
       </Text>
       <Rating rating={product.rating} reviewCount={product.reviewCount} />
@@ -71,24 +88,15 @@ const styles = StyleSheet.create({
   // Grid layout
   gridCard: {
     flex: 1,
-    // Caps the card at half the row: with an odd item count the last row
-    // holds a single card, which would otherwise grow (flex: 1) to the full
-    // row width. The cap keeps every card at 2-column width; paired cards
-    // still split the row evenly (they shrink below the cap by the row gap).
     maxWidth: '50%',
-    backgroundColor: colors.surface,
     borderRadius: radii.sm,
+    borderWidth: 1,
     padding: spacing.sm,
   },
-  // Grid image: a plain View frame owns the square sizing (width from the
-  // card via stretch, height from aspectRatio), while the Image is taken out
-  // of the layout flow and only fills the frame — cropping with "cover".
-  // This keeps a tall photo from ever stretching the card vertically.
   gridImageFrame: {
     alignSelf: 'stretch',
     aspectRatio: 1,
     borderRadius: radii.sm,
-    backgroundColor: colors.background,
     marginBottom: spacing.sm,
     overflow: 'hidden',
   },
@@ -98,15 +106,14 @@ const styles = StyleSheet.create({
   gridName: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   // List layout
   listCard: {
     flexDirection: 'row',
     gap: spacing.md,
-    backgroundColor: colors.surface,
     borderRadius: radii.sm,
+    borderWidth: 1,
     padding: spacing.sm,
   },
   listImage: {
@@ -122,6 +129,5 @@ const styles = StyleSheet.create({
   listName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
 });

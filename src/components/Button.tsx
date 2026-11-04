@@ -1,11 +1,22 @@
 /**
  * Reusable button component with variants used across the app.
- * Supports primary, secondary/outline, danger styles with disabled/loading states.
+ * Supports primary, secondary, outline, danger styles with disabled/loading states.
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
  */
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useMemo } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppTheme } from '../theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger';
 
@@ -26,6 +37,8 @@ type ButtonProps = {
   accessibilityLabel?: string;
   /** Additional container style. */
   style?: StyleProp<ViewStyle>;
+  /** Optional testID. */
+  testID?: string;
 };
 
 export default function Button({
@@ -37,11 +50,58 @@ export default function Button({
   fullWidth = false,
   accessibilityLabel,
   style,
+  testID,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const { theme } = useAppTheme();
+
+  const variantStyles = useMemo(() => {
+    switch (variant) {
+      case 'primary':
+        return {
+          container: {
+            backgroundColor: theme.primary,
+            borderWidth: 0,
+          },
+          textColor: '#FFFFFF',
+          indicatorColor: '#FFFFFF',
+        };
+      case 'secondary':
+        return {
+          container: {
+            backgroundColor: theme.surface,
+            borderWidth: 1,
+            borderColor: theme.border,
+          },
+          textColor: theme.text,
+          indicatorColor: theme.primary,
+        };
+      case 'outline':
+        return {
+          container: {
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderColor: theme.primary,
+          },
+          textColor: theme.primary,
+          indicatorColor: theme.primary,
+        };
+      case 'danger':
+        return {
+          container: {
+            backgroundColor: theme.dangerSurface,
+            borderWidth: 1,
+            borderColor: theme.danger,
+          },
+          textColor: theme.dangerText,
+          indicatorColor: theme.danger,
+        };
+    }
+  }, [variant, theme]);
 
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       disabled={isDisabled}
       accessibilityRole="button"
@@ -49,7 +109,7 @@ export default function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={({ pressed }) => [
         styles.base,
-        styles[variant],
+        variantStyles.container,
         fullWidth && styles.fullWidth,
         (pressed || isDisabled) && styles.pressed,
         isDisabled && styles.disabled,
@@ -58,14 +118,15 @@ export default function Button({
     >
       {loading ? (
         <View style={styles.row}>
-          <ActivityIndicator
-            color={variant === 'primary' || variant === 'danger' ? colors.onPrimary : colors.primary}
-            size="small"
-          />
-          <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+          <ActivityIndicator color={variantStyles.indicatorColor} size="small" />
+          <Text style={[styles.text, styles.label, { color: variantStyles.textColor }]}>
+            {title}
+          </Text>
         </View>
       ) : (
-        <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text>
+        <Text style={[styles.text, styles.label, { color: variantStyles.textColor }]}>
+          {title}
+        </Text>
       )}
     </Pressable>
   );
@@ -87,41 +148,7 @@ const styles = StyleSheet.create({
   fullWidth: {
     alignSelf: 'stretch',
   },
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  primaryText: {
-    color: colors.onPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondary: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  secondaryText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  outline: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  outlineText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  danger: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  dangerText: {
-    color: colors.danger,
+  label: {
     fontSize: 16,
     fontWeight: '700',
   },

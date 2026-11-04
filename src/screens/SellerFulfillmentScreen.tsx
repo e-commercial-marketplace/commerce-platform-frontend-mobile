@@ -45,6 +45,8 @@ import SellerShipmentFilters from '../components/seller/SellerShipmentFilters';
 import ShipmentOrderGroup from '../components/seller/ShipmentOrderGroup';
 import UpdateShipmentStatusModal from '../components/seller/UpdateShipmentStatusModal';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import {
   useCancelSellerOrderItem,
@@ -89,6 +91,8 @@ type OrderGroup = {
 export default function SellerFulfillmentScreen({
   navigation,
 }: AppNavigatorScreenProps<'SellerFulfillment'>) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const { user, isAuthenticated } = useAuth();
   const isSeller = isAuthenticated && user?.role === 'SELLER';
 
@@ -183,11 +187,19 @@ export default function SellerFulfillmentScreen({
 
   if (!isAuthenticated || user?.role !== 'SELLER') {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+      >
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Seller Access Required</Text>
-          <Text style={styles.subtitle}>
-            This area is only accessible to authenticated seller accounts.
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.sellerAccessRequired', 'Seller Access Required')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t(
+              'seller.sellerAccessRequiredSubtitle',
+              'This area is only accessible to authenticated seller accounts.',
+            )}
           </Text>
         </View>
       </SafeAreaView>
@@ -377,8 +389,10 @@ export default function SellerFulfillmentScreen({
     if (isLoadingOrderItems) {
       return (
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading order items…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('seller.loadingFulfillment', 'Loading order items…')}
+          </Text>
         </View>
       );
     }
@@ -387,15 +401,19 @@ export default function SellerFulfillmentScreen({
       const apiError = toApiError(orderItemsError);
       return (
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Couldn't load order items</Text>
-          <Text style={styles.subtitle}>{apiError.message}</Text>
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.errorFulfillmentTitle', "Couldn't load order items")}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{apiError.message}</Text>
           <Pressable
             onPress={() => refetchOrderItems && void refetchOrderItems()}
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
             accessibilityRole="button"
             accessibilityLabel="Retry loading order items"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+              {t('seller.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       );
@@ -403,8 +421,10 @@ export default function SellerFulfillmentScreen({
 
     return (
       <View style={styles.centerState}>
-        <Text style={styles.emptyTitle}>{ORDER_ITEM_EMPTY_MESSAGES[selectedStatus]}</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>
+          {t(`seller.empty_items_${selectedStatus}`, ORDER_ITEM_EMPTY_MESSAGES[selectedStatus])}
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           Items in {selectedStatus.toLowerCase()} status will appear here.
         </Text>
       </View>
@@ -415,8 +435,10 @@ export default function SellerFulfillmentScreen({
     if (isLoadingShipments) {
       return (
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading shipments…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('seller.loadingFulfillment', 'Loading shipments…')}
+          </Text>
         </View>
       );
     }
@@ -425,15 +447,19 @@ export default function SellerFulfillmentScreen({
       const apiError = toApiError(shipmentsError);
       return (
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Couldn't load shipments</Text>
-          <Text style={styles.subtitle}>{apiError.message}</Text>
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.errorFulfillmentTitle', "Couldn't load shipments")}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{apiError.message}</Text>
           <Pressable
             onPress={() => refetchShipments && void refetchShipments()}
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
             accessibilityRole="button"
             accessibilityLabel="Retry loading shipments"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+              {t('seller.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       );
@@ -441,8 +467,10 @@ export default function SellerFulfillmentScreen({
 
     return (
       <View style={styles.centerState}>
-        <Text style={styles.emptyTitle}>{SHIPMENT_EMPTY_MESSAGES[selectedShipmentStatus]}</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>
+          {t(`seller.empty_shipment_${selectedShipmentStatus}`, SHIPMENT_EMPTY_MESSAGES[selectedShipmentStatus])}
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           Shipments in {selectedShipmentStatus.toLowerCase()} status will appear here.
         </Text>
       </View>
@@ -461,6 +489,7 @@ export default function SellerFulfillmentScreen({
           disabled={page === 0 || isFetchingOrderItems}
           style={[
             styles.pageButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             (page === 0 || isFetchingOrderItems) && styles.pageButtonDisabled,
           ]}
           accessibilityRole="button"
@@ -469,14 +498,15 @@ export default function SellerFulfillmentScreen({
           <Text
             style={[
               styles.pageButtonText,
+              { color: theme.text },
               (page === 0 || isFetchingOrderItems) && styles.pageButtonTextDisabled,
             ]}
           >
-            Previous
+            {t('seller.previous', 'Previous')}
           </Text>
         </Pressable>
 
-        <Text style={styles.pageInfo}>
+        <Text style={[styles.pageInfo, { color: theme.textSecondary }]}>
           Page {page + 1} / {totalItemPages}
         </Text>
 
@@ -485,6 +515,7 @@ export default function SellerFulfillmentScreen({
           disabled={page >= totalItemPages - 1 || isFetchingOrderItems}
           style={[
             styles.pageButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             (page >= totalItemPages - 1 || isFetchingOrderItems) && styles.pageButtonDisabled,
           ]}
           accessibilityRole="button"
@@ -493,10 +524,11 @@ export default function SellerFulfillmentScreen({
           <Text
             style={[
               styles.pageButtonText,
+              { color: theme.text },
               (page >= totalItemPages - 1 || isFetchingOrderItems) && styles.pageButtonTextDisabled,
             ]}
           >
-            Next
+            {t('seller.next', 'Next')}
           </Text>
         </Pressable>
       </View>
@@ -515,6 +547,7 @@ export default function SellerFulfillmentScreen({
           disabled={shipmentPage === 0 || isFetchingShipments}
           style={[
             styles.pageButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             (shipmentPage === 0 || isFetchingShipments) && styles.pageButtonDisabled,
           ]}
           accessibilityRole="button"
@@ -523,14 +556,15 @@ export default function SellerFulfillmentScreen({
           <Text
             style={[
               styles.pageButtonText,
+              { color: theme.text },
               (shipmentPage === 0 || isFetchingShipments) && styles.pageButtonTextDisabled,
             ]}
           >
-            Previous
+            {t('seller.previous', 'Previous')}
           </Text>
         </Pressable>
 
-        <Text style={styles.pageInfo}>
+        <Text style={[styles.pageInfo, { color: theme.textSecondary }]}>
           Page {shipmentPage + 1} / {totalShipmentPages}
         </Text>
 
@@ -541,6 +575,7 @@ export default function SellerFulfillmentScreen({
           disabled={shipmentPage >= totalShipmentPages - 1 || isFetchingShipments}
           style={[
             styles.pageButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             (shipmentPage >= totalShipmentPages - 1 || isFetchingShipments) && styles.pageButtonDisabled,
           ]}
           accessibilityRole="button"
@@ -549,10 +584,11 @@ export default function SellerFulfillmentScreen({
           <Text
             style={[
               styles.pageButtonText,
+              { color: theme.text },
               (shipmentPage >= totalShipmentPages - 1 || isFetchingShipments) && styles.pageButtonTextDisabled,
             ]}
           >
-            Next
+            {t('seller.next', 'Next')}
           </Text>
         </Pressable>
       </View>
@@ -560,22 +596,39 @@ export default function SellerFulfillmentScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+      testID="seller-fulfillment-screen"
+    >
       {/* Screen Title */}
       <View style={styles.header}>
-        <Text style={styles.title}>Seller Orders</Text>
-        <Text style={styles.subtitle}>
-          Manage customer order items and track end-to-end shipment fulfillment.
+        <Text style={[styles.title, { color: theme.text }]}>
+          {t('seller.fulfillmentTitle', 'Seller Orders')}
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          {t(
+            'seller.fulfillmentSubtitle',
+            'Manage customer order items and track end-to-end shipment fulfillment.',
+          )}
         </Text>
       </View>
 
       {/* Top Workspace Selector (Order Items vs Shipments) */}
-      <View style={styles.workspaceSelector}>
+      <View
+        style={[
+          styles.workspaceSelector,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <Pressable
           onPress={() => handleWorkspaceChange('ORDER_ITEMS')}
           style={[
             styles.workspaceTab,
-            activeWorkspace === 'ORDER_ITEMS' && styles.workspaceTabActive,
+            activeWorkspace === 'ORDER_ITEMS' && [
+              styles.workspaceTabActive,
+              { backgroundColor: theme.primary },
+            ],
           ]}
           accessibilityRole="tab"
           accessibilityLabel="Order Items Workspace"
@@ -585,10 +638,12 @@ export default function SellerFulfillmentScreen({
           <Text
             style={[
               styles.workspaceTabText,
-              activeWorkspace === 'ORDER_ITEMS' && styles.workspaceTabTextActive,
+              activeWorkspace === 'ORDER_ITEMS'
+                ? [styles.workspaceTabTextActive, { color: theme.onPrimary }]
+                : { color: theme.textSecondary },
             ]}
           >
-            Order Items
+            {t('seller.workspaceOrderItems', 'Order Items')}
           </Text>
         </Pressable>
 
@@ -596,7 +651,10 @@ export default function SellerFulfillmentScreen({
           onPress={() => handleWorkspaceChange('SHIPMENTS')}
           style={[
             styles.workspaceTab,
-            activeWorkspace === 'SHIPMENTS' && styles.workspaceTabActive,
+            activeWorkspace === 'SHIPMENTS' && [
+              styles.workspaceTabActive,
+              { backgroundColor: theme.primary },
+            ],
           ]}
           accessibilityRole="tab"
           accessibilityLabel="Shipments Workspace"
@@ -606,10 +664,12 @@ export default function SellerFulfillmentScreen({
           <Text
             style={[
               styles.workspaceTabText,
-              activeWorkspace === 'SHIPMENTS' && styles.workspaceTabTextActive,
+              activeWorkspace === 'SHIPMENTS'
+                ? [styles.workspaceTabTextActive, { color: theme.onPrimary }]
+                : { color: theme.textSecondary },
             ]}
           >
-            Shipments
+            {t('seller.workspaceShipments', 'Shipments')}
           </Text>
         </Pressable>
       </View>
@@ -626,7 +686,7 @@ export default function SellerFulfillmentScreen({
           />
 
           <View style={styles.listHeaderRow}>
-            <Text style={styles.countText}>
+            <Text style={[styles.countText, { color: theme.textSecondary }]}>
               {totalItemElements} item{totalItemElements === 1 ? '' : 's'}
             </Text>
           </View>
@@ -652,8 +712,8 @@ export default function SellerFulfillmentScreen({
                 <RefreshControl
                   refreshing={Boolean(isFetchingOrderItems && !isLoadingOrderItems)}
                   onRefresh={() => refetchOrderItems && void refetchOrderItems()}
-                  tintColor={colors.primary}
-                  colors={[colors.primary]}
+                  tintColor={theme.primary}
+                  colors={[theme.primary]}
                 />
               }
               ListEmptyComponent={renderOrderItemsEmpty}
@@ -669,8 +729,8 @@ export default function SellerFulfillmentScreen({
                 <RefreshControl
                   refreshing={Boolean(isFetchingOrderItems && !isLoadingOrderItems)}
                   onRefresh={() => refetchOrderItems && void refetchOrderItems()}
-                  tintColor={colors.primary}
-                  colors={[colors.primary]}
+                  tintColor={theme.primary}
+                  colors={[theme.primary]}
                 />
               }
               ListEmptyComponent={renderOrderItemsEmpty}
@@ -707,7 +767,7 @@ export default function SellerFulfillmentScreen({
           />
 
           <View style={styles.listHeaderRow}>
-            <Text style={styles.countText}>
+            <Text style={[styles.countText, { color: theme.textSecondary }]}>
               {totalShipmentElements} shipment{totalShipmentElements === 1 ? '' : 's'}
             </Text>
           </View>
@@ -721,8 +781,8 @@ export default function SellerFulfillmentScreen({
               <RefreshControl
                 refreshing={Boolean(isFetchingShipments && !isLoadingShipments)}
                 onRefresh={() => refetchShipments && void refetchShipments()}
-                tintColor={colors.primary}
-                colors={[colors.primary]}
+                tintColor={theme.primary}
+                colors={[theme.primary]}
               />
             }
             ListEmptyComponent={renderShipmentsEmpty}

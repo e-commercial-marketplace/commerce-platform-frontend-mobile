@@ -18,9 +18,10 @@
  * 6. Explicit Role Change Confirmation:
  *    - Prompts admin before committing a role change (e.g. CUSTOMER -> SELLER).
  * 7. Error handling & Accessibility.
+ * 8. Personalization: Theme-driven semantic styles & localized bilingual strings.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,33 +37,26 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
-import { useAuth } from '../../hooks/useAuth';
+import { radii, spacing, typography } from '../../constants/theme';
 import { useAdminUserDetail, useUpdateAdminUser } from '../../hooks/useAdmin';
+import { useAuth } from '../../hooks/useAuth';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
-import type { Role } from '../../types/auth';
+import { useAppTheme } from '../../theme';
 import type { AdminUserUpdateRequest, SellerStatus } from '../../types/adminApi';
+import type { Role } from '../../types/auth';
 
 type Props = AppNavigatorScreenProps<'AdminUserEdit'>;
-
-const ROLE_OPTIONS: { role: Role; label: string }[] = [
-  { role: 'CUSTOMER', label: 'Customer' },
-  { role: 'SELLER', label: 'Seller' },
-  { role: 'ADMIN', label: 'Admin' },
-];
-
-const SELLER_STATUS_OPTIONS: { status: SellerStatus; label: string }[] = [
-  { status: 'PENDING', label: 'Pending (PENDING)' },
-  { status: 'APPROVED', label: 'Approved (APPROVED)' },
-  { status: 'SUSPENDED', label: 'Suspended (SUSPENDED)' },
-  { status: 'REJECTED', label: 'Rejected (REJECTED)' },
-];
 
 const VIETNAMESE_PHONE_REGEX = /^(0|\+84)[35789]\d{8}$/;
 
 export default function AdminUserEditScreen({ route, navigation }: Props) {
   const { userId } = route.params;
   const { user: currentUser, isAuthenticated } = useAuth();
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+
   const isAdmin = isAuthenticated && currentUser?.role === 'ADMIN';
 
   const {
@@ -86,6 +80,25 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const roleOptions: { role: Role; label: string }[] = useMemo(
+    () => [
+      { role: 'CUSTOMER', label: t('admin.enums.role.customer', 'Customer') },
+      { role: 'SELLER', label: t('admin.enums.role.seller', 'Seller') },
+      { role: 'ADMIN', label: t('admin.enums.role.admin', 'Admin') },
+    ],
+    [t],
+  );
+
+  const sellerStatusOptions: { status: SellerStatus; label: string }[] = useMemo(
+    () => [
+      { status: 'PENDING', label: t('admin.users.sellerStatusPending', 'Pending (PENDING)') },
+      { status: 'APPROVED', label: t('admin.users.sellerStatusApproved', 'Approved (APPROVED)') },
+      { status: 'SUSPENDED', label: t('admin.users.sellerStatusSuspended', 'Suspended (SUSPENDED)') },
+      { status: 'REJECTED', label: t('admin.users.sellerStatusRejected', 'Rejected (REJECTED)') },
+    ],
+    [t],
+  );
+
   useEffect(() => {
     if (user) {
       setName(user.name);
@@ -102,17 +115,21 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Access denied</Text>
+          <Text style={styles.unauthorizedTitle}>
+            {t('admin.users.edit.unauthorizedTitle', 'Access denied')}
+          </Text>
           <Text style={styles.unauthorizedMessage}>
-            Only system administrators can edit user information.
+            {t('admin.users.edit.unauthorizedMessage', 'Only system administrators have permission to edit user information.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>
+              {t('admin.common.actions.back', 'Go back')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -123,20 +140,26 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading information…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>
+            {t('admin.common.loading', 'Đang tải thông tin…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   if (isError || !user) {
-    const errorMessage = error ? toApiError(error).message : 'User does not exist';
+    const errorMessage = error
+      ? toApiError(error).message
+      : t('admin.users.detail.notFound', 'Người dùng không tồn tại');
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Could not load information</Text>
+          <Text style={styles.errorTitle}>
+            {t('admin.users.detail.errorTitle', 'Could not load information')}
+          </Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -144,10 +167,12 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Retry"
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="retry-button"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>
+              {t('admin.common.actions.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -159,18 +184,21 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = 'Full name must not be empty';
+      errors.name = t('admin.users.edit.validation.nameRequired', 'Please enter your full name');
     } else if (trimmedName.length > 255) {
-      errors.name = 'Full name must be at most 255 characters';
+      errors.name = t('admin.users.edit.validation.nameTooLong', 'Full name must be at most 255 characters');
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
-      errors.phone = 'Invalid Vietnamese mobile phone number (e.g. 0912345678)';
+      errors.phone = t(
+        'admin.users.edit.validation.phoneInvalid',
+        'Invalid Vietnamese mobile phone number (e.g. 0912345678)',
+      );
     }
 
     if (address.length > 500) {
-      errors.address = 'Address must be at most 500 characters';
+      errors.address = t('admin.users.edit.validation.addressTooLong', 'Address must be at most 500 characters');
     }
 
     setFormErrors(errors);
@@ -178,7 +206,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
   };
 
   const executeUpdate = async () => {
-    setServerError(null);
+        setServerError(null);
 
     const payload: AdminUserUpdateRequest = {};
 
@@ -209,37 +237,45 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
     // If nothing changed, return
     if (Object.keys(payload).length === 0) {
-      Alert.alert('Notice', 'No information has changed.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        t('admin.users.edit.noChangeTitle', 'Notice'),
+        t('admin.users.edit.noChangeMsg', 'No information has changed.'),
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
       return;
     }
 
     try {
       await updateMutation.mutateAsync({ id: user.id, payload });
-      Alert.alert('Success', 'User information updated successfully.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        t('admin.users.edit.successTitle', 'Success'),
+        t('admin.users.edit.successMsg', 'User information updated successfully.'),
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (err: unknown) {
       const apiErr = toApiError(err);
-      setServerError(apiErr.message);
+            setServerError(apiErr.message);
     }
   };
 
   const handleSavePress = () => {
-    if (!validateForm()) return;
+        if (!validateForm()) return;
 
     // If role changed and not self, require explicit confirmation
     if (!isSelf && role !== user.role) {
-      const oldRoleLabel = ROLE_OPTIONS.find((r) => r.role === user.role)?.label ?? user.role;
-      const newRoleLabel = ROLE_OPTIONS.find((r) => r.role === role)?.label ?? role;
+      const oldRoleLabel = roleOptions.find((r) => r.role === user.role)?.label ?? user.role;
+      const newRoleLabel = roleOptions.find((r) => r.role === role)?.label ?? role;
 
       Alert.alert(
-        'Confirm role change',
-        `The account role will change from "${oldRoleLabel}" to "${newRoleLabel}".\n\nAre you sure you want to apply this change?`,
+        t('admin.users.edit.roleChangeConfirmTitle', 'Confirm role change'),
+        t(
+          'admin.users.edit.roleChangeConfirmMsg',
+          `Vai trò của tài khoản sẽ thay đổi từ "${oldRoleLabel}" sang "${newRoleLabel}".\n\nBạn có chắc chắn muốn áp dụng thay đổi này không?`,
+          { oldRole: oldRoleLabel, newRole: newRoleLabel },
+        ),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Agree', onPress: executeUpdate },
+          { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
+          { text: t('admin.common.actions.confirm', 'Agree'), onPress: executeUpdate },
         ],
       );
       return;
@@ -264,17 +300,19 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
           {/* Readonly: Email */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('admin.users.detail.emailLabel', 'Email')}</Text>
             <View style={styles.readOnlyContainer}>
               <Text style={styles.readOnlyText}>{user.email}</Text>
-              <Text style={styles.readOnlyHelp}>Email cannot be changed after creation</Text>
+              <Text style={styles.readOnlyHelp}>
+                {t('admin.users.edit.emailReadonlyHelp', 'Email cannot be changed after creation')}
+              </Text>
             </View>
           </View>
 
           {/* Full Name */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Full name <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.nameLabel', 'Full name')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
@@ -291,18 +329,21 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Role <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.roleLabel', 'Role')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             {isSelf ? (
               <View style={styles.selfNoticeBox} testID="edit-self-role-notice">
                 <Text style={styles.noticeIcon}>ℹ️</Text>
                 <Text style={styles.selfNoticeText}>
-                  You are editing your own account. Admins cannot change their own role.
+                  {t(
+                    'admin.users.edit.selfRoleNotice',
+                    'Bạn đang chỉnh sửa tài khoản của mình. Admin không thể tự đổi vai trò của chính mình.',
+                  )}
                 </Text>
               </View>
             ) : (
               <View style={styles.roleTabsRow}>
-                {ROLE_OPTIONS.map((item) => {
+                {roleOptions.map((item) => {
                   const isSelected = role === item.role;
                   return (
                     <Pressable
@@ -315,7 +356,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
                         }
                       }}
                       accessibilityRole="button"
-                      accessibilityLabel={`Select role ${item.label}`}
+                      accessibilityLabel={item.label}
                       testID={`edit-role-${item.role}`}
                     >
                       <Text
@@ -333,9 +374,11 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Seller Status Selection (Only if role is SELLER) */}
           {role === 'SELLER' ? (
             <View style={styles.fieldGroup} testID="edit-seller-status-group">
-              <Text style={styles.label}>Seller status (sellerStatus)</Text>
+              <Text style={styles.label}>
+                {t('admin.users.edit.sellerStatusLabel', 'Trạng thái người bán (sellerStatus)')}
+              </Text>
               <View style={styles.sellerStatusContainer}>
-                {SELLER_STATUS_OPTIONS.map((item) => {
+                {sellerStatusOptions.map((item) => {
                   const isSelected = sellerStatus === item.status;
                   return (
                     <Pressable
@@ -363,11 +406,13 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
           {/* Phone */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Phone number</Text>
+            <Text style={styles.label}>
+              {t('admin.users.detail.phoneLabel', 'Phone number')}
+            </Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
-              placeholder="0912345678 (leave empty to clear)"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('admin.users.edit.phonePlaceholder', '0912345678 (leave empty to clear)')}
+              placeholderTextColor={theme.textSecondary}
               value={phone}
               onChangeText={(text) => {
                 setPhone(text);
@@ -381,11 +426,13 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
           {/* Address */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Address</Text>
+            <Text style={styles.label}>
+              {t('admin.users.detail.addressLabel', 'Address')}
+            </Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder="Contact address (leave empty to clear)"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('admin.users.edit.addressPlaceholder', 'Contact address (leave empty to clear)')}
+              placeholderTextColor={theme.textSecondary}
               value={address}
               onChangeText={(text) => {
                 setAddress(text);
@@ -409,13 +456,15 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
             onPress={handleSavePress}
             disabled={updateMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Save changes"
+            accessibilityLabel={t('admin.users.edit.saveBtn', 'Lưu thay đổi')}
             testID="submit-edit-user-button"
           >
             {updateMutation.isPending ? (
-              <ActivityIndicator size="small" color={colors.onPrimary} />
+              <ActivityIndicator size="small" color={theme.onPrimary} />
             ) : (
-              <Text style={styles.saveButtonText}>Save changes</Text>
+              <Text style={styles.saveButtonText}>
+                {t('admin.users.edit.saveBtn', 'Lưu thay đổi')}
+              </Text>
             )}
           </Pressable>
         </ScrollView>
@@ -424,255 +473,256 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  serverErrorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3F2',
-    borderWidth: 1,
-    borderColor: '#FECDCA',
-    borderRadius: radii.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  errorIcon: {
-    fontSize: 16,
-  },
-  serverErrorText: {
-    flex: 1,
-    color: colors.danger,
-    fontSize: typography.sm,
-    lineHeight: 18,
-  },
-  fieldGroup: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  requiredStar: {
-    color: colors.danger,
-  },
-  readOnlyContainer: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  readOnlyText: {
-    fontSize: typography.md,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  readOnlyHelp: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.md,
-    color: colors.text,
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: typography.xs,
-    marginTop: 4,
-  },
-  roleTabsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  roleTab: {
-    flex: 1,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  roleTabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  roleTabText: {
-    fontSize: typography.sm,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  roleTabTextActive: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-  },
-  selfNoticeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF8FF',
-    borderWidth: 1,
-    borderColor: '#B2DDFF',
-    padding: spacing.md,
-    borderRadius: radii.md,
-    gap: spacing.xs,
-  },
-  noticeIcon: {
-    fontSize: 18,
-  },
-  selfNoticeText: {
-    flex: 1,
-    fontSize: typography.sm,
-    color: '#175CD3',
-    lineHeight: 18,
-  },
-  sellerStatusContainer: {
-    gap: spacing.xs,
-  },
-  statusOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.sm + 2,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statusOptionActive: {
-    borderColor: colors.primary,
-    backgroundColor: '#F0FBFC',
-  },
-  radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: colors.textSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  radioCircleActive: {
-    borderColor: colors.primary,
-  },
-  radioInnerCircle: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  statusOptionText: {
-    fontSize: typography.sm,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  statusOptionTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: radii.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  saveButtonText: {
-    color: colors.onPrimary,
-    fontSize: typography.base,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  stateIcon: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.md,
-    color: colors.textSecondary,
-  },
-  errorTitle: {
-    fontSize: typography.lg,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  errorMessage: {
-    fontSize: typography.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.sm,
-  },
-  retryButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.base,
-  },
-  unauthorizedTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  unauthorizedMessage: {
-    fontSize: typography.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radii.sm,
-  },
-  backButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.base,
-  },
-});
+const createStyles = (theme: ReturnType<typeof useAppTheme>['theme'], isDark = false) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    serverErrorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF3F2',
+      borderWidth: 1,
+      borderColor: isDark ? '#B91C1C' : '#FECDCA',
+      borderRadius: radii.sm,
+      padding: spacing.sm,
+      marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    errorIcon: {
+      fontSize: 16,
+    },
+    serverErrorText: {
+      flex: 1,
+      color: theme.danger,
+      fontSize: typography.sm,
+      lineHeight: 18,
+    },
+    fieldGroup: {
+      marginBottom: spacing.md,
+    },
+    label: {
+      fontSize: typography.sm,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: spacing.xs,
+    },
+    requiredStar: {
+      color: theme.danger,
+    },
+    readOnlyContainer: {
+      backgroundColor: theme.surface,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    readOnlyText: {
+      fontSize: typography.md,
+      color: theme.text,
+      fontWeight: '600',
+    },
+    readOnlyHelp: {
+      fontSize: typography.xs,
+      color: theme.textSecondary,
+      marginTop: 4,
+    },
+    input: {
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      fontSize: typography.md,
+      color: theme.text,
+    },
+    inputError: {
+      borderColor: theme.danger,
+    },
+    errorText: {
+      color: theme.danger,
+      fontSize: typography.xs,
+      marginTop: 4,
+    },
+    roleTabsRow: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    roleTab: {
+      flex: 1,
+      paddingVertical: spacing.sm + 2,
+      borderRadius: radii.md,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+    },
+    roleTabActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    roleTabText: {
+      fontSize: typography.sm,
+      fontWeight: '500',
+      color: theme.text,
+    },
+    roleTabTextActive: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+    },
+    selfNoticeBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(56, 189, 248, 0.15)' : '#EFF8FF',
+      borderWidth: 1,
+      borderColor: isDark ? '#0284C7' : '#B2DDFF',
+      padding: spacing.md,
+      borderRadius: radii.md,
+      gap: spacing.xs,
+    },
+    noticeIcon: {
+      fontSize: 18,
+    },
+    selfNoticeText: {
+      flex: 1,
+      fontSize: typography.sm,
+      color: isDark ? '#38BDF8' : '#175CD3',
+      lineHeight: 18,
+    },
+    sellerStatusContainer: {
+      gap: spacing.xs,
+    },
+    statusOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      padding: spacing.sm + 2,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    statusOptionActive: {
+      borderColor: theme.primary,
+      backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : '#F0FBFC',
+    },
+    radioCircle: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      borderColor: theme.textSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: spacing.sm,
+    },
+    radioCircleActive: {
+      borderColor: theme.primary,
+    },
+    radioInnerCircle: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.primary,
+    },
+    statusOptionText: {
+      fontSize: typography.sm,
+      color: theme.text,
+      fontWeight: '500',
+    },
+    statusOptionTextActive: {
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    saveButton: {
+      backgroundColor: theme.primary,
+      paddingVertical: spacing.md,
+      borderRadius: radii.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.sm,
+    },
+    saveButtonText: {
+      color: theme.onPrimary,
+      fontSize: typography.base,
+      fontWeight: '700',
+    },
+    buttonPressed: {
+      opacity: 0.7,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    centerContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    stateIcon: {
+      fontSize: 48,
+      marginBottom: spacing.sm,
+    },
+    loadingText: {
+      marginTop: spacing.md,
+      fontSize: typography.md,
+      color: theme.textSecondary,
+    },
+    errorTitle: {
+      fontSize: typography.lg,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    errorMessage: {
+      fontSize: typography.md,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginBottom: spacing.lg,
+    },
+    retryButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      borderRadius: radii.sm,
+    },
+    retryButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.base,
+    },
+    unauthorizedTitle: {
+      fontSize: typography.xl,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    unauthorizedMessage: {
+      fontSize: typography.md,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: spacing.lg,
+    },
+    backButton: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.primary,
+      borderRadius: radii.sm,
+    },
+    backButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.base,
+    },
+  });

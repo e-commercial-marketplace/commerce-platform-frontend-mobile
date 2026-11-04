@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useAppLanguage } from '../i18n';
+import { useAppTheme } from '../theme';
 import type { OrderItemResponse, ShipmentResponse } from '../types/orderApi';
 import { formatVND } from '../utils/format';
 
@@ -31,16 +33,6 @@ function getStepIndex(status: ShipmentResponse['status']): number {
   return -1;
 }
 
-function getDeliveryMethodLabel(method: ShipmentResponse['deliveryMethod']): string {
-  if (method === 'PLATFORM_DELIVERY') {
-    return 'Platform delivery';
-  }
-  if (method === 'SELF_DELIVERY') {
-    return 'Seller delivery';
-  }
-  return method;
-}
-
 export type ShipmentTimelineProps = {
   shipment: ShipmentResponse;
   index: number;
@@ -48,71 +40,127 @@ export type ShipmentTimelineProps = {
 };
 
 export function ShipmentTimeline({ shipment, index, orderItems = [] }: ShipmentTimelineProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const stepIndex = getStepIndex(shipment.status);
   const isException = stepIndex === -1;
   const shippedAt = formatDateTime(shipment.shippedAt);
   const deliveredAt = formatDateTime(shipment.deliveredAt);
 
+  const getDeliveryMethodLabel = (method: ShipmentResponse['deliveryMethod']): string => {
+    if (method === 'PLATFORM_DELIVERY') {
+      return t('orders.deliveryMethod_PLATFORM_DELIVERY', 'Platform delivery');
+    }
+    if (method === 'SELF_DELIVERY') {
+      return t('orders.deliveryMethod_SELF_DELIVERY', 'Seller delivery');
+    }
+    return method;
+  };
+
+  const localizedStatus = t(`orders.status_${shipment.status}`, shipment.status);
+
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.background,
+          borderColor: theme.border,
+        },
+      ]}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>Shipment {index + 1}</Text>
-        <Text style={styles.status}>{shipment.status}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          {t('orders.shipmentCount', `Shipment ${index + 1}`, { index: index + 1 })}
+        </Text>
+        <Text style={[styles.status, { color: theme.primary }]}>{localizedStatus}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Method</Text>
-        <Text style={styles.value}>{getDeliveryMethodLabel(shipment.deliveryMethod)}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>
+          {t('orders.method', 'Method')}
+        </Text>
+        <Text style={[styles.value, { color: theme.text }]}>
+          {getDeliveryMethodLabel(shipment.deliveryMethod)}
+        </Text>
       </View>
 
       {shipment.carrier ? (
         <View style={styles.row}>
-          <Text style={styles.label}>Carrier</Text>
-          <Text style={styles.value}>{shipment.carrier.name}</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            {t('orders.carrier', 'Carrier')}
+          </Text>
+          <Text style={[styles.value, { color: theme.text }]}>{shipment.carrier.name}</Text>
         </View>
       ) : null}
 
       <View style={styles.row}>
-        <Text style={styles.label}>Tracking code</Text>
-        <Text style={styles.value}>{shipment.trackingCode ? shipment.trackingCode : 'Tracking code not available yet'}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>
+          {t('orders.trackingCode', 'Tracking code')}
+        </Text>
+        <Text style={[styles.value, { color: theme.text }]}>
+          {shipment.trackingCode
+            ? shipment.trackingCode
+            : t('orders.trackingCodeUnavailable', 'Tracking code not available yet')}
+        </Text>
       </View>
 
       {shippedAt ? (
         <View style={styles.row}>
-          <Text style={styles.label}>Shipped</Text>
-          <Text style={styles.value}>{shippedAt}</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            {t('orders.shippedAt', 'Shipped')}
+          </Text>
+          <Text style={[styles.value, { color: theme.text }]}>{shippedAt}</Text>
         </View>
       ) : null}
 
       {deliveredAt ? (
         <View style={styles.row}>
-          <Text style={styles.label}>Delivered</Text>
-          <Text style={styles.value}>{deliveredAt}</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            {t('orders.deliveredAt', 'Delivered')}
+          </Text>
+          <Text style={[styles.value, { color: theme.text }]}>{deliveredAt}</Text>
         </View>
       ) : null}
 
       <View style={styles.row}>
-        <Text style={styles.label}>Shipping fee</Text>
-        <Text style={styles.value}>{formatVND(parseMoney(shipment.shippingFee))}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>
+          {t('orders.shippingFee', 'Shipping fee')}
+        </Text>
+        <Text style={[styles.value, { color: theme.text }]}>
+          {formatVND(parseMoney(shipment.shippingFee))}
+        </Text>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
       {isException ? (
-        <View style={styles.exceptionBox}>
-          <Text style={styles.exceptionTitle}>
+        <View
+          style={[
+            styles.exceptionBox,
+            {
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEF2F2',
+              borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+            },
+          ]}
+        >
+          <Text style={[styles.exceptionTitle, { color: theme.danger }]}>
             {shipment.status === 'CANCELLED'
-              ? 'Shipment cancelled'
+              ? t('orders.shipmentCancelled', 'Shipment cancelled')
               : shipment.status === 'RETURNED'
-                ? 'Shipment returned'
-                : 'Shipment issue'}
+                ? t('orders.shipmentReturned', 'Shipment returned')
+                : t('orders.shipmentIssue', 'Shipment issue')}
           </Text>
-          <Text style={styles.exceptionText}>
+          <Text style={[styles.exceptionText, { color: theme.danger }]}>
             {shipment.status === 'FAILED'
-              ? 'Delivery attempt failed. The package may be returned to the seller.'
+              ? t(
+                  'orders.deliveryFailedDesc',
+                  'Delivery attempt failed. The package may be returned to the seller.',
+                )
               : shipment.status === 'RETURNED'
-                ? 'This shipment has been returned.'
-                : 'This shipment has been cancelled.'}
+                ? t('orders.shipmentReturnedDesc', 'This shipment has been returned.')
+                : t('orders.shipmentCancelledDesc', 'This shipment has been cancelled.')}
           </Text>
         </View>
       ) : (
@@ -120,15 +168,39 @@ export function ShipmentTimeline({ shipment, index, orderItems = [] }: ShipmentT
           {NORMAL_STEPS.map((step, i) => {
             const completed = i <= stepIndex;
             const current = i === stepIndex;
+            const stepLabel = t(`orders.status_${step}`, step);
+
             return (
               <View key={step} style={styles.timelineRow}>
                 <View style={styles.timelineIndicatorCol}>
-                  <View style={[styles.dot, completed && styles.dotCompleted, current && styles.dotCurrent]} />
-                  {i < NORMAL_STEPS.length - 1 ? <View style={[styles.line, completed && i < stepIndex && styles.lineCompleted]} /> : null}
+                  <View
+                    style={[
+                      styles.dot,
+                      { borderColor: theme.border, backgroundColor: theme.surface },
+                      completed && [styles.dotCompleted, { backgroundColor: theme.primary, borderColor: theme.primary }],
+                      current && [styles.dotCurrent, { borderColor: theme.primary }],
+                    ]}
+                  />
+                  {i < NORMAL_STEPS.length - 1 ? (
+                    <View
+                      style={[
+                        styles.line,
+                        { backgroundColor: theme.border },
+                        completed && i < stepIndex && [styles.lineCompleted, { backgroundColor: theme.primary }],
+                      ]}
+                    />
+                  ) : null}
                 </View>
                 <View style={styles.timelineContent}>
-                  <Text style={[styles.stepLabel, completed && styles.stepLabelCompleted, current && styles.stepLabelCurrent]}>
-                    {step}
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      { color: theme.textSecondary },
+                      completed && [styles.stepLabelCompleted, { color: theme.text }],
+                      current && [styles.stepLabelCurrent, { color: theme.primary }],
+                    ]}
+                  >
+                    {stepLabel}
                   </Text>
                 </View>
               </View>
@@ -139,12 +211,14 @@ export function ShipmentTimeline({ shipment, index, orderItems = [] }: ShipmentT
 
       {shipment.items && shipment.items.length > 0 ? (
         <View style={styles.itemsSection}>
-          <Text style={styles.itemsTitle}>Shipment items</Text>
+          <Text style={[styles.itemsTitle, { color: theme.text }]}>
+            {t('orders.shipmentItems', 'Shipment items')}
+          </Text>
           {shipment.items.map((item) => {
             const orderItem = orderItems.find((oi) => oi.id === item.orderItemId);
             const name = orderItem ? orderItem.productName : 'Item';
             return (
-              <Text key={item.orderItemId} style={styles.itemText}>
+              <Text key={item.orderItemId} style={[styles.itemText, { color: theme.textSecondary }]}>
                 {name} × {item.quantity}
               </Text>
             );
@@ -157,10 +231,8 @@ export function ShipmentTimeline({ shipment, index, orderItems = [] }: ShipmentT
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.background,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.sm,
     gap: spacing.xs,
   },
@@ -172,12 +244,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.text,
   },
   status: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primary,
   },
   row: {
     flexDirection: 'row',
@@ -187,98 +257,84 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    color: colors.textSecondary,
   },
   value: {
     fontSize: 13,
-    color: colors.text,
     textAlign: 'right',
     flexShrink: 1,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
     marginVertical: spacing.xs,
   },
   timeline: {
     gap: 0,
-    marginTop: spacing.xs,
+    marginVertical: spacing.xs,
   },
   timelineRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    minHeight: 32,
   },
   timelineIndicatorCol: {
+    width: 20,
     alignItems: 'center',
-    width: 16,
   },
   dot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.border,
-    marginTop: 2,
+    borderWidth: 1.5,
+    zIndex: 1,
   },
-  dotCompleted: {
-    backgroundColor: colors.primary,
-  },
-  dotCurrent: {
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
+  dotCompleted: {},
+  dotCurrent: {},
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: colors.border,
-    marginVertical: 2,
+    marginVertical: -2,
   },
-  lineCompleted: {
-    backgroundColor: colors.primary,
-  },
+  lineCompleted: {},
   timelineContent: {
     flex: 1,
-    paddingBottom: spacing.sm,
+    paddingLeft: spacing.sm,
+    justifyContent: 'center',
+    paddingBottom: spacing.xs,
   },
   stepLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    fontSize: 12,
   },
   stepLabelCompleted: {
-    color: colors.text,
+    fontWeight: '600',
   },
   stepLabelCurrent: {
-    color: colors.text,
     fontWeight: '700',
-  },
-  exceptionBox: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.sm,
-    gap: 4,
-  },
-  exceptionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.danger,
-  },
-  exceptionText: {
-    fontSize: 12,
-    color: colors.textSecondary,
   },
   itemsSection: {
     marginTop: spacing.xs,
+    paddingTop: spacing.xs,
     gap: 2,
   },
   itemsTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   itemText: {
     fontSize: 12,
-    color: colors.textSecondary,
+  },
+  exceptionBox: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    padding: spacing.sm,
+    gap: 4,
+    marginVertical: spacing.xs,
+  },
+  exceptionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  exceptionText: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

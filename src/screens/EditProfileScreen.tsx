@@ -1,6 +1,7 @@
 /**
  * Edit-profile screen of the signed-in user (PATCH /users/me). Shared by Customer, Seller and Admin.
  * Email is display-only: the backend does not allow changing email, role or status through this API.
+ * Integrated with UI Personalization (Theme & Language).
  */
 
 import { useEffect, useState } from 'react';
@@ -19,10 +20,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
 import FormField from '../components/FormField';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentUser, useUpdateProfile } from '../hooks/useCurrentUser';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 
 const NAME_MAX_LENGTH = 255;
 const ADDRESS_MAX_LENGTH = 500;
@@ -36,6 +39,8 @@ type ProfileFieldErrors = {
 };
 
 export default function EditProfileScreen({ navigation }: AppNavigatorScreenProps<'EditProfile'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const { updateUserName } = useAuth();
   const { data: profile, isLoading, isError, refetch } = useCurrentUser();
   const updateProfile = useUpdateProfile();
@@ -69,15 +74,15 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
     const nextErrors: ProfileFieldErrors = {};
 
     if (trimmedName.length === 0) {
-      nextErrors.name = 'Name is required.';
+      nextErrors.name = t('profile.nameRequired', 'Name is required.');
     } else if (trimmedName.length > NAME_MAX_LENGTH) {
-      nextErrors.name = `Name must be at most ${NAME_MAX_LENGTH} characters.`;
+      nextErrors.name = t('profile.nameTooLong', `Name must be at most ${NAME_MAX_LENGTH} characters.`, { max: NAME_MAX_LENGTH });
     }
     if (trimmedPhone.length > 0 && !VIETNAMESE_PHONE.test(trimmedPhone)) {
-      nextErrors.phone = 'Enter a Vietnamese mobile number, for example 0912345678.';
+      nextErrors.phone = t('profile.phoneInvalid', 'Enter a Vietnamese mobile number, for example 0912345678.');
     }
     if (trimmedAddress.length > ADDRESS_MAX_LENGTH) {
-      nextErrors.address = `Address must be at most ${ADDRESS_MAX_LENGTH} characters.`;
+      nextErrors.address = t('profile.addressTooLong', `Address must be at most ${ADDRESS_MAX_LENGTH} characters.`, { max: ADDRESS_MAX_LENGTH });
     }
 
     setErrors(nextErrors);
@@ -94,7 +99,7 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
         address: trimmedAddress,
       });
       updateUserName(updated.name);
-      Alert.alert('Success', 'Profile updated successfully.');
+      Alert.alert(t('profile.success', 'Success'), t('profile.profileUpdatedSuccess', 'Profile updated successfully.'));
       navigation.goBack();
     } catch (err) {
       const apiError = toApiError(err);
@@ -108,58 +113,64 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
 
   if (isLoading && profile == null) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]} edges={['bottom']}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: theme.background }]} edges={['bottom']}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </SafeAreaView>
     );
   }
 
   if (isError && profile == null) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]} edges={['bottom']}>
-        <Text style={styles.formError}>Couldn&apos;t load your profile.</Text>
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: theme.background }]} edges={['bottom']}>
+        <Text style={[styles.formError, { color: theme.danger }]}>
+          {t('profile.errorLoadingEditProfile', "Couldn't load your profile.")}
+        </Text>
         <Pressable
           onPress={() => {
             void refetch();
           }}
-          style={styles.submitButton}
+          style={[styles.submitButton, { backgroundColor: theme.primary }]}
           accessibilityRole="button"
-          accessibilityLabel="Retry"
+          accessibilityLabel={t('profile.retry', 'Retry')}
         >
-          <Text style={styles.submitButtonText}>Retry</Text>
+          <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+            {t('profile.retry', 'Retry')}
+          </Text>
         </Pressable>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.readOnlyBlock}>
-            <Text style={styles.readOnlyLabel}>Email</Text>
-            <Text style={styles.readOnlyValue}>{profile?.email}</Text>
+            <Text style={[styles.readOnlyLabel, { color: theme.text }]}>
+              {t('profile.emailLabel', 'Email')}
+            </Text>
+            <Text style={[styles.readOnlyValue, { color: theme.textSecondary }]}>{profile?.email}</Text>
           </View>
 
           <FormField
-            label="Full Name"
+            label={t('profile.fullName', 'Full Name')}
             value={name}
             onChangeText={(text) => {
               setName(text);
               setErrors((previous) => ({ ...previous, name: undefined }));
               setFormError(null);
             }}
-            placeholder="Your full name"
+            placeholder={t('profile.namePlaceholder', 'Your full name')}
             error={errors.name}
             editable={!submitting}
             autoCapitalize="words"
           />
 
           <FormField
-            label="Phone"
+            label={t('profile.phone', 'Phone')}
             value={phone}
             onChangeText={(text) => {
               setPhone(text);
@@ -174,14 +185,14 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
           />
 
           <FormField
-            label="Address"
+            label={t('profile.address', 'Address')}
             value={address}
             onChangeText={(text) => {
               setAddress(text);
               setErrors((previous) => ({ ...previous, address: undefined }));
               setFormError(null);
             }}
-            placeholder="Street, district, city"
+            placeholder={t('profile.addressPlaceholder', 'Street, district, city')}
             error={errors.address}
             editable={!submitting}
             autoCapitalize="sentences"
@@ -191,7 +202,7 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
             }}
           />
 
-          {formError != null && <Text style={styles.formError}>{formError}</Text>}
+          {formError != null && <Text style={[styles.formError, { color: theme.danger }]}>{formError}</Text>}
 
           <Pressable
             onPress={() => {
@@ -200,19 +211,24 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
             disabled={submitting}
             style={({ pressed }) => [
               styles.submitButton,
+              { backgroundColor: theme.primary },
               (pressed || submitting) && styles.submitButtonDimmed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Save Changes"
+            accessibilityLabel={t('profile.saveChanges', 'Save Changes')}
             accessibilityState={{ disabled: submitting, busy: submitting }}
           >
             {submitting ? (
               <View style={styles.submitRow}>
-                <ActivityIndicator color={colors.onPrimary} size="small" />
-                <Text style={styles.submitButtonText}>Saving...</Text>
+                <ActivityIndicator color={theme.onPrimary} size="small" />
+                <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+                  {t('profile.saving', 'Saving...')}
+                </Text>
               </View>
             ) : (
-              <Text style={styles.submitButtonText}>Save Changes</Text>
+              <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+                {t('profile.saveChanges', 'Save Changes')}
+              </Text>
             )}
           </Pressable>
         </ScrollView>
@@ -224,7 +240,6 @@ export default function EditProfileScreen({ navigation }: AppNavigatorScreenProp
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   center: {
     alignItems: 'center',
@@ -242,19 +257,15 @@ const styles = StyleSheet.create({
   readOnlyLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   readOnlyValue: {
     fontSize: 15,
-    color: colors.textSecondary,
   },
   formError: {
     fontSize: 13,
-    color: colors.danger,
   },
   submitButton: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
     minHeight: 48,
     alignItems: 'center',
@@ -272,6 +283,5 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
   },
 });

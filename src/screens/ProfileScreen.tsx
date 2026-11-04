@@ -1,8 +1,8 @@
 /**
  * Profile tab: guest entry points or the signed-in account (name, email,
  * role, phone, address from GET /users/me) with profile edit, logout and password change.
- * While the stored session is being restored at startup a loading state is
- * shown instead of a flash of the guest state. Avatar belongs to a later feature.
+ * Integrated with UI Personalization (Theme & Language selectors and Settings screen).
+ * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
  */
 
 import { useEffect, useState } from 'react';
@@ -10,26 +10,39 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { colors, radii, spacing } from '../constants/theme';
+import { queryKeys } from '../api/queryKeys';
+import { radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { queryKeys } from '../api/queryKeys';
+import { useAppLanguage } from '../i18n';
 import type { MainTabScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 import type { Role } from '../types/auth';
 
-/** Display labels for the backend Role enum. */
-const ROLE_LABELS: Record<Role, string> = {
-  CUSTOMER: 'Customer',
-  SELLER: 'Seller',
-  ADMIN: 'Administrator',
-};
-
 /** First letters of the first and last name parts, e.g. "Nguyen Van An" → "NA". */
-function getInitials(name: string): string {
+function getInitials(name?: string | null): string {
+  if (!name) return '?';
   const parts = name.trim().split(/\s+/).filter((part) => part.length > 0);
   const first = parts[0]?.charAt(0) ?? '';
   const last = parts[parts.length - 1]?.charAt(0) ?? '';
   return `${first}${last}`.toUpperCase() || '?';
+}
+
+/**
+ * Resolves the display name for Profile screen presentation.
+ * Preserves genuine dynamic user names ("Nguyễn Văn A", "John Doe", etc.)
+ * while mapping the generic seeded ADMIN label ("Quản trị viên") to the localized role label.
+ */
+export function resolveProfileDisplayName(
+  role: Role,
+  rawName: string | undefined | null,
+  roleLabels: Record<Role, string>,
+): string {
+  const trimmed = rawName?.trim();
+  if (role === 'ADMIN' && trimmed === 'Quản trị viên') {
+    return roleLabels.ADMIN;
+  }
+  return trimmed || roleLabels[role];
 }
 
 export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profile'>) {
@@ -39,6 +52,14 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
     isAuthenticated && !isRestoring,
   );
   const [loggingOut, setLoggingOut] = useState(false);
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
+  const roleLabels: Record<Role, string> = {
+    CUSTOMER: t('profile.customer', 'Customer'),
+    SELLER: t('profile.seller', 'Seller'),
+    ADMIN: t('profile.admin', 'Administrator'),
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -60,10 +81,15 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
 
   if (isRestoring) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+      >
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.subtitle}>Restoring your session…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t('profile.restoringSession', 'Restoring your session…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -71,32 +97,80 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
 
   if (!isAuthenticated || user == null) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+      >
         <ScrollView contentContainerStyle={styles.guestContent}>
-          <View style={styles.avatar}>
+          <View
+            style={[
+              styles.avatar,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+          >
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
-          <Text style={styles.title}>Welcome, guest</Text>
-          <Text style={styles.subtitle}>
-            Log in to see your account here. Your cart is kept either way.
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('profile.welcomeGuest', 'Welcome, guest')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t(
+              'profile.guestSubtitle',
+              'Log in to see your account here. Your cart is kept either way.',
+            )}
           </Text>
 
           <Pressable
             onPress={() => navigation.navigate('Login')}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: theme.primary },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Log in"
+            accessibilityLabel={t('profile.login', 'Login')}
           >
-            <Text style={styles.primaryButtonText}>Login</Text>
+            <Text style={styles.primaryButtonText}>{t('profile.login', 'Login')}</Text>
           </Pressable>
 
           <Pressable
             onPress={() => navigation.navigate('Register')}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.primary,
+              },
+              pressed && styles.buttonPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Create account"
+            accessibilityLabel={t('profile.createAccount', 'Create Account')}
           >
-            <Text style={styles.secondaryButtonText}>Create Account</Text>
+            <Text style={[styles.secondaryButtonText, { color: theme.primary }]}>
+              {t('profile.createAccount', 'Create Account')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => navigation.navigate('Settings')}
+            style={({ pressed }) => [
+              styles.menuButton,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+              pressed && styles.buttonPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.settings', 'Personalization & Settings')}
+            testID="settings-button"
+          >
+            <Text style={[styles.menuButtonText, { color: theme.text }]}>
+             {t('profile.settings', 'Personalization & Settings')}
+            </Text>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -104,83 +178,156 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
   }
 
   const displayUser = profile ?? user;
-  const displayName = displayUser.name;
+  const rawName = displayUser.name?.trim();
+  const displayName = resolveProfileDisplayName(displayUser.role, rawName, roleLabels);
   const displayEmail = displayUser.email;
   const displayRole = displayUser.role;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+    >
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarInitials}>{getInitials(displayName)}</Text>
+        <View
+          style={[
+            styles.avatar,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.avatarInitials, { color: theme.primary }]}>
+            {getInitials(displayName)}
+          </Text>
         </View>
-        <Text style={styles.title}>{displayName}</Text>
-        <Text style={styles.subtitle}>{displayEmail}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{displayName}</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{displayEmail}</Text>
+
         {profileLoading && !profile ? (
           <View style={styles.inlineLoading}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.inlineLoadingText}>Loading profile…</Text>
+            <ActivityIndicator size="small" color={theme.primary} />
+            <Text style={[styles.inlineLoadingText, { color: theme.textSecondary }]}>
+              {t('profile.loadingProfile', 'Loading profile…')}
+            </Text>
           </View>
         ) : null}
+
         {profileError ? (
           <View style={styles.errorBlock}>
-            <Text style={styles.errorText}>Couldn't load latest profile.</Text>
+            <Text style={[styles.errorText, { color: theme.danger }]}>
+              {t('profile.errorLoadingProfile', "Couldn't load latest profile.")}
+            </Text>
             <Pressable
               onPress={() => {
                 void refetch();
               }}
-              style={styles.retrySmallButton}
+              style={[
+                styles.retrySmallButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+              ]}
               accessibilityRole="button"
+              accessibilityLabel={t('profile.retry', 'Retry')}
             >
-              <Text style={styles.retrySmallButtonText}>Retry</Text>
+              <Text style={[styles.retrySmallButtonText, { color: theme.text }]}>
+                {t('profile.retry', 'Retry')}
+              </Text>
             </Pressable>
           </View>
         ) : null}
 
-        <View style={styles.card}>
+        {/* Account Info Card */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
           <View style={styles.cardRow}>
-            <Text style={styles.cardLabel}>Status</Text>
-            <Text style={styles.cardValue}>Signed in</Text>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              {t('profile.status', 'Status')}
+            </Text>
+            <Text style={[styles.cardValue, { color: theme.text }]}>
+              {t('profile.signedIn', 'Signed in')}
+            </Text>
           </View>
-          <View style={styles.cardDivider} />
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
           <View style={styles.cardRow}>
-            <Text style={styles.cardLabel}>Role</Text>
-            <Text style={styles.cardValue}>{ROLE_LABELS[displayRole]}</Text>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              {t('profile.role', 'Role')}
+            </Text>
+            <Text style={[styles.cardValue, { color: theme.text }]}>
+              {roleLabels[displayRole]}
+            </Text>
           </View>
-          <View style={styles.cardDivider} />
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
           <View style={styles.cardRow}>
-            <Text style={styles.cardLabel}>Phone</Text>
-            <Text style={styles.cardValue}>{profile?.phone || 'Not set'}</Text>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              {t('profile.phone', 'Phone')}
+            </Text>
+            <Text style={[styles.cardValue, { color: theme.text }]}>
+              {profile?.phone || t('profile.notSet', 'Not set')}
+            </Text>
           </View>
-          <View style={styles.cardDivider} />
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
           <View style={styles.cardRow}>
-            <Text style={styles.cardLabel}>Address</Text>
-            <Text style={[styles.cardValue, styles.cardValueWrap]}>{profile?.address || 'Not set'}</Text>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              {t('profile.address', 'Address')}
+            </Text>
+            <Text style={[styles.cardValue, styles.cardValueWrap, { color: theme.text }]}>
+              {profile?.address || t('profile.notSet', 'Not set')}
+            </Text>
           </View>
         </View>
 
+        {/* Role-Specific Actions */}
         {displayRole === 'CUSTOMER' ? (
           <>
             <Pressable
               onPress={() => {
                 navigation.navigate('MyOrders');
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.menuButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="My Orders"
+              accessibilityLabel={t('profile.myOrders', 'My Orders')}
             >
-              <Text style={styles.menuButtonText}>My Orders</Text>
+              <Text style={[styles.menuButtonText, { color: theme.text }]}>
+                {t('profile.myOrders', 'My Orders')}
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={() => {
                 navigation.navigate('ConversationList');
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.menuButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="Messages"
+              accessibilityLabel={t('profile.messages', 'Messages')}
             >
-              <Text style={styles.menuButtonText}>Messages</Text>
+              <Text style={[styles.menuButtonText, { color: theme.text }]}>
+                {t('profile.messages', 'Messages')}
+              </Text>
             </Pressable>
           </>
         ) : null}
@@ -191,33 +338,60 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               onPress={() => {
                 navigation.navigate('SellerProducts');
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.menuButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="My Products"
+              accessibilityLabel={t('profile.myProducts', 'My Products')}
             >
-              <Text style={styles.menuButtonText}>My Products</Text>
+              <Text style={[styles.menuButtonText, { color: theme.text }]}>
+                {t('profile.myProducts', 'My Products')}
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={() => {
                 navigation.navigate('SellerFulfillment');
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.menuButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="Seller Orders"
+              accessibilityLabel={t('profile.sellerOrders', 'Seller Orders')}
             >
-              <Text style={styles.menuButtonText}>Seller Orders</Text>
+              <Text style={[styles.menuButtonText, { color: theme.text }]}>
+                {t('profile.sellerOrders', 'Seller Orders')}
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={() => {
                 navigation.navigate('ConversationList');
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.menuButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="Customer messages"
+              accessibilityLabel={t('profile.sellerMessages', 'Customer Messages')}
             >
-              <Text style={styles.menuButtonText}>Customer messages</Text>
+              <Text style={[styles.menuButtonText, { color: theme.text }]}>
+                {t('profile.sellerMessages', 'Customer Messages')}
+              </Text>
             </Pressable>
           </>
         ) : null}
@@ -228,38 +402,89 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               onPress={() => {
                 navigation.navigate('AdminPortal');
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.menuButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+                pressed && styles.buttonPressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="System administration"
+              accessibilityLabel={t('profile.adminPortal', 'System Administration')}
               testID="admin-portal-button"
             >
-              <Text style={styles.menuButtonText}>System administration</Text>
+              <Text style={[styles.menuButtonText, { color: theme.text }]}>
+                {t('profile.adminPortal', 'System Administration')}
+              </Text>
             </Pressable>
           </>
         ) : null}
 
+        {/* Dedicated Settings Navigation Button */}
+        <Pressable
+          onPress={() => {
+            navigation.navigate('Settings');
+          }}
+          style={({ pressed }) => [
+            styles.menuButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+            pressed && styles.buttonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.settings', 'Personalization & Settings')}
+          testID="settings-button"
+        >
+          <Text style={[styles.menuButtonText, { color: theme.text }]}>
+            {t('profile.settings', 'Personalization & Settings')}
+          </Text>
+        </Pressable>
+
+        {/* Edit Profile */}
         <Pressable
           onPress={() => {
             navigation.navigate('EditProfile');
           }}
-          style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.menuButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+            pressed && styles.buttonPressed,
+          ]}
           accessibilityRole="button"
-          accessibilityLabel="Edit Profile"
+          accessibilityLabel={t('profile.editProfile', 'Edit Profile')}
         >
-          <Text style={styles.menuButtonText}>Edit Profile</Text>
+          <Text style={[styles.menuButtonText, { color: theme.text }]}>
+            {t('profile.editProfile', 'Edit Profile')}
+          </Text>
         </Pressable>
 
         <Pressable
           onPress={() => {
             navigation.navigate('ChangePassword');
           }}
-          style={({ pressed }) => [styles.menuButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.menuButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+            pressed && styles.buttonPressed,
+          ]}
           accessibilityRole="button"
-          accessibilityLabel="Change Password"
+          accessibilityLabel={t('profile.changePassword', 'Change Password')}
         >
-          <Text style={styles.menuButtonText}>Change Password</Text>
+          <Text style={[styles.menuButtonText, { color: theme.text }]}>
+            {t('profile.changePassword', 'Change Password')}
+          </Text>
         </Pressable>
 
+        {/* Logout */}
         <Pressable
           onPress={() => {
             void handleLogout();
@@ -267,19 +492,27 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
           disabled={loggingOut}
           style={({ pressed }) => [
             styles.logoutButton,
+            {
+              backgroundColor: theme.background,
+              borderColor: theme.danger,
+            },
             (pressed || loggingOut) && styles.buttonPressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Log out"
+          accessibilityLabel={t('profile.logout', 'Logout')}
           accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
         >
           {loggingOut ? (
             <View style={styles.logoutRow}>
-              <ActivityIndicator color={colors.danger} size="small" />
-              <Text style={styles.logoutButtonText}>Logging out...</Text>
+              <ActivityIndicator color={theme.danger} size="small" />
+              <Text style={[styles.logoutButtonText, { color: theme.danger }]}>
+                {t('profile.loggingOut', 'Logging out...')}
+              </Text>
             </View>
           ) : (
-            <Text style={styles.logoutButtonText}>Logout</Text>
+            <Text style={[styles.logoutButtonText, { color: theme.danger }]}>
+              {t('profile.logout', 'Logout')}
+            </Text>
           )}
         </Pressable>
       </ScrollView>
@@ -290,9 +523,7 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  // Centered state used for the guest screen and the restore spinner.
   guestContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -307,7 +538,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
-  // Top-aligned layout for the signed-in state.
   content: {
     alignItems: 'center',
     padding: spacing.lg,
@@ -318,9 +548,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: radii.pill,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -331,26 +559,20 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 30,
     fontWeight: '700',
-    color: colors.primary,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
-  // Account summary card (signed-in state).
   card: {
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.md,
     gap: spacing.sm,
     marginBottom: spacing.md,
@@ -363,7 +585,6 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   cardValueWrap: {
     flexShrink: 1,
@@ -374,17 +595,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
     textAlign: 'right',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: colors.border,
   },
   primaryButton: {
     alignSelf: 'stretch',
     marginTop: spacing.md,
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
     minHeight: 48,
     alignItems: 'center',
@@ -394,15 +612,13 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   secondaryButton: {
     alignSelf: 'stretch',
     marginTop: spacing.sm,
-    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.primary,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
@@ -411,15 +627,12 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.primary,
   },
   menuButton: {
     alignSelf: 'stretch',
     marginTop: spacing.sm,
-    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
@@ -428,15 +641,12 @@ const styles = StyleSheet.create({
   menuButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   logoutButton: {
     alignSelf: 'stretch',
     marginTop: spacing.sm,
-    backgroundColor: colors.background,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.danger,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
@@ -450,7 +660,6 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.danger,
   },
   buttonPressed: {
     opacity: 0.8,
@@ -463,7 +672,6 @@ const styles = StyleSheet.create({
   },
   inlineLoadingText: {
     fontSize: 13,
-    color: colors.textSecondary,
   },
   errorBlock: {
     alignItems: 'center',
@@ -472,19 +680,15 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: colors.danger,
   },
   retrySmallButton: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radii.sm,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   retrySmallButtonText: {
     fontSize: 13,
-    color: colors.text,
     fontWeight: '600',
   },
 });

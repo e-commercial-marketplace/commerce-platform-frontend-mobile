@@ -9,9 +9,10 @@
  * 5. Pull-to-refresh and authoritative refetch.
  * 6. Seller status presentation (PENDING, APPROVED, SUSPENDED, REJECTED).
  * 7. Action flows with native confirmation dialogs:
- *    - Approve (PATCH /api/v1/admin/sellers/{id}/approve) for PENDING/SUSPENDED/REJECTED.
- *    - Suspend (PATCH /api/v1/admin/sellers/{id}/suspend) for APPROVED.
+ *    - Phê duyệt (PATCH /api/v1/admin/sellers/{id}/approve) for PENDING/SUSPENDED/REJECTED.
+ *    - Tạm ngưng (PATCH /api/v1/admin/sellers/{id}/suspend) for APPROVED.
  * 8. Comprehensive accessibility labels and resilient error handling.
+ * 9. Personalization: Theme-driven semantic styles & localized bilingual strings.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -29,43 +30,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
-import { useAuth } from '../../hooks/useAuth';
+import { radii, spacing, typography } from '../../constants/theme';
 import { useAdminSellers, useApproveSeller, useSuspendSeller } from '../../hooks/useAdmin';
+import { useAuth } from '../../hooks/useAuth';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
+import { useAppTheme } from '../../theme';
 import type { AdminUser, SellerStatus } from '../../types/adminApi';
+import { getSellerStatusBadgeConfig } from '../../utils/adminPresentation';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 400;
 
-const SELLER_STATUS_CONFIG: Record<
-  SellerStatus,
-  { label: string; backgroundColor: string; textColor: string }
-> = {
-  PENDING: {
-    label: 'Pending',
-    backgroundColor: '#FEF0C7',
-    textColor: '#B54708',
-  },
-  APPROVED: {
-    label: 'Approved',
-    backgroundColor: '#D1FADF',
-    textColor: '#027A48',
-  },
-  SUSPENDED: {
-    label: 'Suspended',
-    backgroundColor: '#FEE4E2',
-    textColor: '#B42318',
-  },
-  REJECTED: {
-    label: 'Rejected',
-    backgroundColor: '#F2F4F7',
-    textColor: '#344054',
-  },
-};
-
-function formatCreatedDate(isoString: string): string {
+export function formatCreatedDate(isoString: string): string {
   try {
     const date = new Date(isoString);
     if (isNaN(date.getTime())) {
@@ -84,6 +62,10 @@ export default function AdminSellerApprovalScreen({
   navigation,
 }: AppNavigatorScreenProps<'AdminSellerApproval'>) {
   const { user, isAuthenticated } = useAuth();
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+
   const isAdmin = Boolean(isAuthenticated && user?.role === 'ADMIN');
 
   // Search & Pagination State
@@ -132,27 +114,33 @@ export default function AdminSellerApprovalScreen({
               onPress={() => navigation.goBack()}
               style={styles.backButton}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('admin.common.actions.back', 'Go back')}
             >
               <Text style={styles.backButtonText}>←</Text>
             </Pressable>
           ) : null}
-          <Text style={styles.headerTitle}>Seller management</Text>
+          <Text style={styles.headerTitle}>
+            {t('admin.sellers.title', 'Seller management')}
+          </Text>
         </View>
         <View style={styles.centerState}>
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.errorTitle}>Admin permission required</Text>
+          <Text style={styles.errorTitle}>
+            {t('admin.sellers.unauthorizedTitle', 'Admin permission required')}
+          </Text>
           <Text style={styles.subtitle}>
-            Only Admin (ADMIN) accounts can access the seller management page.
+            {t('admin.sellers.unauthorizedMessage', 'Only Admin (ADMIN) accounts can access the seller management page.')}
           </Text>
           {navigation.canGoBack?.() ? (
             <Pressable
               onPress={() => navigation.goBack()}
               style={styles.primaryActionButton}
               accessibilityRole="button"
-              accessibilityLabel="Go back to the previous page"
+              accessibilityLabel={t('admin.common.actions.back', 'Go back to the previous page')}
             >
-              <Text style={styles.primaryActionButtonText}>Go back</Text>
+              <Text style={styles.primaryActionButtonText}>
+                {t('admin.common.actions.back', 'Go back')}
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -185,21 +173,31 @@ export default function AdminSellerApprovalScreen({
     }
 
     Alert.alert(
-      'Approve seller',
-      `Are you sure you want to approve the seller account "${seller.name}" (${seller.email})?`,
+      t('admin.sellers.approveConfirmTitle', 'Approve seller'),
+      t(
+        'admin.sellers.approveConfirmMessage',
+        `Bạn có chắc chắn muốn phê duyệt tài khoản người bán "${seller.name}" (${seller.email})?`,
+        { name: seller.name, email: seller.email },
+      ),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('admin.common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Approve',
+          text: t('admin.sellers.approve', 'Approve'),
           style: 'default',
           onPress: async () => {
             setProcessingSellerId(seller.id);
             try {
               await approveMutation.mutateAsync(seller.id);
-              Alert.alert('Success', `Approved seller "${seller.name}".`);
+              Alert.alert(
+                t('admin.common.success', 'Success'),
+                t('admin.sellers.approveSuccessMessage', `Approved seller "${seller.name}".`, { name: seller.name }),
+              );
             } catch (err: unknown) {
               const apiError = toApiError(err);
-              Alert.alert('Cannot approve', apiError.message);
+              Alert.alert(
+                t('admin.sellers.approveErrorTitle', 'Cannot approve'),
+                apiError.message,
+              );
             } finally {
               setProcessingSellerId(null);
             }
@@ -216,21 +214,31 @@ export default function AdminSellerApprovalScreen({
     }
 
     Alert.alert(
-      'Suspend seller',
-      `Are you sure you want to suspend the seller account "${seller.name}" (${seller.email})? This seller will not be able to perform selling actions.`,
+      t('admin.sellers.suspendConfirmTitle', 'Suspend seller'),
+      t(
+        'admin.sellers.suspendConfirmMessage',
+        `Bạn có chắc chắn muốn tạm ngưng tài khoản người bán "${seller.name}" (${seller.email})? Người bán này sẽ không thể thực hiện các thao tác bán hàng.`,
+        { name: seller.name, email: seller.email },
+      ),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('admin.common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Suspend',
+          text: t('admin.sellers.suspend', 'Suspend'),
           style: 'destructive',
           onPress: async () => {
             setProcessingSellerId(seller.id);
             try {
               await suspendMutation.mutateAsync(seller.id);
-              Alert.alert('Success', `Suspended seller "${seller.name}".`);
+              Alert.alert(
+                t('admin.common.success', 'Success'),
+                t('admin.sellers.suspendSuccessMessage', `Suspended seller "${seller.name}".`, { name: seller.name }),
+              );
             } catch (err: unknown) {
               const apiError = toApiError(err);
-              Alert.alert('Cannot suspend', apiError.message);
+              Alert.alert(
+                t('admin.sellers.suspendErrorTitle', 'Cannot suspend'),
+                apiError.message,
+              );
             } finally {
               setProcessingSellerId(null);
             }
@@ -243,7 +251,7 @@ export default function AdminSellerApprovalScreen({
   // Render a single Seller Card
   const renderSellerItem = ({ item }: { item: AdminUser }) => {
     const statusConfig = item.sellerStatus
-      ? SELLER_STATUS_CONFIG[item.sellerStatus]
+      ? getSellerStatusBadgeConfig(item.sellerStatus, t, isDark)
       : null;
     const isProcessingThisItem = processingSellerId === item.id;
     const isAnyActionPending = processingSellerId != null;
@@ -283,29 +291,41 @@ export default function AdminSellerApprovalScreen({
 
         <View style={styles.cardDetails}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Phone number:</Text>
-            <Text style={styles.detailValue}>{item.phone || 'Not updated'}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Address:</Text>
-            <Text style={styles.detailValue} numberOfLines={2}>
-              {item.address || 'Not updated'}
+            <Text style={styles.detailLabel}>
+              {t('admin.sellers.phone', 'Phone number:')}
+            </Text>
+            <Text style={styles.detailValue}>
+              {item.phone || t('admin.sellers.notUpdated', 'Not updated')}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Account status:</Text>
+            <Text style={styles.detailLabel}>
+              {t('admin.sellers.address', 'Address:')}
+            </Text>
+            <Text style={styles.detailValue} numberOfLines={2}>
+              {item.address || t('admin.sellers.notUpdated', 'Not updated')}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>
+              {t('admin.sellers.accountStatus', 'Account status:')}
+            </Text>
             <Text
               style={[
                 styles.detailValue,
-                { color: item.enabled ? '#027A48' : colors.danger },
+                { color: item.enabled ? (isDark ? '#34D399' : '#027A48') : theme.danger },
               ]}
             >
-              {item.enabled ? 'Active' : 'Locked'}
+              {item.enabled
+                ? t('admin.sellers.active', 'Hoạt động')
+                : t('admin.sellers.locked', 'Đã khoá')}
             </Text>
           </View>
           {item.createdAt ? (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Registered on:</Text>
+              <Text style={styles.detailLabel}>
+                {t('admin.sellers.registrationDate', 'Registered on:')}
+              </Text>
               <Text style={styles.detailValue}>{formatCreatedDate(item.createdAt)}</Text>
             </View>
           ) : null}
@@ -323,13 +343,15 @@ export default function AdminSellerApprovalScreen({
                 isAnyActionPending && styles.actionButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Approve seller ${item.name}`}
+              accessibilityLabel={t('admin.sellers.approveAccessibility', `Approve seller ${item.name}`, { name: item.name })}
               testID={`approve-btn-${item.id}`}
             >
               {isProcessingThisItem ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.approveButtonText}>Approve</Text>
+                <Text style={styles.approveButtonText}>
+                  {t('admin.sellers.approve', 'Approve')}
+                </Text>
               )}
             </Pressable>
           ) : null}
@@ -345,13 +367,15 @@ export default function AdminSellerApprovalScreen({
                 isAnyActionPending && styles.actionButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Suspend seller ${item.name}`}
+              accessibilityLabel={t('admin.sellers.suspendAccessibility', `Suspend seller ${item.name}`, { name: item.name })}
               testID={`suspend-btn-${item.id}`}
             >
               {isProcessingThisItem ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.suspendButtonText}>Suspend</Text>
+                <Text style={styles.suspendButtonText}>
+                  {t('admin.sellers.suspend', 'Suspend')}
+                </Text>
               )}
             </Pressable>
           ) : null}
@@ -365,8 +389,10 @@ export default function AdminSellerApprovalScreen({
     if (isInitialLoading) {
       return (
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading sellers…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>
+            {t('admin.sellers.loading', 'Loading sellers…')}
+          </Text>
         </View>
       );
     }
@@ -376,16 +402,20 @@ export default function AdminSellerApprovalScreen({
       return (
         <View style={styles.centerState}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Could not load the seller list</Text>
+          <Text style={styles.errorTitle}>
+            {t('admin.sellers.loadErrorTitle', 'Could not load the seller list')}
+          </Text>
           <Text style={styles.subtitle}>{apiError.message}</Text>
           <Pressable
             onPress={() => void refetch()}
             style={styles.primaryActionButton}
             accessibilityRole="button"
-            accessibilityLabel="Retry loading seller list"
+            accessibilityLabel={t('admin.sellers.retryAccessibility', 'Retry loading seller list')}
             testID="retry-button"
           >
-            <Text style={styles.primaryActionButtonText}>Retry</Text>
+            <Text style={styles.primaryActionButtonText}>
+              {t('admin.sellers.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       );
@@ -394,11 +424,19 @@ export default function AdminSellerApprovalScreen({
     return (
       <View style={styles.centerState}>
         <Text style={styles.stateIcon}>🔍</Text>
-        <Text style={styles.emptyTitle}>No sellers found</Text>
+        <Text style={styles.emptyTitle}>
+          {t('admin.sellers.emptyTitle', 'No sellers found')}
+        </Text>
         <Text style={styles.subtitle}>
           {debouncedSearch
-            ? 'No seller account matches the search keyword.'
-            : 'There are no seller accounts in the system yet.'}
+            ? t(
+                'admin.sellers.emptySearchDescription',
+                'Không có tài khoản người bán nào khớp với từ khoá tìm kiếm.',
+              )
+            : t(
+                'admin.sellers.emptyDefaultDescription',
+                'Hiện chưa có tài khoản người bán nào trong hệ thống.',
+              )}
         </Text>
       </View>
     );
@@ -413,13 +451,13 @@ export default function AdminSellerApprovalScreen({
           <TextInput
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="Search by email or seller name..."
-            placeholderTextColor={colors.textSecondary}
+            placeholder={t('admin.sellers.searchPlaceholder', 'Search by email or seller name...')}
+            placeholderTextColor={theme.textSecondary}
             style={styles.searchInput}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
-            accessibilityLabel="Search sellers"
+            accessibilityLabel={t('admin.sellers.searchAccessibility', 'Search sellers')}
             testID="search-input"
           />
           {searchInput.length > 0 ? (
@@ -427,7 +465,7 @@ export default function AdminSellerApprovalScreen({
               onPress={() => setSearchInput('')}
               style={styles.clearSearchButton}
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
+              accessibilityLabel={t('admin.sellers.clearSearchAccessibility', 'Clear search')}
               testID="clear-search-button"
             >
               <Text style={styles.clearSearchText}>✕</Text>
@@ -449,8 +487,8 @@ export default function AdminSellerApprovalScreen({
           <RefreshControl
             refreshing={isFetching && !isLoading}
             onRefresh={() => void refetch()}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -468,7 +506,7 @@ export default function AdminSellerApprovalScreen({
               pressed && styles.buttonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Previous page"
+            accessibilityLabel={t('admin.sellers.prevPage', 'Previous page')}
             testID="prev-page-button"
           >
             <Text
@@ -477,15 +515,22 @@ export default function AdminSellerApprovalScreen({
                 (page === 0 || isFetching) && styles.pageButtonTextDisabled,
               ]}
             >
-              ← Previous
+              {t('admin.sellers.prevPage', '← Previous')}
             </Text>
           </Pressable>
 
           <View style={styles.pageInfoWrap}>
             <Text style={styles.pageInfoText}>
-              Trang {page + 1} / {totalPages || 1}
+              {t('admin.sellers.pageInfo', `Trang ${page + 1} / ${totalPages || 1}`, {
+                page: page + 1,
+                totalPages: totalPages || 1,
+              })}
             </Text>
-            <Text style={styles.pageCountText}>{totalElements} sellers</Text>
+            <Text style={styles.pageCountText}>
+              {t('admin.sellers.pageCount', `${totalElements} sellers`, {
+                count: totalElements,
+              })}
+            </Text>
           </View>
 
           <Pressable
@@ -497,7 +542,7 @@ export default function AdminSellerApprovalScreen({
               pressed && styles.buttonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Trang sau"
+            accessibilityLabel={t('admin.sellers.nextPage', 'Trang sau')}
             testID="next-page-button"
           >
             <Text
@@ -506,7 +551,7 @@ export default function AdminSellerApprovalScreen({
                 (page >= totalPages - 1 || isFetching) && styles.pageButtonTextDisabled,
               ]}
             >
-              Sau →
+              {t('admin.sellers.nextPage', 'Sau →')}
             </Text>
           </Pressable>
         </View>
@@ -515,278 +560,279 @@ export default function AdminSellerApprovalScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    paddingRight: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    fontSize: 22,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  searchContainer: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  searchInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.sm,
-    height: 40,
-  },
-  searchIcon: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    marginRight: spacing.xs,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.text,
-    paddingVertical: 0,
-  },
-  clearSearchButton: {
-    padding: spacing.xs,
-  },
-  clearSearchText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  listContent: {
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  listContentEmpty: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  sellerIdentity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  avatarWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 20,
-  },
-  sellerTitleWrap: {
-    flex: 1,
-  },
-  sellerName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  sellerEmail: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.sm,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.sm,
-  },
-  cardDetails: {
-    gap: 4,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  detailLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  detailValue: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text,
-    flex: 1.5,
-    textAlign: 'right',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  actionButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radii.sm,
-    minWidth: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  approveButton: {
-    backgroundColor: colors.primary,
-  },
-  approveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  suspendButton: {
-    backgroundColor: colors.danger,
-  },
-  suspendButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  centerState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  stateIcon: {
-    fontSize: 42,
-    marginBottom: spacing.xs,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    maxWidth: 280,
-    lineHeight: 18,
-  },
-  primaryActionButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.sm,
-    marginTop: spacing.sm,
-  },
-  primaryActionButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  paginationFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  pageButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  pageButtonDisabled: {
-    opacity: 0.4,
-  },
-  pageButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  pageButtonTextDisabled: {
-    color: colors.textSecondary,
-  },
-  pageInfoWrap: {
-    alignItems: 'center',
-  },
-  pageInfoText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  pageCountText: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (theme: ReturnType<typeof useAppTheme>['theme'], _isDark = false) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      backgroundColor: theme.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    backButton: {
+      paddingRight: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    backButtonText: {
+      fontSize: 22,
+      color: theme.text,
+      fontWeight: '600',
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    searchContainer: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    searchInputWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.sm,
+      height: 40,
+    },
+    searchIcon: {
+      fontSize: 18,
+      color: theme.textSecondary,
+      marginRight: spacing.xs,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.text,
+      paddingVertical: 0,
+    },
+    clearSearchButton: {
+      padding: spacing.xs,
+    },
+    clearSearchText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      fontWeight: '600',
+    },
+    listContent: {
+      padding: spacing.md,
+      gap: spacing.md,
+    },
+    listContentEmpty: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
+    card: {
+      backgroundColor: theme.surface,
+      borderRadius: radii.md,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+    },
+    sellerIdentity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flex: 1,
+    },
+    avatarWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: theme.surfaceSubdued,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: 20,
+    },
+    sellerTitleWrap: {
+      flex: 1,
+    },
+    sellerName: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    sellerEmail: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      marginTop: 2,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.sm,
+    },
+    statusBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    cardDivider: {
+      height: 1,
+      backgroundColor: theme.border,
+      marginVertical: spacing.sm,
+    },
+    cardDetails: {
+      gap: 4,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    detailLabel: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      flex: 1,
+    },
+    detailValue: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.text,
+      flex: 1.5,
+      textAlign: 'right',
+    },
+    cardActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      marginTop: spacing.md,
+      gap: spacing.sm,
+    },
+    actionButton: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radii.sm,
+      minWidth: 100,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    approveButton: {
+      backgroundColor: theme.primary,
+    },
+    approveButtonText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    suspendButton: {
+      backgroundColor: theme.danger,
+    },
+    suspendButtonText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    actionButtonDisabled: {
+      opacity: 0.5,
+    },
+    buttonPressed: {
+      opacity: 0.8,
+    },
+    centerState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xl,
+      gap: spacing.sm,
+    },
+    stateIcon: {
+      fontSize: 42,
+      marginBottom: spacing.xs,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    errorTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+      textAlign: 'center',
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      maxWidth: 280,
+      lineHeight: 18,
+    },
+    primaryActionButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radii.sm,
+      marginTop: spacing.sm,
+    },
+    primaryActionButtonText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    paginationFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    pageButton: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.surface,
+    },
+    pageButtonDisabled: {
+      opacity: 0.4,
+    },
+    pageButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    pageButtonTextDisabled: {
+      color: theme.textSecondary,
+    },
+    pageInfoWrap: {
+      alignItems: 'center',
+    },
+    pageInfoText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    pageCountText: {
+      fontSize: 11,
+      color: theme.textSecondary,
+    },
+  });

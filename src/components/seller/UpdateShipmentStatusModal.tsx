@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { SellerShipment, ShipmentStatus } from '../../types/sellerApi';
 
 export type UpdateShipmentStatusModalProps = {
@@ -49,6 +51,8 @@ export default function UpdateShipmentStatusModal({
   isSubmitting = false,
   errorMessage = null,
 }: UpdateShipmentStatusModalProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const [trackingCode, setTrackingCode] = useState('');
 
   if (!visible || !shipment || !targetStatus) {
@@ -87,21 +91,33 @@ export default function UpdateShipmentStatusModal({
       case 'SHIPPED':
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tracking Information Required</Text>
-            <Text style={styles.sectionDescription}>
-              Please enter the tracking code or dispatch reference number for this shipment.
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              {t('seller.trackingRequiredTitle', 'Tracking Information Required')}
+            </Text>
+            <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+              {t(
+                'seller.trackingRequiredDesc',
+                'Please enter the tracking code or dispatch reference number for this shipment.',
+              )}
             </Text>
 
-            <Text style={styles.fieldLabel}>Tracking Code *</Text>
+            <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
+              {t('orders.trackingCode', 'Tracking Code *')}
+            </Text>
             <TextInput
               style={[
                 styles.textInput,
-                errorMessage != null && styles.textInputError,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+                errorMessage != null && [styles.textInputError, { borderColor: theme.danger }],
               ]}
               value={trackingCode}
               onChangeText={setTrackingCode}
               placeholder="e.g. GHN12345678VN"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               autoCapitalize="characters"
               autoCorrect={false}
               editable={!isSubmitting}
@@ -114,15 +130,35 @@ export default function UpdateShipmentStatusModal({
       case 'CANCELLED':
         return (
           <View style={styles.section}>
-            <View style={styles.warningBox}>
-              <Text style={styles.warningTitle}>Cancel Entire Shipment</Text>
-              <Text style={styles.warningText}>
-                Are you sure you want to cancel this shipment? All {shipment.items?.length ?? 0}{' '}
-                bundled order items will be cancelled and stock will be restored to your
-                inventory.
+            <View
+              style={[
+                styles.warningBox,
+                {
+                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7',
+                  borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.warningTitle,
+                  { color: isDark ? '#FBBF24' : '#92400E' },
+                ]}
+              >
+                {t('seller.cancelShipment', 'Cancel Entire Shipment')}
               </Text>
-              <Text style={styles.warningSubtext}>
-                Note: Backend strictly forbids seller cancellation for paid orders.
+              <Text style={[styles.warningText, { color: theme.textSecondary }]}>
+                {t(
+                  'seller.cancelShipmentMsg',
+                  `Are you sure you want to cancel this shipment? All ${shipment.items?.length ?? 0} bundled order items will be cancelled and stock will be restored to your inventory.`,
+                  { count: shipment.items?.length ?? 0 },
+                )}
+              </Text>
+              <Text style={[styles.warningSubtext, { color: theme.textSecondary }]}>
+                {t(
+                  'seller.cancelShipmentPaidNotice',
+                  'Note: Backend strictly forbids seller cancellation for paid orders.',
+                )}
               </Text>
             </View>
           </View>
@@ -131,11 +167,16 @@ export default function UpdateShipmentStatusModal({
       case 'DELIVERED':
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Confirm Delivery</Text>
-            <Text style={styles.sectionDescription}>
-              Confirm that this shipment has been successfully delivered to the customer.
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              {t('seller.markDelivered', 'Confirm Delivery')}
             </Text>
-            <Text style={styles.helperText}>
+            <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+              {t(
+                'seller.confirmDeliveryDesc',
+                'Confirm that this shipment has been successfully delivered to the customer.',
+              )}
+            </Text>
+            <Text style={[styles.helperText, { color: theme.textSecondary }]}>
               Backend will record COD payment completion and mark the customer order DELIVERED
               once all shop shipments for this order are complete.
             </Text>
@@ -145,9 +186,19 @@ export default function UpdateShipmentStatusModal({
       case 'FAILED':
         return (
           <View style={styles.section}>
-            <View style={styles.dangerAlertBox}>
-              <Text style={styles.dangerAlertTitle}>Mark Delivery as Failed</Text>
-              <Text style={styles.dangerAlertText}>
+            <View
+              style={[
+                styles.dangerAlertBox,
+                {
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                  borderColor: theme.danger,
+                },
+              ]}
+            >
+              <Text style={[styles.dangerAlertTitle, { color: theme.danger }]}>
+                {t('seller.markFailed', 'Mark Delivery as Failed')}
+              </Text>
+              <Text style={[styles.dangerAlertText, { color: theme.textSecondary }]}>
                 Confirm that delivery of this shipment could not be completed. The items will
                 remain in failed state until they arrive back at your shop.
               </Text>
@@ -158,11 +209,16 @@ export default function UpdateShipmentStatusModal({
       case 'RETURNED':
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Confirm Items Returned</Text>
-            <Text style={styles.sectionDescription}>
-              Confirm that the returned package has arrived at your shop or warehouse.
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              {t('seller.markReturned', 'Confirm Items Returned')}
             </Text>
-            <Text style={styles.helperText}>
+            <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+              {t(
+                'seller.confirmReturnedDesc',
+                'Confirm that the returned package has arrived at your shop or warehouse.',
+              )}
+            </Text>
+            <Text style={[styles.helperText, { color: theme.textSecondary }]}>
               Backend will automatically restore inventory stock for all items in this shipment.
             </Text>
           </View>
@@ -171,8 +227,10 @@ export default function UpdateShipmentStatusModal({
       case 'PREPARING':
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Start Preparing</Text>
-            <Text style={styles.sectionDescription}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              {t('seller.startPreparing', 'Start Preparing')}
+            </Text>
+            <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
               Move this shipment to the PREPARING stage to signal that your team is packing the
               items for dispatch.
             </Text>
@@ -187,19 +245,19 @@ export default function UpdateShipmentStatusModal({
   const getActionLabel = () => {
     switch (targetStatus) {
       case 'SHIPPED':
-        return 'Confirm Shipped';
+        return t('seller.confirmShipped', 'Confirm Shipped');
       case 'CANCELLED':
-        return 'Confirm Cancel Shipment';
+        return t('seller.confirmCancelShipment', 'Confirm Cancel Shipment');
       case 'DELIVERED':
-        return 'Confirm Delivered';
+        return t('seller.confirmDelivered', 'Confirm Delivered');
       case 'FAILED':
-        return 'Confirm Failed';
+        return t('seller.confirmFailed', 'Confirm Failed');
       case 'RETURNED':
-        return 'Confirm Returned';
+        return t('seller.confirmReturned', 'Confirm Returned');
       case 'PREPARING':
-        return 'Start Preparing';
+        return t('seller.startPreparing', 'Start Preparing');
       default:
-        return 'Confirm';
+        return t('orders.confirm', 'Confirm');
     }
   };
 
@@ -221,12 +279,14 @@ export default function UpdateShipmentStatusModal({
           style={styles.outsidePress}
           onPress={isSubmitting ? undefined : handleClose}
         />
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View>
-              <Text style={styles.title}>Update Shipment Status</Text>
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.title, { color: theme.text }]}>
+                {t('seller.updateShipmentStatus', 'Update Shipment Status')}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
                 Order #{shipment.orderId.slice(0, 8)} • Shipment #{shipment.id.slice(0, 8)}
               </Text>
             </View>
@@ -238,7 +298,7 @@ export default function UpdateShipmentStatusModal({
               accessibilityRole="button"
               accessibilityLabel="Close status update modal"
             >
-              <Text style={styles.closeBtnText}>✕</Text>
+              <Text style={[styles.closeBtnText, { color: theme.textSecondary }]}>✕</Text>
             </Pressable>
           </View>
 
@@ -247,26 +307,38 @@ export default function UpdateShipmentStatusModal({
 
             {/* Error Message Box */}
             {errorMessage != null ? (
-              <View style={styles.errorBox} testID="status-update-error-box">
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                    borderColor: theme.danger,
+                  },
+                ]}
+                testID="status-update-error-box"
+              >
+                <Text style={[styles.errorText, { color: theme.danger }]}>{errorMessage}</Text>
               </View>
             ) : null}
           </ScrollView>
 
           {/* Footer Actions */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: theme.border }]}>
             <Pressable
               onPress={handleClose}
               disabled={isSubmitting}
               style={({ pressed }) => [
                 styles.cancelBtn,
+                { backgroundColor: theme.surface, borderColor: theme.border },
                 pressed && !isSubmitting && styles.btnPressed,
                 isSubmitting && styles.btnDisabled,
               ]}
               accessibilityRole="button"
               accessibilityLabel="Cancel status update"
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={[styles.cancelBtnText, { color: theme.text }]}>
+                {t('seller.cancel', 'Cancel')}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -274,7 +346,8 @@ export default function UpdateShipmentStatusModal({
               disabled={isSubmitDisabled}
               style={({ pressed }) => [
                 styles.confirmBtn,
-                isDestructive && styles.confirmBtnDestructive,
+                { backgroundColor: theme.primary },
+                isDestructive && [styles.confirmBtnDestructive, { backgroundColor: theme.danger }],
                 pressed && !isSubmitDisabled && styles.btnPressed,
                 isSubmitDisabled && styles.btnDisabled,
               ]}
@@ -284,11 +357,13 @@ export default function UpdateShipmentStatusModal({
             >
               {isSubmitting ? (
                 <View style={styles.btnInnerRow}>
-                  <ActivityIndicator size="small" color={colors.onPrimary} />
-                  <Text style={styles.confirmBtnText}>Updating…</Text>
+                  <ActivityIndicator size="small" color={theme.onPrimary} />
+                  <Text style={[styles.confirmBtnText, { color: theme.onPrimary }]}>Updating…</Text>
                 </View>
               ) : (
-                <Text style={styles.confirmBtnText}>{getActionLabel()}</Text>
+                <Text style={[styles.confirmBtnText, { color: theme.onPrimary }]}>
+                  {getActionLabel()}
+                </Text>
               )}
             </Pressable>
           </View>

@@ -29,6 +29,8 @@ import SellerProductCard from '../components/seller/SellerProductCard';
 import SellerProductFilters from '../components/seller/SellerProductFilters';
 import UpdateProductStockModal from '../components/seller/UpdateProductStockModal';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import {
@@ -50,6 +52,8 @@ const SEARCH_DEBOUNCE_MS = 400;
 export default function SellerProductsScreen({
   navigation,
 }: AppNavigatorScreenProps<'SellerProducts'>) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
   const { user, isAuthenticated } = useAuth();
   const isSeller = isAuthenticated && user?.role === 'SELLER';
 
@@ -137,10 +141,16 @@ export default function SellerProductsScreen({
       });
       setIsStockModalVisible(false);
       setSelectedProductForStock(null);
-      Alert.alert('Stock Updated', `Stock for "${targetProduct.name}" updated to ${newStock}.`);
+      Alert.alert(
+        t('seller.stockUpdatedTitle', 'Stock Updated'),
+        t('seller.stockUpdatedMsg', `Stock for "${targetProduct.name}" updated to ${newStock}.`, {
+          name: targetProduct.name,
+          count: newStock,
+        }),
+      );
     } catch (err) {
       const apiError = toApiError(err);
-      Alert.alert('Stock Update Failed', apiError.message);
+      Alert.alert(t('seller.stockUpdateFailed', 'Stock Update Failed'), apiError.message);
     }
   };
 
@@ -154,21 +164,30 @@ export default function SellerProductsScreen({
   // Unlist handler (confirmation required)
   const handleUnlist = (product: ProductSummaryDto) => {
     Alert.alert(
-      'Unlist Product',
-      `Are you sure you want to unlist "${product.name}"? This hides the product from the marketplace without deleting order history.`,
+      t('seller.unlistPromptTitle', 'Unlist Product'),
+      t(
+        'seller.unlistPromptMsg',
+        `Are you sure you want to unlist "${product.name}"? This hides the product from the marketplace without deleting order history.`,
+        { name: product.name },
+      ),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('seller.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Unlist',
+          text: t('seller.unlist', 'Unlist'),
           style: 'destructive',
           onPress: async () => {
             setUpdatingProductId(product.id);
             try {
               await deleteProductMutation.mutateAsync(product.id);
-              Alert.alert('Product Unlisted', `"${product.name}" has been unlisted.`);
+              Alert.alert(
+                t('seller.productUnlistedTitle', 'Product Unlisted'),
+                t('seller.productUnlistedMsg', `"${product.name}" has been unlisted.`, {
+                  name: product.name,
+                }),
+              );
             } catch (err) {
               const apiError = toApiError(err);
-              Alert.alert('Unlist Failed', apiError.message);
+              Alert.alert(t('seller.unlistFailed', 'Unlist Failed'), apiError.message);
             } finally {
               setUpdatingProductId(null);
             }
@@ -183,12 +202,15 @@ export default function SellerProductsScreen({
     const hasImage = Boolean(product.imageUrl && product.imageUrl.trim().length > 0);
     if (!hasImage) {
       Alert.alert(
-        'Image Required',
-        'An image is required before relisting this product. Please edit the product and provide an image.',
+        t('seller.relistImageRequiredTitle', 'Image Required'),
+        t(
+          'seller.relistImageRequiredMsg',
+          'An image is required before relisting this product. Please edit the product and provide an image.',
+        ),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('seller.cancel', 'Cancel'), style: 'cancel' },
           {
-            text: 'Edit Product',
+            text: t('seller.editProductAction', 'Edit Product'),
             onPress: () =>
               navigation.navigate('SellerProductForm', {
                 mode: 'edit',
@@ -206,10 +228,15 @@ export default function SellerProductsScreen({
         id: product.id,
         payload: { active: true },
       });
-      Alert.alert('Product Relisted', `"${product.name}" has been relisted.`);
+      Alert.alert(
+        t('seller.productRelistedTitle', 'Product Relisted'),
+        t('seller.productRelistedMsg', `"${product.name}" has been relisted.`, {
+          name: product.name,
+        }),
+      );
     } catch (err) {
       const apiError = toApiError(err);
-      Alert.alert('Relist Failed', apiError.message);
+      Alert.alert(t('seller.relistFailed', 'Relist Failed'), apiError.message);
     } finally {
       setUpdatingProductId(null);
     }
@@ -249,11 +276,20 @@ export default function SellerProductsScreen({
   // Role check guard
   if (!isAuthenticated || user?.role !== 'SELLER') {
     return (
-      <SafeAreaView style={styles.container} edges={['top']} testID="seller-access-required-state">
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="seller-access-required-state"
+      >
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Seller Access Required</Text>
-          <Text style={styles.subtitle}>
-            This area is only accessible to authenticated seller accounts.
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.accessRestrictedTitle', 'Seller Access Required')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t(
+              'seller.accessRestrictedSubtitle',
+              'This area is only accessible to authenticated seller accounts.',
+            )}
           </Text>
         </View>
       </SafeAreaView>
@@ -265,34 +301,58 @@ export default function SellerProductsScreen({
     const apiError = toApiError(error);
     if (apiError.status === 403) {
       return (
-        <SafeAreaView style={styles.container} edges={['top']} testID="seller-approval-blocked-state">
-          <View style={styles.header}>
-            <Text style={styles.title}>My Products</Text>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: theme.background }]}
+          edges={['top']}
+          testID="seller-approval-blocked-state"
+        >
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: theme.surface, borderBottomColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('seller.productsWorkspace', 'My Products')}
+            </Text>
           </View>
           <View style={styles.centerState}>
-            <Text style={styles.errorTitle}>Account Not Approved</Text>
-            <Text style={styles.subtitle}>
-              Your seller account is not currently approved to manage products.
+            <Text style={[styles.errorTitle, { color: theme.danger }]}>
+              {t('seller.approvalRequiredTitle', 'Account Not Approved')}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {t(
+                'seller.approvalRequiredSubtitle',
+                'Your seller account is not currently approved to manage products.',
+              )}
             </Text>
             <View style={styles.buttonRow}>
               <Pressable
-                style={styles.retryButton}
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
                 onPress={() => void refetch()}
                 accessibilityRole="button"
                 accessibilityLabel="Retry loading products"
                 testID="approval-retry-button"
               >
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                  {t('seller.retry', 'Retry')}
+                </Text>
               </Pressable>
               {navigation.canGoBack?.() ? (
                 <Pressable
-                  style={[styles.retryButton, styles.secondaryButton]}
+                  style={[
+                    styles.retryButton,
+                    styles.secondaryButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
                   onPress={() => navigation.goBack()}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                   testID="approval-back-button"
                 >
-                  <Text style={styles.secondaryButtonText}>Go Back</Text>
+                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                    {t('orders.cancel', 'Go Back')}
+                  </Text>
                 </Pressable>
               ) : null}
             </View>
@@ -309,30 +369,44 @@ export default function SellerProductsScreen({
     }
 
     return (
-      <View style={styles.pagination} testID="seller-products-pagination">
+      <View
+        style={[styles.pagination, { borderTopColor: theme.border }]}
+        testID="seller-products-pagination"
+      >
         <Pressable
           onPress={handlePreviousPage}
           disabled={page === 0 || isFetching}
           style={[
             styles.pageButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             (page === 0 || isFetching) && styles.pageButtonDisabled,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Previous page"
+          accessibilityLabel={t('seller.previous', 'Previous page')}
           testID="pagination-prev"
         >
           <Text
             style={[
               styles.pageButtonText,
-              (page === 0 || isFetching) && styles.pageButtonTextDisabled,
+              { color: theme.text },
+              (page === 0 || isFetching) && [
+                styles.pageButtonTextDisabled,
+                { color: theme.textSecondary },
+              ],
             ]}
           >
-            Previous
+            {t('seller.previous', 'Previous')}
           </Text>
         </Pressable>
 
-        <Text style={styles.pageInfo} testID="pagination-info">
-          Page {page + 1} of {Math.max(1, totalPages)}
+        <Text
+          style={[styles.pageInfo, { color: theme.textSecondary }]}
+          testID="pagination-info"
+        >
+          {t('seller.pageInfo', `Page ${page + 1} of ${Math.max(1, totalPages)}`, {
+            current: page + 1,
+            total: Math.max(1, totalPages),
+          })}
         </Text>
 
         <Pressable
@@ -340,19 +414,24 @@ export default function SellerProductsScreen({
           disabled={page >= totalPages - 1 || isFetching}
           style={[
             styles.pageButton,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             (page >= totalPages - 1 || isFetching) && styles.pageButtonDisabled,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Next page"
+          accessibilityLabel={t('seller.next', 'Next page')}
           testID="pagination-next"
         >
           <Text
             style={[
               styles.pageButtonText,
-              (page >= totalPages - 1 || isFetching) && styles.pageButtonTextDisabled,
+              { color: theme.text },
+              (page >= totalPages - 1 || isFetching) && [
+                styles.pageButtonTextDisabled,
+                { color: theme.textSecondary },
+              ],
             ]}
           >
-            Next
+            {t('seller.next', 'Next')}
           </Text>
         </Pressable>
       </View>
@@ -364,8 +443,10 @@ export default function SellerProductsScreen({
     if (isInitialLoading) {
       return (
         <View style={styles.centerState} testID="seller-products-loading">
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading products…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('seller.loadingProducts', 'Loading products…')}
+          </Text>
         </View>
       );
     }
@@ -374,16 +455,22 @@ export default function SellerProductsScreen({
       const apiError = toApiError(error);
       return (
         <View style={styles.centerState} testID="seller-products-error-state">
-          <Text style={styles.errorTitle}>Couldn't load products</Text>
-          <Text style={styles.subtitle}>{apiError.message}</Text>
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.loadProductsFailed', "Couldn't load products")}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {apiError.message}
+          </Text>
           <Pressable
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
             onPress={() => void refetch()}
             accessibilityRole="button"
             accessibilityLabel="Retry loading products"
             testID="retry-button"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+              {t('seller.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       );
@@ -394,18 +481,22 @@ export default function SellerProductsScreen({
     if (isFiltered) {
       return (
         <View style={styles.centerState} testID="seller-products-empty-filtered">
-          <Text style={styles.emptyTitle}>No matching products</Text>
-          <Text style={styles.subtitle}>
-            No products matched your search or filter criteria.
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {t('seller.noMatchingTitle', 'No matching products')}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {t('seller.noMatchingSubtitle', 'No products matched your search or filter criteria.')}
           </Text>
           <Pressable
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: theme.primary }]}
             onPress={handleClearFilters}
             accessibilityRole="button"
             accessibilityLabel="Clear filters"
             testID="clear-filters-button"
           >
-            <Text style={styles.actionButtonText}>Clear Filters</Text>
+            <Text style={[styles.actionButtonText, { color: theme.onPrimary }]}>
+              {t('seller.filterAll', 'Clear Filters')}
+            </Text>
           </Pressable>
         </View>
       );
@@ -413,48 +504,67 @@ export default function SellerProductsScreen({
 
     return (
       <View style={styles.centerState} testID="seller-products-empty-initial">
-        <Text style={styles.emptyTitle}>No products yet</Text>
-        <Text style={styles.subtitle}>
-          You haven't added any products to your shop.
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>
+          {t('seller.noProductsTitle', 'No products yet')}
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          {t('seller.noProductsSubtitle', "You haven't added any products to your shop.")}
         </Text>
         <Pressable
-          style={styles.actionButton}
+          style={[styles.actionButton, { backgroundColor: theme.primary }]}
           onPress={handleNavigateCreate}
           accessibilityRole="button"
           accessibilityLabel="Create product"
           testID="empty-create-button"
         >
-          <Text style={styles.actionButtonText}>+ Add Product</Text>
+          <Text style={[styles.actionButtonText, { color: theme.onPrimary }]}>
+            {t('seller.addProduct', '+ Add Product')}
+          </Text>
         </Pressable>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']} testID="seller-products-screen">
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+      testID="seller-products-screen"
+    >
       {/* Top Header Bar */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.surface, borderBottomColor: theme.border },
+        ]}
+      >
         <View style={styles.titleRow}>
-          <Text style={styles.title}>My Products</Text>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('seller.productsWorkspace', 'My Products')}
+          </Text>
           {totalElements > 0 ? (
-            <Text style={styles.countBadge}>({totalElements})</Text>
+            <Text style={[styles.countBadge, { color: theme.textSecondary }]}>
+              ({totalElements})
+            </Text>
           ) : null}
           {isFetching && !isInitialLoading ? (
             <ActivityIndicator
               size="small"
-              color={colors.primary}
+              color={theme.primary}
               testID="seller-products-fetching-indicator"
             />
           ) : null}
         </View>
         <Pressable
-          style={styles.createButton}
+          style={[styles.createButton, { backgroundColor: theme.primary }]}
           onPress={handleNavigateCreate}
           accessibilityRole="button"
           accessibilityLabel="Add new product"
           testID="create-product-button"
         >
-          <Text style={styles.createButtonText}>+ Add Product</Text>
+          <Text style={[styles.createButtonText, { color: theme.onPrimary }]}>
+            {t('seller.addProduct', '+ Add Product')}
+          </Text>
         </Pressable>
       </View>
 
@@ -494,8 +604,8 @@ export default function SellerProductsScreen({
           <RefreshControl
             refreshing={isFetching && !isInitialLoading}
             onRefresh={() => void refetch()}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
         testID="seller-products-list"

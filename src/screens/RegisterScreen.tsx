@@ -4,6 +4,7 @@
  * becomes `name`, the service adds `role: CUSTOMER` (the backend rejects
  * ADMIN), and confirm-password is a UI-only check that is never sent.
  * On success the backend returns tokens, so the user is signed in directly.
+ * Fully theme-aware and localized with i18n support.
  */
 
 import { useState } from 'react';
@@ -22,9 +23,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
 import FormField from '../components/FormField';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
+import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
+import { useAppTheme } from '../theme';
 import type { Role } from '../types/auth';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,6 +44,9 @@ type RegisterFieldErrors = {
 
 export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'Register'>) {
   const { register } = useAuth();
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,25 +70,31 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
     const trimmedEmail = email.trim();
 
     if (trimmedFullName.length === 0) {
-      nextErrors.fullName = 'Full name is required.';
+      nextErrors.fullName = t('auth.fullNameRequired', 'Full name is required.');
     }
 
     if (trimmedEmail.length === 0) {
-      nextErrors.email = 'Email is required.';
+      nextErrors.email = t('auth.emailRequired', 'Email is required.');
     } else if (!EMAIL_REGEX.test(trimmedEmail)) {
-      nextErrors.email = 'Enter a valid email address.';
+      nextErrors.email = t('auth.emailInvalid', 'Enter a valid email address.');
     }
 
     if (password.length === 0) {
-      nextErrors.password = 'Password is required.';
+      nextErrors.password = t('auth.passwordRequired', 'Password is required.');
     } else if (password.length < PASSWORD_MIN_LENGTH) {
-      nextErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+      nextErrors.password = t(
+        'auth.passwordMinLength',
+        `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+      );
     } else if (password.length > PASSWORD_MAX_LENGTH) {
-      nextErrors.password = `Password must be at most ${PASSWORD_MAX_LENGTH} characters.`;
+      nextErrors.password = t(
+        'auth.passwordMaxLength',
+        `Password must be at most ${PASSWORD_MAX_LENGTH} characters.`,
+      );
     }
 
     if (confirmPassword !== password) {
-      nextErrors.confirmPassword = 'Passwords do not match.';
+      nextErrors.confirmPassword = t('auth.passwordsDoNotMatch', 'Passwords do not match.');
     }
 
     setErrors(nextErrors);
@@ -96,8 +108,11 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
       await register({ name: trimmedFullName, email: trimmedEmail, password, role });
       if (role === 'SELLER') {
         Alert.alert(
-          'Seller account created',
-          'Seller account created. Your seller access is pending admin approval.',
+          t('auth.sellerAccountCreatedTitle', 'Seller account created'),
+          t(
+            'auth.sellerAccountCreatedMessage',
+            'Seller account created. Your seller access is pending admin approval.',
+          ),
         );
       }
       navigation.goBack(); // back to the Profile tab, now authenticated
@@ -121,63 +136,97 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={['bottom']}
+      testID="register-screen"
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.intro}>Create an account to get started.</Text>
+          <Text style={[styles.intro, { color: theme.textSecondary }]}>
+            {t('auth.createAccountToGetStarted', 'Create an account to get started.')}
+          </Text>
 
           <View style={styles.roleSection}>
-            <Text style={styles.roleLabel}>Account type</Text>
+            <Text style={[styles.roleLabel, { color: theme.text }]}>
+              {t('auth.accountType', 'Account type')}
+            </Text>
             <View style={styles.roleRow}>
               <Pressable
                 onPress={() => setRole('CUSTOMER')}
                 disabled={submitting}
-                style={[styles.roleOption, role === 'CUSTOMER' && styles.roleOptionSelected]}
+                style={[
+                  styles.roleOption,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  role === 'CUSTOMER' && {
+                    backgroundColor: theme.primary,
+                    borderColor: theme.primary,
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: role === 'CUSTOMER', disabled: submitting }}
               >
-                <Text style={[styles.roleOptionText, role === 'CUSTOMER' && styles.roleOptionTextSelected]}>
-                  Customer
+                <Text
+                  style={[
+                    styles.roleOptionText,
+                    { color: theme.text },
+                    role === 'CUSTOMER' && styles.roleOptionTextSelected,
+                  ]}
+                >
+                  {t('auth.customer', 'Customer')}
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => setRole('SELLER')}
                 disabled={submitting}
-                style={[styles.roleOption, role === 'SELLER' && styles.roleOptionSelected]}
+                style={[
+                  styles.roleOption,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  role === 'SELLER' && {
+                    backgroundColor: theme.primary,
+                    borderColor: theme.primary,
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: role === 'SELLER', disabled: submitting }}
               >
-                <Text style={[styles.roleOptionText, role === 'SELLER' && styles.roleOptionTextSelected]}>
-                  Seller
+                <Text
+                  style={[
+                    styles.roleOptionText,
+                    { color: theme.text },
+                    role === 'SELLER' && styles.roleOptionTextSelected,
+                  ]}
+                >
+                  {t('auth.seller', 'Seller')}
                 </Text>
               </Pressable>
             </View>
           </View>
 
           <FormField
-            label="Full Name"
+            label={t('auth.fullName', 'Full Name')}
             value={fullName}
             onChangeText={(text) => {
               setFullName(text);
               clearError('fullName');
             }}
-            placeholder="Nguyen Van A"
+            placeholder={t('auth.fullNamePlaceholder', 'Nguyen Van A')}
             error={errors.fullName}
             editable={!submitting}
             autoCapitalize="words"
           />
 
           <FormField
-            label="Email"
+            label={t('auth.email', 'Email')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
               clearError('email');
             }}
-            placeholder="you@example.com"
+            placeholder={t('auth.emailPlaceholder', 'you@example.com')}
             error={errors.email}
             editable={!submitting}
             keyboardType="email-address"
@@ -185,13 +234,13 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
           />
 
           <FormField
-            label="Password"
+            label={t('auth.password', 'Password')}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
               clearError('password');
             }}
-            placeholder="At least 8 characters"
+            placeholder={t('auth.registerPasswordPlaceholder', 'At least 8 characters')}
             error={errors.password}
             secureTextEntry
             editable={!submitting}
@@ -199,13 +248,13 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
           />
 
           <FormField
-            label="Confirm Password"
+            label={t('auth.confirmPassword', 'Confirm Password')}
             value={confirmPassword}
             onChangeText={(text) => {
               setConfirmPassword(text);
               clearError('confirmPassword');
             }}
-            placeholder="Re-enter your password"
+            placeholder={t('auth.confirmPasswordPlaceholder', 'Re-enter your password')}
             error={errors.confirmPassword}
             secureTextEntry
             editable={!submitting}
@@ -216,7 +265,9 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
             }}
           />
 
-          {formError != null && <Text style={styles.formError}>{formError}</Text>}
+          {formError != null && (
+            <Text style={[styles.formError, { color: theme.danger }]}>{formError}</Text>
+          )}
 
           <Pressable
             onPress={() => {
@@ -225,34 +276,45 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
             disabled={submitting}
             style={({ pressed }) => [
               styles.submitButton,
+              { backgroundColor: theme.primary },
               (pressed || submitting) && styles.submitButtonDimmed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Create account"
+            accessibilityLabel={t('auth.register', 'Register')}
             accessibilityState={{ disabled: submitting, busy: submitting }}
           >
             {submitting ? (
               <View style={styles.submitRow}>
-                <ActivityIndicator color={colors.onPrimary} size="small" />
-                <Text style={styles.submitButtonText}>Creating account...</Text>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.submitButtonText}>
+                  {t('auth.creatingAccount', 'Creating account...')}
+                </Text>
               </View>
             ) : (
-              <Text style={styles.submitButtonText}>Register</Text>
+              <Text style={styles.submitButtonText}>{t('auth.register', 'Register')}</Text>
             )}
           </Pressable>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>Already have an account? </Text>
+            <Text style={[styles.switchText, { color: theme.textSecondary }]}>
+              {t('auth.alreadyHaveAccount', 'Already have an account? ')}
+            </Text>
             <Pressable
               onPress={() => navigation.replace('Login')}
               disabled={submitting}
               hitSlop={spacing.sm}
               accessibilityRole="button"
-              accessibilityLabel="Log in instead"
+              accessibilityLabel={t('auth.logInInstead', 'Log in')}
               accessibilityState={{ disabled: submitting }}
             >
-              <Text style={[styles.switchLink, submitting && styles.switchLinkDimmed]}>
-                Log in
+              <Text
+                style={[
+                  styles.switchLink,
+                  { color: theme.primary },
+                  submitting && styles.switchLinkDimmed,
+                ]}
+              >
+                {t('auth.logInInstead', 'Log in')}
               </Text>
             </Pressable>
           </View>
@@ -265,7 +327,6 @@ export default function RegisterScreen({ navigation }: AppNavigatorScreenProps<'
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
@@ -273,7 +334,6 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   roleSection: {
     gap: spacing.sm,
@@ -281,7 +341,6 @@ const styles = StyleSheet.create({
   roleLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   roleRow: {
     flexDirection: 'row',
@@ -293,29 +352,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  roleOptionSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   roleOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   roleOptionTextSelected: {
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   formError: {
     fontSize: 13,
-    color: colors.danger,
   },
   submitButton: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: radii.md,
     minHeight: 48,
     alignItems: 'center',
@@ -333,7 +383,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   switchRow: {
     flexDirection: 'row',
@@ -343,12 +393,10 @@ const styles = StyleSheet.create({
   },
   switchText: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   switchLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
   },
   switchLinkDimmed: {
     opacity: 0.5,

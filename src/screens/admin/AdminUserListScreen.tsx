@@ -5,12 +5,13 @@
  * 1. Admin Role Guard: Only authenticated users with Role.ADMIN can access.
  * 2. Real Backend Data: GET /api/v1/admin/users
  * 3. Server-side text search (email / name) with debounce.
- * 4. Role filtering: All (undefined), Customer (CUSTOMER), Seller (SELLER), Admin (ADMIN).
+ * 4. Role filtering: Tất cả (undefined), Khách hàng (CUSTOMER), Người bán (SELLER), Quản trị viên (ADMIN).
  * 5. Zero-based pagination (Previous / Next) with state persistence.
  * 6. Pull-to-refresh and authoritative refetch.
  * 7. User presentation with Role badge, Account Active badge, and Seller Status badge.
  * 8. Navigation to User Detail and Create User screens.
  * 9. Comprehensive accessibility labels and resilient error handling.
+ * 10. Personalization: Theme-driven semantic styles & localized bilingual strings.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -27,13 +28,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
-import { useAuth } from '../../hooks/useAuth';
+import { radii, spacing, typography } from '../../constants/theme';
 import { useAdminUsers } from '../../hooks/useAdmin';
+import { useAuth } from '../../hooks/useAuth';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
-import type { AdminUser, AdminUserListParams, SellerStatus } from '../../types/adminApi';
+import { useAppTheme } from '../../theme';
+import type { AdminUser, AdminUserListParams } from '../../types/adminApi';
 import type { Role } from '../../types/auth';
+import {
+  getAccountStatusBadgeConfig,
+  getRoleBadgeConfig,
+  getSellerStatusBadgeConfig,
+} from '../../utils/adminPresentation';
 
 type Props = AppNavigatorScreenProps<'AdminUserList'>;
 
@@ -42,65 +50,19 @@ const SEARCH_DEBOUNCE_MS = 350;
 
 type RoleFilterOption = {
   key: string;
-  label: string;
+  labelKey: string;
+  defaultLabel: string;
   value: Role | undefined;
 };
 
 const ROLE_FILTER_OPTIONS: RoleFilterOption[] = [
-  { key: 'ALL', label: 'All', value: undefined },
-  { key: 'CUSTOMER', label: 'Customer', value: 'CUSTOMER' },
-  { key: 'SELLER', label: 'Seller', value: 'SELLER' },
-  { key: 'ADMIN', label: 'Admin', value: 'ADMIN' },
+  { key: 'ALL', labelKey: 'admin.users.list.filterAll', defaultLabel: 'All', value: undefined },
+  { key: 'CUSTOMER', labelKey: 'admin.enums.role.customer', defaultLabel: 'Customer', value: 'CUSTOMER' },
+  { key: 'SELLER', labelKey: 'admin.enums.role.seller', defaultLabel: 'Seller', value: 'SELLER' },
+  { key: 'ADMIN', labelKey: 'admin.enums.role.admin', defaultLabel: 'Admin', value: 'ADMIN' },
 ];
 
-const ROLE_BADGE_CONFIG: Record<
-  Role,
-  { label: string; backgroundColor: string; textColor: string }
-> = {
-  CUSTOMER: {
-    label: 'Customer',
-    backgroundColor: '#EFF8FF',
-    textColor: '#175CD3',
-  },
-  SELLER: {
-    label: 'Seller',
-    backgroundColor: '#F9F5FF',
-    textColor: '#6941C6',
-  },
-  ADMIN: {
-    label: 'Admin',
-    backgroundColor: '#F2F4F7',
-    textColor: '#344054',
-  },
-};
-
-const SELLER_STATUS_CONFIG: Record<
-  SellerStatus,
-  { label: string; backgroundColor: string; textColor: string }
-> = {
-  PENDING: {
-    label: 'Pending',
-    backgroundColor: '#FEF0C7',
-    textColor: '#B54708',
-  },
-  APPROVED: {
-    label: 'Approved',
-    backgroundColor: '#ECFDF3',
-    textColor: '#027A48',
-  },
-  SUSPENDED: {
-    label: 'Suspended',
-    backgroundColor: '#FEF3F2',
-    textColor: '#B42318',
-  },
-  REJECTED: {
-    label: 'Rejected',
-    backgroundColor: '#F2F4F7',
-    textColor: '#475467',
-  },
-};
-
-function formatDate(isoString: string): string {
+export function formatDate(isoString: string): string {
   try {
     const date = new Date(isoString);
     if (isNaN(date.getTime())) return isoString;
@@ -116,6 +78,10 @@ function formatDate(isoString: string): string {
 
 export default function AdminUserListScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuth();
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+
   const isAdmin = isAuthenticated && user?.role === 'ADMIN';
 
   const [page, setPage] = useState(0);
@@ -179,17 +145,21 @@ export default function AdminUserListScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Access denied</Text>
+          <Text style={styles.unauthorizedTitle}>
+            {t('admin.users.list.unauthorizedTitle', 'Access denied')}
+          </Text>
           <Text style={styles.unauthorizedMessage}>
-            Only system administrators can access User Management.
+            {t('admin.users.list.unauthorizedMessage', 'Only system administrators have permission to access user management.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>
+              {t('admin.common.actions.back', 'Go back')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -197,20 +167,11 @@ export default function AdminUserListScreen({ navigation }: Props) {
   }
 
   const renderItem = ({ item }: { item: AdminUser }) => {
-    const roleBadge = ROLE_BADGE_CONFIG[item.role] ?? {
-      label: item.role,
-      backgroundColor: '#F2F4F7',
-      textColor: '#344054',
-    };
-
-    const isEnabled = item.enabled;
-    const accountBadge = isEnabled
-      ? { label: 'Active', backgroundColor: '#ECFDF3', textColor: '#027A48' }
-      : { label: 'Disabled', backgroundColor: '#FEF3F2', textColor: '#B42318' };
-
+    const roleBadge = getRoleBadgeConfig(item.role, t, isDark);
+    const accountBadge = getAccountStatusBadgeConfig(item.enabled, t, isDark);
     const sellerStatusBadge =
       item.role === 'SELLER' && item.sellerStatus
-        ? SELLER_STATUS_CONFIG[item.sellerStatus]
+        ? getSellerStatusBadgeConfig(item.sellerStatus, t, isDark)
         : null;
 
     return (
@@ -218,7 +179,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
         style={({ pressed }) => [styles.userCard, pressed && styles.cardPressed]}
         onPress={() => navigation.navigate('AdminUserDetail', { userId: item.id })}
         accessibilityRole="button"
-        accessibilityLabel={`User ${item.name}`}
+        accessibilityLabel={t('admin.users.userAccessibility', `User ${item.name}`, { name: item.name })}
         testID={`user-item-${item.id}`}
       >
         <View style={styles.cardHeader}>
@@ -269,7 +230,9 @@ export default function AdminUserListScreen({ navigation }: Props) {
 
         <View style={styles.cardFooter}>
           <Text style={styles.dateText}>
-            Registered on: {formatDate(item.createdAt)}
+            {t('admin.users.list.registrationDate', `Ngày đăng ký: ${formatDate(item.createdAt)}`, {
+              date: formatDate(item.createdAt),
+            })}
           </Text>
         </View>
       </Pressable>
@@ -281,16 +244,20 @@ export default function AdminUserListScreen({ navigation }: Props) {
       {/* Top action bar: count & Create button */}
       <View style={styles.topActionBar}>
         <Text style={styles.totalCountText}>
-          {totalElements > 0 ? `Total: ${totalElements} accounts` : 'Account list'}
+          {totalElements > 0
+            ? t('admin.users.list.totalCount', `Tổng cộng: ${totalElements} tài khoản`, { count: totalElements })
+            : t('admin.users.list.defaultTitle', 'Account list')}
         </Text>
         <Pressable
           style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
           onPress={() => navigation.navigate('AdminUserCreate')}
           accessibilityRole="button"
-          accessibilityLabel="Add user"
+          accessibilityLabel={t('admin.users.list.createBtn', '+ Add new')}
           testID="create-user-button"
         >
-          <Text style={styles.createButtonText}>+ Add new</Text>
+          <Text style={styles.createButtonText}>
+            {t('admin.users.list.createBtn', '+ Add new')}
+          </Text>
         </Pressable>
       </View>
 
@@ -299,13 +266,14 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name or email…"
-          placeholderTextColor={colors.textSecondary}
+          placeholder={t('admin.users.list.searchPlaceholder', 'Search by name or email…')}
+          placeholderTextColor={theme.textSecondary}
           value={searchText}
           onChangeText={handleSearchChange}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
+          accessibilityLabel={t('admin.users.list.searchPlaceholder', 'Search by name or email…')}
           testID="user-search-input"
         />
         {searchText.length > 0 ? (
@@ -313,7 +281,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
             onPress={handleClearSearch}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t('admin.common.actions.clear', 'Clear')}
             testID="clear-search-button"
           >
             <Text style={styles.clearIcon}>✕</Text>
@@ -325,19 +293,20 @@ export default function AdminUserListScreen({ navigation }: Props) {
       <View style={styles.filterRow}>
         {ROLE_FILTER_OPTIONS.map((opt) => {
           const isSelected = selectedRole === opt.value;
+          const label = t(opt.labelKey, opt.defaultLabel);
           return (
             <Pressable
               key={opt.key}
               style={[styles.filterChip, isSelected && styles.filterChipActive]}
               onPress={() => handleRoleChange(opt.value)}
               accessibilityRole="button"
-              accessibilityLabel={`Filter by ${opt.label}`}
+              accessibilityLabel={label}
               testID={`filter-role-${opt.key}`}
             >
               <Text
                 style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}
               >
-                {opt.label}
+                {label}
               </Text>
             </Pressable>
           );
@@ -356,7 +325,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
           onPress={handlePrevPage}
           disabled={page === 0 || isLoading}
           accessibilityRole="button"
-          accessibilityLabel="Previous page"
+          accessibilityLabel={t('admin.common.actions.prev', '‹ Trước')}
           testID="prev-page-button"
         >
           <Text
@@ -365,12 +334,15 @@ export default function AdminUserListScreen({ navigation }: Props) {
               page === 0 && styles.pageButtonTextDisabled,
             ]}
           >
-            ‹ Previous
+            {t('admin.common.actions.prev', '‹ Trước')}
           </Text>
         </Pressable>
 
         <Text style={styles.pageInfoText}>
-          Trang {page + 1} / {totalPages || 1}
+          {t('admin.common.pageInfo', `Trang ${page + 1} / ${totalPages || 1}`, {
+            current: page + 1,
+            total: totalPages || 1,
+          })}
         </Text>
 
         <Pressable
@@ -381,7 +353,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
           onPress={handleNextPage}
           disabled={page >= totalPages - 1 || isLoading}
           accessibilityRole="button"
-          accessibilityLabel="Trang sau"
+          accessibilityLabel={t('admin.common.actions.next', 'Sau ›')}
           testID="next-page-button"
         >
           <Text
@@ -390,7 +362,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
               page >= totalPages - 1 && styles.pageButtonTextDisabled,
             ]}
           >
-            Sau ›
+            {t('admin.common.actions.next', 'Sau ›')}
           </Text>
         </Pressable>
       </View>
@@ -401,18 +373,24 @@ export default function AdminUserListScreen({ navigation }: Props) {
     if (isLoading) {
       return (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading users…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>
+            {t('admin.users.list.loading', 'Loading users…')}
+          </Text>
         </View>
       );
     }
 
     if (isError) {
-      const errorMessage = error ? toApiError(error).message : 'Unknown error';
+      const errorMessage = error
+        ? toApiError(error).message
+        : t('admin.common.error', 'Đã xảy ra lỗi');
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Could not load the list</Text>
+          <Text style={styles.errorTitle}>
+            {t('admin.users.list.errorTitle', 'Could not load the list')}
+          </Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
             style={({ pressed }) => [styles.retryButton, pressed && styles.buttonPressed]}
@@ -420,10 +398,12 @@ export default function AdminUserListScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Retry"
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="retry-button"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>
+              {t('admin.common.actions.retry', 'Retry')}
+            </Text>
           </Pressable>
         </View>
       );
@@ -432,9 +412,13 @@ export default function AdminUserListScreen({ navigation }: Props) {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.stateIcon}>👥</Text>
-        <Text style={styles.emptyTitle}>No users found</Text>
+        <Text style={styles.emptyTitle}>
+          {t('admin.users.list.emptyTitle', 'No users found')}
+        </Text>
         <Text style={styles.emptySubtitle}>
-          {searchText ? 'Try changing the search keyword or the role filter' : 'The system has no users yet'}
+          {searchText
+            ? t('admin.users.list.emptySearch', 'Try changing search keywords or role filters')
+            : t('admin.users.list.emptyNone', 'No users found in the system')}
         </Text>
       </View>
     );
@@ -456,8 +440,8 @@ export default function AdminUserListScreen({ navigation }: Props) {
             onRefresh={() => {
               void refetch();
             }}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
       />
@@ -465,276 +449,277 @@ export default function AdminUserListScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xxl,
-  },
-  headerContainer: {
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  topActionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  totalCountText: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radii.sm,
-  },
-  createButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.sm,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    height: 42,
-    marginBottom: spacing.sm,
-  },
-  searchIcon: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    marginRight: spacing.xs,
-  },
-  clearIcon: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    padding: 2,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.md,
-    color: colors.text,
-    paddingVertical: 0,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 1,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterChipText: {
-    fontSize: typography.sm,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-  },
-  userCard: {
-    backgroundColor: colors.background,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardPressed: {
-    backgroundColor: colors.surface,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  nameContainer: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  userName: {
-    fontSize: typography.base,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-  },
-  cardChevron: {
-    fontSize: 22,
-    color: colors.textSecondary,
-    fontWeight: '300',
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radii.pill,
-  },
-  badgeText: {
-    fontSize: typography.xs,
-    fontWeight: '600',
-  },
-  cardFooter: {
-    marginTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.surface,
-    paddingTop: spacing.xs,
-  },
-  dateText: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  stateIcon: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  lockIcon: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.md,
-    color: colors.textSecondary,
-  },
-  errorTitle: {
-    fontSize: typography.lg,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  errorMessage: {
-    fontSize: typography.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.sm,
-  },
-  retryButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.base,
-  },
-  emptyTitle: {
-    fontSize: typography.lg,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  emptySubtitle: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  unauthorizedTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  unauthorizedMessage: {
-    fontSize: typography.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radii.sm,
-  },
-  backButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.base,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  paginationFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  pageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.sm + 2,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  pageButtonDisabled: {
-    opacity: 0.4,
-  },
-  pageButtonText: {
-    fontSize: typography.sm,
-    color: colors.text,
-    fontWeight: '600',
-    marginHorizontal: 4,
-  },
-  pageButtonTextDisabled: {
-    color: colors.textSecondary,
-  },
-  pageInfoText: {
-    fontSize: typography.sm,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-});
+const createStyles = (theme: ReturnType<typeof useAppTheme>['theme'], _isDark = false) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingBottom: spacing.xxl,
+    },
+    headerContainer: {
+      padding: spacing.md,
+      backgroundColor: theme.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    topActionBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.sm,
+    },
+    totalCountText: {
+      fontSize: typography.sm,
+      color: theme.textSecondary,
+      fontWeight: '500',
+    },
+    createButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radii.sm,
+    },
+    createButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.sm,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: spacing.sm,
+      height: 42,
+      marginBottom: spacing.sm,
+    },
+    searchIcon: {
+      fontSize: 18,
+      color: theme.textSecondary,
+      marginRight: spacing.xs,
+    },
+    clearIcon: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      padding: 2,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: typography.md,
+      color: theme.text,
+      paddingVertical: 0,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    filterChip: {
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: spacing.xs + 1,
+      borderRadius: radii.pill,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    filterChipActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    filterChipText: {
+      fontSize: typography.sm,
+      color: theme.text,
+      fontWeight: '500',
+    },
+    filterChipTextActive: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+    },
+    userCard: {
+      backgroundColor: theme.surface,
+      marginHorizontal: spacing.md,
+      marginTop: spacing.sm,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    cardPressed: {
+      backgroundColor: theme.surfaceSubdued,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    nameContainer: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    userName: {
+      fontSize: typography.base,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    userEmail: {
+      fontSize: typography.sm,
+      color: theme.textSecondary,
+    },
+    cardChevron: {
+      fontSize: 22,
+      color: theme.textSecondary,
+      fontWeight: '300',
+    },
+    badgesRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    badge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radii.pill,
+    },
+    badgeText: {
+      fontSize: typography.xs,
+      fontWeight: '600',
+    },
+    cardFooter: {
+      marginTop: spacing.xs,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+      paddingTop: spacing.xs,
+    },
+    dateText: {
+      fontSize: typography.xs,
+      color: theme.textSecondary,
+    },
+    centerContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    stateIcon: {
+      fontSize: 48,
+      marginBottom: spacing.sm,
+    },
+    lockIcon: {
+      fontSize: 48,
+      marginBottom: spacing.sm,
+    },
+    loadingText: {
+      marginTop: spacing.md,
+      fontSize: typography.md,
+      color: theme.textSecondary,
+    },
+    errorTitle: {
+      fontSize: typography.lg,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    errorMessage: {
+      fontSize: typography.md,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginBottom: spacing.lg,
+    },
+    retryButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      borderRadius: radii.sm,
+    },
+    retryButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.base,
+    },
+    emptyTitle: {
+      fontSize: typography.lg,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    emptySubtitle: {
+      fontSize: typography.sm,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    unauthorizedTitle: {
+      fontSize: typography.xl,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    unauthorizedMessage: {
+      fontSize: typography.md,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: spacing.lg,
+    },
+    backButton: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.primary,
+      borderRadius: radii.sm,
+    },
+    backButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.base,
+    },
+    buttonPressed: {
+      opacity: 0.7,
+    },
+    paginationFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: spacing.md,
+      marginHorizontal: spacing.md,
+      marginTop: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    pageButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.xs + 2,
+      paddingHorizontal: spacing.sm + 2,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.surface,
+    },
+    pageButtonDisabled: {
+      opacity: 0.4,
+    },
+    pageButtonText: {
+      fontSize: typography.sm,
+      color: theme.text,
+      fontWeight: '600',
+      marginHorizontal: 4,
+    },
+    pageButtonTextDisabled: {
+      color: theme.textSecondary,
+    },
+    pageInfoText: {
+      fontSize: typography.sm,
+      color: theme.textSecondary,
+      fontWeight: '500',
+    },
+  });

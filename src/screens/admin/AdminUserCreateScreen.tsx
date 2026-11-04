@@ -19,9 +19,10 @@
  *    - Password visibility toggle.
  *    - Preserves entered form values on error.
  * 6. Accessibility labels and error display.
+ * 7. Personalization: Theme-driven semantic styles & localized bilingual strings.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -38,24 +39,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../../api/errors';
-import { colors, radii, spacing, typography } from '../../constants/theme';
-import { useAuth } from '../../hooks/useAuth';
+import { radii, spacing, typography } from '../../constants/theme';
 import { useCreateAdminUser } from '../../hooks/useAdmin';
+import { useAuth } from '../../hooks/useAuth';
+import { useAppLanguage } from '../../i18n';
 import type { AppNavigatorScreenProps } from '../../navigation/types';
+import { useAppTheme } from '../../theme';
 import type { Role } from '../../types/auth';
 
 type Props = AppNavigatorScreenProps<'AdminUserCreate'>;
-
-const ROLE_OPTIONS: { role: Role; label: string; desc: string }[] = [
-  { role: 'CUSTOMER', label: 'Customer', desc: 'Shop and place orders on the platform' },
-  { role: 'SELLER', label: 'Seller', desc: 'Open a shop and sell products (starts in Pending status)' },
-  { role: 'ADMIN', label: 'Admin', desc: 'Full system administration rights' },
-];
 
 const VIETNAMESE_PHONE_REGEX = /^(0|\+84)[35789]\d{8}$/;
 
 export default function AdminUserCreateScreen({ navigation }: Props) {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+
   const isAdmin = isAuthenticated && currentUser?.role === 'ADMIN';
 
   const [email, setEmail] = useState('');
@@ -72,23 +73,51 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
   const createMutation = useCreateAdminUser();
 
+  const roleOptions: { role: Role; label: string; desc: string }[] = useMemo(
+    () => [
+      {
+        role: 'CUSTOMER',
+        label: t('admin.enums.role.customer', 'Customer'),
+        desc: t('admin.users.create.roleDescCustomer', 'Shop and place orders on the platform'),
+      },
+      {
+        role: 'SELLER',
+        label: t('admin.enums.role.seller', 'Seller'),
+        desc: t(
+          'admin.users.create.roleDescSeller',
+          'Open a shop and sell products (starts in Pending status)',
+        ),
+      },
+      {
+        role: 'ADMIN',
+        label: t('admin.enums.role.admin', 'Admin'),
+        desc: t('admin.users.create.roleDescAdmin', 'Full system administration rights'),
+      },
+    ],
+    [t],
+  );
+
   // Role Guard
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
-          <Text style={styles.unauthorizedTitle}>Access denied</Text>
+          <Text style={styles.unauthorizedTitle}>
+            {t('admin.users.create.unauthorizedTitle', 'Access denied')}
+          </Text>
           <Text style={styles.unauthorizedMessage}>
-            Only system administrators can create users.
+            {t('admin.users.create.unauthorizedMessage', 'Only system administrators have permission to create users.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>
+              {t('admin.common.actions.back', 'Go back')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -100,31 +129,34 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      errors.email = 'Please enter an email address';
+      errors.email = t('admin.users.create.validation.emailRequired', 'Please enter an email address');
     } else if (!trimmedEmail.includes('@') || trimmedEmail.length > 255) {
-      errors.email = 'Invalid email';
+      errors.email = t('admin.users.create.validation.emailInvalid', 'Invalid email');
     }
 
     if (!password) {
-      errors.password = 'Please enter a password';
+      errors.password = t('admin.users.create.validation.passwordRequired', 'Please enter a password');
     } else if (password.length < 8 || password.length > 72) {
-      errors.password = 'Password must be 8 to 72 characters';
+      errors.password = t('admin.users.create.validation.passwordLength', 'Password must be 8 to 72 characters');
     }
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = 'Please enter your full name';
+      errors.name = t('admin.users.create.validation.nameRequired', 'Please enter your full name');
     } else if (trimmedName.length > 255) {
-      errors.name = 'Full name must be at most 255 characters';
+      errors.name = t('admin.users.create.validation.nameTooLong', 'Full name must be at most 255 characters');
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
-      errors.phone = 'Invalid Vietnamese mobile phone number (e.g. 0912345678)';
+      errors.phone = t(
+        'admin.users.create.validation.phoneInvalid',
+        'Invalid Vietnamese mobile phone number (e.g. 0912345678)',
+      );
     }
 
     if (address.length > 500) {
-      errors.address = 'Address must be at most 500 characters';
+      errors.address = t('admin.users.create.validation.addressTooLong', 'Address must be at most 500 characters');
     }
 
     setFormErrors(errors);
@@ -146,9 +178,11 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
         address: address.trim() || undefined,
       });
 
-      Alert.alert('Success', 'New user account created successfully.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        t('admin.users.create.successTitle', 'Success'),
+        t('admin.users.create.successMsg', 'New user account created successfully.'),
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (err: unknown) {
       const apiErr = toApiError(err);
       setServerError(apiErr.message);
@@ -172,12 +206,12 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Email field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Email <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.emailLabel', 'Email')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.email ? styles.inputError : null]}
               placeholder="user@example.com"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
@@ -196,13 +230,16 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Password field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Initial password <Text style={styles.requiredStar}>* (8-72 characters)</Text>
+              {t('admin.users.create.passwordLabel', 'Initial password')}{' '}
+              <Text style={styles.requiredStar}>
+                * {t('admin.users.create.passwordHint', '(8-72 characters)')}
+              </Text>
             </Text>
             <View style={[styles.passwordContainer, formErrors.password ? styles.inputError : null]}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Enter password"
-                placeholderTextColor={colors.textSecondary}
+                placeholder={t('admin.users.create.passwordPlaceholder', 'Enter password')}
+                placeholderTextColor={theme.textSecondary}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -218,10 +255,18 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
                 hitSlop={8}
                 style={styles.eyeButton}
                 accessibilityRole="button"
-                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityLabel={
+                  showPassword
+                    ? t('admin.users.create.togglePasswordHide', 'Hide password')
+                    : t('admin.users.create.togglePasswordShow', 'Show password')
+                }
                 testID="toggle-password-visibility"
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.eyeText}>
+                  {showPassword
+                    ? t('admin.users.create.togglePasswordHide', 'Hide')
+                    : t('admin.users.create.togglePasswordShow', 'Show')}
+                </Text>
               </Pressable>
             </View>
             {formErrors.password ? (
@@ -232,12 +277,12 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Full Name field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Full name <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.nameLabel', 'Full name')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
-              placeholder="John Doe"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('admin.users.create.namePlaceholder', 'John Doe')}
+              placeholderTextColor={theme.textSecondary}
               value={name}
               onChangeText={(text) => {
                 setName(text);
@@ -253,10 +298,10 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              Role <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.roleLabel', 'Role')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <View style={styles.roleOptionsContainer}>
-              {ROLE_OPTIONS.map((item) => {
+              {roleOptions.map((item) => {
                 const isSelected = role === item.role;
                 return (
                   <Pressable
@@ -285,11 +330,13 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
           {/* Phone field */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Phone number (optional)</Text>
+            <Text style={styles.label}>
+              {t('admin.users.create.phoneLabel', 'Phone number (optional)')}
+            </Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
               placeholder="0912345678"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               value={phone}
               onChangeText={(text) => {
                 setPhone(text);
@@ -305,11 +352,13 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
           {/* Address field */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Address (optional)</Text>
+            <Text style={styles.label}>
+              {t('admin.users.create.addressLabel', 'Address (optional)')}
+            </Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder="Contact address"
-              placeholderTextColor={colors.textSecondary}
+              placeholder={t('admin.users.create.addressPlaceholder', 'Contact address')}
+              placeholderTextColor={theme.textSecondary}
               value={address}
               onChangeText={(text) => {
                 setAddress(text);
@@ -326,16 +375,18 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Enabled switch */}
           <View style={styles.switchGroup}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Activate account immediately</Text>
+              <Text style={styles.switchLabel}>
+                {t('admin.users.create.enabledLabel', 'Activate account immediately')}
+              </Text>
               <Text style={styles.switchSubtext}>
-                The account can sign in right after creation
+                {t('admin.users.create.enabledSubtext', 'Account can log in immediately after creation')}
               </Text>
             </View>
             <Switch
               value={enabled}
               onValueChange={setEnabled}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.onPrimary}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={theme.onPrimary}
               testID="create-enabled-switch"
             />
           </View>
@@ -350,13 +401,15 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
             onPress={handleSubmit}
             disabled={createMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Create user"
+            accessibilityLabel={t('admin.users.create.submitBtn', 'Create user')}
             testID="submit-create-user-button"
           >
             {createMutation.isPending ? (
-              <ActivityIndicator size="small" color={colors.onPrimary} />
+              <ActivityIndicator size="small" color={theme.onPrimary} />
             ) : (
-              <Text style={styles.submitButtonText}>Create user</Text>
+              <Text style={styles.submitButtonText}>
+                {t('admin.users.create.submitBtn', 'Create user')}
+              </Text>
             )}
           </Pressable>
         </ScrollView>
@@ -365,220 +418,221 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  serverErrorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3F2',
-    borderWidth: 1,
-    borderColor: '#FECDCA',
-    borderRadius: radii.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  errorIcon: {
-    fontSize: 16,
-  },
-  serverErrorText: {
-    flex: 1,
-    color: colors.danger,
-    fontSize: typography.sm,
-    lineHeight: 18,
-  },
-  fieldGroup: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  requiredStar: {
-    color: colors.danger,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.md,
-    color: colors.text,
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.md,
-    color: colors.text,
-  },
-  eyeButton: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  eyeText: {
-    fontSize: typography.sm,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: typography.xs,
-    marginTop: 4,
-  },
-  roleOptionsContainer: {
-    gap: spacing.xs,
-  },
-  roleCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: spacing.sm + 2,
-  },
-  roleCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: '#F0FBFC',
-  },
-  roleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: colors.textSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  radioCircleActive: {
-    borderColor: colors.primary,
-  },
-  radioInnerCircle: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  roleTitle: {
-    fontSize: typography.md,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  roleTitleActive: {
-    color: colors.primary,
-  },
-  roleDesc: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-    marginLeft: 26,
-    lineHeight: 16,
-  },
-  switchGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.lg,
-  },
-  switchLabelContainer: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  switchLabel: {
-    fontSize: typography.md,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  switchSubtext: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: radii.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    color: colors.onPrimary,
-    fontSize: typography.base,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  stateIcon: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  unauthorizedTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  unauthorizedMessage: {
-    fontSize: typography.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radii.sm,
-  },
-  backButtonText: {
-    color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: typography.base,
-  },
-});
+const createStyles = (theme: ReturnType<typeof useAppTheme>['theme'], isDark = false) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    serverErrorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF3F2',
+      borderWidth: 1,
+      borderColor: isDark ? '#B91C1C' : '#FECDCA',
+      borderRadius: radii.sm,
+      padding: spacing.sm,
+      marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    errorIcon: {
+      fontSize: 16,
+    },
+    serverErrorText: {
+      flex: 1,
+      color: theme.danger,
+      fontSize: typography.sm,
+      lineHeight: 18,
+    },
+    fieldGroup: {
+      marginBottom: spacing.md,
+    },
+    label: {
+      fontSize: typography.sm,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: spacing.xs,
+    },
+    requiredStar: {
+      color: theme.danger,
+    },
+    input: {
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      fontSize: typography.md,
+      color: theme.text,
+    },
+    passwordContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+    },
+    passwordInput: {
+      flex: 1,
+      paddingVertical: spacing.sm + 2,
+      fontSize: typography.md,
+      color: theme.text,
+    },
+    eyeButton: {
+      paddingHorizontal: spacing.xs,
+      paddingVertical: spacing.xs,
+    },
+    eyeText: {
+      fontSize: typography.sm,
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    inputError: {
+      borderColor: theme.danger,
+    },
+    errorText: {
+      color: theme.danger,
+      fontSize: typography.xs,
+      marginTop: 4,
+    },
+    roleOptionsContainer: {
+      gap: spacing.xs,
+    },
+    roleCard: {
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radii.md,
+      padding: spacing.sm + 2,
+    },
+    roleCardActive: {
+      borderColor: theme.primary,
+      backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : '#F0FBFC',
+    },
+    roleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    radioCircle: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      borderColor: theme.textSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: spacing.sm,
+    },
+    radioCircleActive: {
+      borderColor: theme.primary,
+    },
+    radioInnerCircle: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.primary,
+    },
+    roleTitle: {
+      fontSize: typography.md,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    roleTitleActive: {
+      color: theme.primary,
+    },
+    roleDesc: {
+      fontSize: typography.xs,
+      color: theme.textSecondary,
+      marginLeft: 26,
+      lineHeight: 16,
+    },
+    switchGroup: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: spacing.lg,
+    },
+    switchLabelContainer: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    switchLabel: {
+      fontSize: typography.md,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    switchSubtext: {
+      fontSize: typography.xs,
+      color: theme.textSecondary,
+    },
+    submitButton: {
+      backgroundColor: theme.primary,
+      paddingVertical: spacing.md,
+      borderRadius: radii.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    submitButtonText: {
+      color: theme.onPrimary,
+      fontSize: typography.base,
+      fontWeight: '700',
+    },
+    buttonPressed: {
+      opacity: 0.7,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    centerContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    stateIcon: {
+      fontSize: 48,
+      marginBottom: spacing.sm,
+    },
+    unauthorizedTitle: {
+      fontSize: typography.xl,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    unauthorizedMessage: {
+      fontSize: typography.md,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: spacing.lg,
+    },
+    backButton: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.primary,
+      borderRadius: radii.sm,
+    },
+    backButtonText: {
+      color: theme.onPrimary,
+      fontWeight: '600',
+      fontSize: typography.base,
+    },
+  });

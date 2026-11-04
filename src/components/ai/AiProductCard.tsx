@@ -18,6 +18,8 @@ import PriceDisplay from '../PriceDisplay';
 import ProductImage from '../ProductImage';
 import Rating from '../Rating';
 import { colors, radii, spacing } from '../../constants/theme';
+import { useAppTheme } from '../../theme';
+import { useAppLanguage } from '../../i18n';
 import type { AiProductResponse } from '../../types/aiApi';
 import { formatVND } from '../../utils/format';
 
@@ -45,33 +47,64 @@ export function getStockStatus(stock: number): { label: string; bg: string; text
 }
 
 export default function AiProductCard({ product, onPress }: AiProductCardProps) {
+  const { theme, isDark } = useAppTheme();
+  const { t } = useAppLanguage();
+
   const safePrice = parseDecimalString(product.price);
   const safeRating = parseDecimalString(product.ratingAverage);
-  const stockInfo = getStockStatus(product.stock);
+  const rawStockInfo = getStockStatus(product.stock);
+
+  // Theme-aware and localized stock status
+  const stockLabel =
+    product.stock <= 0
+      ? t('ai.stock_out', rawStockInfo.label)
+      : product.stock <= 5
+        ? t('ai.stock_low', rawStockInfo.label, { count: product.stock })
+        : t('ai.stock_in', rawStockInfo.label);
+
+  const stockBg = isDark
+    ? product.stock <= 0
+      ? 'rgba(239, 68, 68, 0.2)'
+      : product.stock <= 5
+        ? 'rgba(245, 158, 11, 0.2)'
+        : 'rgba(16, 185, 129, 0.2)'
+    : rawStockInfo.bg;
+
+  const stockTextColor = isDark
+    ? product.stock <= 0
+      ? '#FCA5A5'
+      : product.stock <= 5
+        ? '#FCD34D'
+        : '#6EE7B7'
+    : rawStockInfo.text;
 
   const imageSource =
     product.imageUrl && product.imageUrl.trim().length > 0
       ? { uri: product.imageUrl }
       : PLACEHOLDER_IMAGE;
 
-  const accessibilityLabel = `${product.name}, ${formatVND(safePrice)}, ${stockInfo.label}`;
+  const accessibilityLabel = `${product.name}, ${formatVND(safePrice)}, ${stockLabel}`;
 
   return (
     <Pressable
       onPress={() => onPress(product)}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: theme.surface, borderColor: theme.border },
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <View style={styles.imageFrame}>
+      <View style={[styles.imageFrame, { backgroundColor: isDark ? theme.background : colors.surface }]}>
         <ProductImage source={imageSource} style={styles.image} />
-        <View style={[styles.stockBadge, { backgroundColor: stockInfo.bg }]}>
-          <Text style={[styles.stockBadgeText, { color: stockInfo.text }]}>{stockInfo.label}</Text>
+        <View style={[styles.stockBadge, { backgroundColor: stockBg }]}>
+          <Text style={[styles.stockBadgeText, { color: stockTextColor }]}>{stockLabel}</Text>
         </View>
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={2}>
+        <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>
           {product.name}
         </Text>
         <Rating rating={safeRating} reviewCount={product.reviewCount} size={11} />

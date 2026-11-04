@@ -36,6 +36,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toApiError } from '../api/errors';
 import ProductImage from '../components/ProductImage';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { useCategories } from '../hooks/useProducts';
 import {
@@ -62,6 +64,8 @@ export default function SellerProductFormScreen({
   route,
   navigation,
 }: AppNavigatorScreenProps<'SellerProductForm'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
   const isEdit = route.params.mode === 'edit';
   const productId = isEdit ? route.params.productId : undefined;
 
@@ -174,32 +178,37 @@ export default function SellerProductFormScreen({
     // 1. Name validation
     const trimmedName = name.trim();
     if (trimmedName.length === 0) {
-      validationErrors.name = 'Product name is required';
+      validationErrors.name = t('seller.val_nameRequired', 'Product name is required');
     } else if (trimmedName.length > 255) {
-      validationErrors.name = 'Product name must not exceed 255 characters';
+      validationErrors.name = t(
+        'seller.val_nameMaxLength',
+        'Product name must not exceed 255 characters',
+      );
     }
 
     // 2. Category validation
     if (!categoryId || categoryId.trim().length === 0) {
-      validationErrors.categoryId = 'Category is required';
+      validationErrors.categoryId = t('seller.val_categoryRequired', 'Category is required');
     }
 
     // 3. Price validation
     const trimmedPrice = price.trim();
     if (trimmedPrice.length === 0) {
-      validationErrors.price = 'Price is required';
+      validationErrors.price = t('seller.val_priceRequired', 'Price is required');
     } else {
       const priceRegex = /^\d+(\.\d{1,2})?$/;
       const numPrice = Number(trimmedPrice);
       if (isNaN(numPrice) || !priceRegex.test(trimmedPrice)) {
         if (!isNaN(numPrice) && numPrice <= 0) {
-          validationErrors.price = 'Price must be greater than 0';
+          validationErrors.price = t('seller.val_pricePositive', 'Price must be greater than 0');
         } else {
-          validationErrors.price =
-            'Price must be a valid number with at most 2 decimal places';
+          validationErrors.price = t(
+            'seller.val_priceFormat',
+            'Price must be a valid number with at most 2 decimal places',
+          );
         }
       } else if (numPrice <= 0) {
-        validationErrors.price = 'Price must be greater than 0';
+        validationErrors.price = t('seller.val_pricePositive', 'Price must be greater than 0');
       }
     }
 
@@ -207,21 +216,25 @@ export default function SellerProductFormScreen({
     if (!isEdit) {
       const trimmedStock = stock.trim();
       if (trimmedStock.length === 0) {
-        validationErrors.stock = 'Initial stock is required';
+        validationErrors.stock = t('seller.val_stockRequired', 'Initial stock is required');
       } else {
         const stockRegex = /^\d+$/;
         const numStock = Number(trimmedStock);
         if (!stockRegex.test(trimmedStock) || isNaN(numStock) || numStock < 0) {
-          validationErrors.stock =
-            'Stock must be a non-negative integer (0 or greater)';
+          validationErrors.stock = t(
+            'seller.val_stockNonNegative',
+            'Stock must be a non-negative integer (0 or greater)',
+          );
         }
       }
     }
 
     // 5. Product image validation
     if (active && imageUrl.trim().length === 0) {
-      validationErrors.imageUrl =
-        'Product image is required when listing product as active';
+      validationErrors.imageUrl = t(
+        'seller.val_productImageRequired',
+        'Product image is required when listing product as active',
+      );
     }
 
     return {
@@ -285,7 +298,12 @@ export default function SellerProductFormScreen({
           payload: updatePayload,
         });
 
-        Alert.alert('Product Updated', `"${trimmedName}" has been updated successfully.`);
+        Alert.alert(
+          t('seller.productUpdatedTitle', 'Product Updated'),
+          t('seller.productUpdatedMsg', `"${trimmedName}" has been updated successfully.`, {
+            name: trimmedName,
+          }),
+        );
         navigation.goBack();
       } else {
         const createPayload: ProductCreateRequest = {
@@ -300,12 +318,20 @@ export default function SellerProductFormScreen({
 
         await createMutation.mutateAsync(createPayload);
 
-        Alert.alert('Product Created', `"${trimmedName}" has been created successfully.`);
+        Alert.alert(
+          t('seller.productCreatedTitle', 'Product Created'),
+          t('seller.productCreatedMsg', `"${trimmedName}" has been created successfully.`, {
+            name: trimmedName,
+          }),
+        );
         navigation.goBack();
       }
     } catch (err) {
       const apiError = toApiError(err);
-      Alert.alert(isEdit ? 'Update Failed' : 'Create Failed', apiError.message);
+      Alert.alert(
+        isEdit ? t('seller.updateFailed', 'Update Failed') : t('seller.createFailed', 'Create Failed'),
+        apiError.message,
+      );
     }
   };
 
@@ -314,13 +340,26 @@ export default function SellerProductFormScreen({
   // ==========================================
   if (isEdit && isLoadingDetail) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']} testID="seller-product-form-loading">
-        <View style={styles.header}>
-          <Text style={styles.title}>Edit Product</Text>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="seller-product-form-loading"
+      >
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('seller.editProductTitle', 'Edit Product')}
+          </Text>
         </View>
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading product details…</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('seller.loadingProducts', 'Loading product details…')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -332,34 +371,58 @@ export default function SellerProductFormScreen({
     // 403 Forbidden / Not Approved
     if (apiError.status === 403) {
       return (
-        <SafeAreaView style={styles.container} edges={['top']} testID="seller-product-form-403">
-          <View style={styles.header}>
-            <Text style={styles.title}>Edit Product</Text>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: theme.background }]}
+          edges={['top']}
+          testID="seller-product-form-403"
+        >
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: theme.surface, borderBottomColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('seller.editProductTitle', 'Edit Product')}
+            </Text>
           </View>
           <View style={styles.centerState}>
-            <Text style={styles.errorTitle}>Access Denied</Text>
-            <Text style={styles.subtitle}>
-              You are not authorized to edit this product, or your seller account is not approved.
+            <Text style={[styles.errorTitle, { color: theme.danger }]}>
+              {t('seller.accessRestrictedTitle', 'Access Denied')}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {t(
+                'seller.accessRestrictedSubtitle',
+                'You are not authorized to edit this product, or your seller account is not approved.',
+              )}
             </Text>
             <View style={styles.buttonRow}>
               <Pressable
-                style={styles.retryButton}
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
                 onPress={() => void refetchDetail()}
                 accessibilityRole="button"
                 accessibilityLabel="Retry loading product"
                 testID="detail-retry-button"
               >
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                  {t('seller.retry', 'Retry')}
+                </Text>
               </Pressable>
               {navigation.canGoBack?.() ? (
                 <Pressable
-                  style={[styles.retryButton, styles.secondaryButton]}
+                  style={[
+                    styles.retryButton,
+                    styles.secondaryButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
                   onPress={() => navigation.goBack()}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                   testID="detail-back-button"
                 >
-                  <Text style={styles.secondaryButtonText}>Go Back</Text>
+                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                    {t('orders.cancel', 'Go Back')}
+                  </Text>
                 </Pressable>
               ) : null}
             </View>
@@ -371,24 +434,42 @@ export default function SellerProductFormScreen({
     // 404 Not Found
     if (apiError.status === 404) {
       return (
-        <SafeAreaView style={styles.container} edges={['top']} testID="seller-product-form-404">
-          <View style={styles.header}>
-            <Text style={styles.title}>Edit Product</Text>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: theme.background }]}
+          edges={['top']}
+          testID="seller-product-form-404"
+        >
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: theme.surface, borderBottomColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('seller.editProductTitle', 'Edit Product')}
+            </Text>
           </View>
           <View style={styles.centerState}>
-            <Text style={styles.errorTitle}>Product Not Found</Text>
-            <Text style={styles.subtitle}>
-              The product you are trying to edit could not be found.
+            <Text style={[styles.errorTitle, { color: theme.danger }]}>
+              {t('seller.noProductsTitle', 'Product Not Found')}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {t(
+                'seller.noProductsSubtitle',
+                'The product you are trying to edit could not be found.',
+              )}
             </Text>
             {navigation.canGoBack?.() ? (
               <Pressable
-                style={styles.retryButton}
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
                 onPress={() => navigation.goBack()}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
                 testID="detail-back-button"
               >
-                <Text style={styles.retryButtonText}>Go Back</Text>
+                <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                  {t('orders.cancel', 'Go Back')}
+                </Text>
               </Pressable>
             ) : null}
           </View>
@@ -398,32 +479,53 @@ export default function SellerProductFormScreen({
 
     // Generic error
     return (
-      <SafeAreaView style={styles.container} edges={['top']} testID="seller-product-form-error">
-        <View style={styles.header}>
-          <Text style={styles.title}>Edit Product</Text>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="seller-product-form-error"
+      >
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('seller.editProductTitle', 'Edit Product')}
+          </Text>
         </View>
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Couldn't load product</Text>
-          <Text style={styles.subtitle}>{apiError.message}</Text>
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.loadProductsFailed', "Couldn't load product")}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{apiError.message}</Text>
           <View style={styles.buttonRow}>
             <Pressable
-              style={styles.retryButton}
+              style={[styles.retryButton, { backgroundColor: theme.primary }]}
               onPress={() => void refetchDetail()}
               accessibilityRole="button"
               accessibilityLabel="Retry loading product"
               testID="detail-retry-button"
             >
-              <Text style={styles.retryButtonText}>Retry</Text>
+              <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                {t('seller.retry', 'Retry')}
+              </Text>
             </Pressable>
             {navigation.canGoBack?.() ? (
               <Pressable
-                style={[styles.retryButton, styles.secondaryButton]}
+                style={[
+                  styles.retryButton,
+                  styles.secondaryButton,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
                 onPress={() => navigation.goBack()}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
                 testID="detail-back-button"
               >
-                <Text style={styles.secondaryButtonText}>Go Back</Text>
+                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                  {t('orders.cancel', 'Go Back')}
+                </Text>
               </Pressable>
             ) : null}
           </View>
@@ -434,18 +536,25 @@ export default function SellerProductFormScreen({
 
   return (
     <KeyboardAvoidingView
-      style={styles.keyboardAvoidingView}
+      style={[styles.keyboardAvoidingView, { backgroundColor: theme.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <SafeAreaView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         edges={['top']}
         testID="seller-product-form-screen"
       >
         {/* Header Bar */}
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {isEdit ? 'Edit Product' : 'New Product'}
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {isEdit
+              ? t('seller.editProductTitle', 'Edit Product')
+              : t('seller.createProductTitle', 'New Product')}
           </Text>
           {navigation.canGoBack?.() ? (
             <Pressable
@@ -455,7 +564,9 @@ export default function SellerProductFormScreen({
               style={styles.cancelHeaderButton}
               testID="header-cancel-button"
             >
-              <Text style={styles.cancelHeaderText}>Cancel</Text>
+              <Text style={[styles.cancelHeaderText, { color: theme.textSecondary }]}>
+                {t('seller.cancel', 'Cancel')}
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -478,15 +589,18 @@ export default function SellerProductFormScreen({
             style={styles.field}
             onLayout={(e) => handleFieldLayout('name', e.nativeEvent.layout.y)}
           >
-            <Text style={styles.label}>Product Name *</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.productNameLabel', 'Product Name *')}
+            </Text>
             <View
               style={[
                 styles.inputShell,
-                errors.name != null && styles.inputShellError,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                errors.name != null && [styles.inputShellError, { borderColor: theme.danger }],
               ]}
             >
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text }]}
                 value={name}
                 onFocus={() => handleFieldFocus('name')}
                 onChangeText={(val) => {
@@ -495,14 +609,14 @@ export default function SellerProductFormScreen({
                     setErrors((prev) => ({ ...prev, name: undefined }));
                   }
                 }}
-                placeholder="e.g. Mechanical Gaming Keyboard"
-                placeholderTextColor={colors.textSecondary}
+                placeholder={t('seller.productNamePlaceholder', 'e.g. Mechanical Gaming Keyboard')}
+                placeholderTextColor={theme.textSecondary}
                 accessibilityLabel="Product Name"
                 testID="name-input"
               />
             </View>
             {errors.name ? (
-              <Text style={styles.errorText} testID="name-error-text">
+              <Text style={[styles.errorText, { color: theme.danger }]} testID="name-error-text">
                 {errors.name}
               </Text>
             ) : null}
@@ -513,30 +627,38 @@ export default function SellerProductFormScreen({
             style={styles.field}
             onLayout={(e) => handleFieldLayout('category', e.nativeEvent.layout.y)}
           >
-            <Text style={styles.label}>Category *</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.categoryLabel', 'Category *')}
+            </Text>
             {isLoadingCategories ? (
               <View style={styles.categoryLoading} testID="categories-loading">
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.categorySubtext}>Loading categories…</Text>
+                <ActivityIndicator size="small" color={theme.primary} />
+                <Text style={[styles.categorySubtext, { color: theme.textSecondary }]}>
+                  {t('seller.categoryPlaceholder', 'Loading categories…')}
+                </Text>
               </View>
             ) : isErrorCategories ? (
               <View style={styles.categoryError} testID="categories-error">
-                <Text style={styles.errorText}>Failed to load categories</Text>
+                <Text style={[styles.errorText, { color: theme.danger }]}>
+                  {t('seller.val_categoryRequired', 'Failed to load categories')}
+                </Text>
                 <Pressable
                   onPress={() => void refetchCategories()}
-                  style={styles.categoryRetryButton}
+                  style={[
+                    styles.categoryRetryButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
                   accessibilityRole="button"
                   accessibilityLabel="Retry loading categories"
                   testID="categories-retry-button"
                 >
-                  <Text style={styles.categoryRetryText}>Retry</Text>
+                  <Text style={[styles.categoryRetryText, { color: theme.primary }]}>
+                    {t('seller.retry', 'Retry')}
+                  </Text>
                 </Pressable>
               </View>
             ) : (
-              <View
-                style={styles.categoryChipsContainer}
-                testID="categories-container"
-              >
+              <View style={styles.categoryChipsContainer} testID="categories-container">
                 {categories.map((cat) => {
                   const isSelected = categoryId === cat.id;
                   return (
@@ -557,13 +679,21 @@ export default function SellerProductFormScreen({
                       testID={`category-option-${cat.id}`}
                       style={[
                         styles.categoryChip,
-                        isSelected && styles.categoryChipSelected,
+                        { backgroundColor: theme.surface, borderColor: theme.border },
+                        isSelected && [
+                          styles.categoryChipSelected,
+                          { backgroundColor: theme.primary, borderColor: theme.primary },
+                        ],
                       ]}
                     >
                       <Text
                         style={[
                           styles.categoryChipText,
-                          isSelected && styles.categoryChipTextSelected,
+                          { color: theme.text },
+                          isSelected && [
+                            styles.categoryChipTextSelected,
+                            { color: theme.onPrimary },
+                          ],
                         ]}
                       >
                         {cat.name}
@@ -574,7 +704,10 @@ export default function SellerProductFormScreen({
               </View>
             )}
             {errors.categoryId ? (
-              <Text style={styles.errorText} testID="category-error-text">
+              <Text
+                style={[styles.errorText, { color: theme.danger }]}
+                testID="category-error-text"
+              >
                 {errors.categoryId}
               </Text>
             ) : null}
@@ -585,15 +718,18 @@ export default function SellerProductFormScreen({
             style={styles.field}
             onLayout={(e) => handleFieldLayout('price', e.nativeEvent.layout.y)}
           >
-            <Text style={styles.label}>Price (VND) *</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.priceLabel', 'Price (VND) *')}
+            </Text>
             <View
               style={[
                 styles.inputShell,
-                errors.price != null && styles.inputShellError,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                errors.price != null && [styles.inputShellError, { borderColor: theme.danger }],
               ]}
             >
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text }]}
                 value={price}
                 onFocus={() => handleFieldFocus('price')}
                 onChangeText={(val) => {
@@ -602,15 +738,15 @@ export default function SellerProductFormScreen({
                     setErrors((prev) => ({ ...prev, price: undefined }));
                   }
                 }}
-                placeholder="e.g. 250000"
-                placeholderTextColor={colors.textSecondary}
+                placeholder={t('seller.pricePlaceholder', 'e.g. 250000')}
+                placeholderTextColor={theme.textSecondary}
                 keyboardType="decimal-pad"
                 accessibilityLabel="Price"
                 testID="price-input"
               />
             </View>
             {errors.price ? (
-              <Text style={styles.errorText} testID="price-error-text">
+              <Text style={[styles.errorText, { color: theme.danger }]} testID="price-error-text">
                 {errors.price}
               </Text>
             ) : null}
@@ -622,15 +758,18 @@ export default function SellerProductFormScreen({
               style={styles.field}
               onLayout={(e) => handleFieldLayout('stock', e.nativeEvent.layout.y)}
             >
-              <Text style={styles.label}>Initial Stock *</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                {t('seller.initialStockLabel', 'Initial Stock *')}
+              </Text>
               <View
                 style={[
                   styles.inputShell,
-                  errors.stock != null && styles.inputShellError,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  errors.stock != null && [styles.inputShellError, { borderColor: theme.danger }],
                 ]}
               >
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   value={stock}
                   onFocus={() => handleFieldFocus('stock')}
                   onChangeText={(val) => {
@@ -639,30 +778,38 @@ export default function SellerProductFormScreen({
                       setErrors((prev) => ({ ...prev, stock: undefined }));
                     }
                   }}
-                  placeholder="e.g. 10"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholder={t('seller.initialStockPlaceholder', 'e.g. 10')}
+                  placeholderTextColor={theme.textSecondary}
                   keyboardType="number-pad"
                   accessibilityLabel="Initial Stock"
                   testID="stock-input"
                 />
               </View>
               {errors.stock ? (
-                <Text style={styles.errorText} testID="stock-error-text">
+                <Text
+                  style={[styles.errorText, { color: theme.danger }]}
+                  testID="stock-error-text"
+                >
                   {errors.stock}
                 </Text>
               ) : null}
             </View>
           ) : (
             <View
-              style={styles.stockNoticeBox}
+              style={[
+                styles.stockNoticeBox,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
               onLayout={(e) => handleFieldLayout('stock', e.nativeEvent.layout.y)}
               testID="stock-notice-box"
             >
-              <Text style={styles.stockNoticeTitle}>
-                Current Stock: {productDetail?.stock ?? 0}
+              <Text style={[styles.stockNoticeTitle, { color: theme.text }]}>
+                {t('seller.stockCount', `Current Stock: ${productDetail?.stock ?? 0}`, {
+                  count: productDetail?.stock ?? 0,
+                })}
               </Text>
-              <Text style={styles.stockNoticeText}>
-                Stock is managed separately from My Products.
+              <Text style={[styles.stockNoticeText, { color: theme.textSecondary }]}>
+                {t('seller.stockEditNote', 'Stock is managed separately from My Products.')}
               </Text>
             </View>
           )}
@@ -672,8 +819,8 @@ export default function SellerProductFormScreen({
             style={styles.field}
             onLayout={(e) => handleFieldLayout('imageUrl', e.nativeEvent.layout.y)}
           >
-            <Text style={styles.label}>
-              Product Image {active ? '*' : '(Optional)'}
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.productImageLabel', 'Product Image')} {active ? '*' : '(Optional)'}
             </Text>
             {imageUrl.length > 0 ? (
               <ProductImage source={imageSource} style={styles.imagePreview} testID="image-preview" />
@@ -681,7 +828,8 @@ export default function SellerProductFormScreen({
             <Pressable
               style={[
                 styles.imageButton,
-                errors.imageUrl != null && styles.inputShellError,
+                { borderColor: theme.primary },
+                errors.imageUrl != null && [styles.inputShellError, { borderColor: theme.danger }],
                 imageUpload.isPending && styles.submitButtonDisabled,
               ]}
               onPress={() => {
@@ -689,20 +837,29 @@ export default function SellerProductFormScreen({
               }}
               disabled={imageUpload.isPending || isSubmitting}
               accessibilityRole="button"
-              accessibilityLabel={imageUrl.length > 0 ? 'Change image' : 'Choose image'}
+              accessibilityLabel={
+                imageUrl.length > 0
+                  ? t('seller.changeImage', 'Change image')
+                  : t('seller.chooseImage', 'Choose image')
+              }
               accessibilityState={{ busy: imageUpload.isPending }}
               testID="pick-image-button"
             >
               {imageUpload.isPending ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={theme.primary} />
               ) : (
-                <Text style={styles.imageButtonText}>
-                  {imageUrl.length > 0 ? 'Change image' : 'Choose image'}
+                <Text style={[styles.imageButtonText, { color: theme.primary }]}>
+                  {imageUrl.length > 0
+                    ? t('seller.changeImage', 'Change image')
+                    : t('seller.chooseImage', 'Choose image')}
                 </Text>
               )}
             </Pressable>
             {errors.imageUrl ? (
-              <Text style={styles.errorText} testID="image-url-error-text">
+              <Text
+                style={[styles.errorText, { color: theme.danger }]}
+                testID="image-url-error-text"
+              >
                 {errors.imageUrl}
               </Text>
             ) : null}
@@ -713,15 +870,26 @@ export default function SellerProductFormScreen({
             style={styles.field}
             onLayout={(e) => handleFieldLayout('description', e.nativeEvent.layout.y)}
           >
-            <Text style={styles.label}>Description (Optional)</Text>
-            <View style={[styles.inputShell, styles.multilineShell]}>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.descriptionLabel', 'Description (Optional)')}
+            </Text>
+            <View
+              style={[
+                styles.inputShell,
+                styles.multilineShell,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
               <TextInput
-                style={[styles.input, styles.multilineInput]}
+                style={[styles.input, styles.multilineInput, { color: theme.text }]}
                 value={description}
                 onFocus={() => handleFieldFocus('description')}
                 onChangeText={setDescription}
-                placeholder="Enter detailed description of your product..."
-                placeholderTextColor={colors.textSecondary}
+                placeholder={t(
+                  'seller.descriptionPlaceholder',
+                  'Enter detailed description of your product...',
+                )}
+                placeholderTextColor={theme.textSecondary}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -733,15 +901,20 @@ export default function SellerProductFormScreen({
 
           {/* Active / Listed Switch */}
           <View
-            style={styles.switchRow}
+            style={[
+              styles.switchRow,
+              { borderTopColor: theme.border, borderBottomColor: theme.border },
+            ]}
             onLayout={(e) => handleFieldLayout('active', e.nativeEvent.layout.y)}
           >
             <View style={styles.switchInfo}>
-              <Text style={styles.label}>Product Visibility</Text>
-              <Text style={styles.switchSubtext}>
+              <Text style={[styles.label, { color: theme.text }]}>
+                {t('seller.statusLabel', 'Product Visibility')}
+              </Text>
+              <Text style={[styles.switchSubtext, { color: theme.textSecondary }]}>
                 {active
-                  ? 'Listed: visible on marketplace'
-                  : 'Unlisted: hidden from buyers'}
+                  ? t('seller.statusActive', 'Listed: visible on marketplace')
+                  : t('seller.statusInactive', 'Unlisted: hidden from buyers')}
               </Text>
             </View>
             <Switch
@@ -752,8 +925,8 @@ export default function SellerProductFormScreen({
                   setErrors((prev) => ({ ...prev, imageUrl: undefined }));
                 }
               }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.onPrimary}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={theme.onPrimary}
               accessibilityLabel="Toggle product visibility"
               testID="active-switch"
             />
@@ -767,6 +940,7 @@ export default function SellerProductFormScreen({
             <Pressable
               style={[
                 styles.submitButton,
+                { backgroundColor: theme.primary },
                 (isSubmitting || imageUpload.isPending) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
@@ -777,14 +951,18 @@ export default function SellerProductFormScreen({
             >
               {isSubmitting ? (
                 <View style={styles.submitButtonRow}>
-                  <ActivityIndicator size="small" color={colors.onPrimary} />
-                  <Text style={styles.submitButtonText}>
-                    {isEdit ? 'Saving…' : 'Creating…'}
+                  <ActivityIndicator size="small" color={theme.onPrimary} />
+                  <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+                    {isEdit
+                      ? t('seller.saving', 'Saving…')
+                      : t('seller.saving', 'Creating…')}
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.submitButtonText}>
-                  {isEdit ? 'Save Changes' : 'Create Product'}
+                <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+                  {isEdit
+                    ? t('seller.saveChanges', 'Save Changes')
+                    : t('seller.publishProduct', 'Create Product')}
                 </Text>
               )}
             </Pressable>
