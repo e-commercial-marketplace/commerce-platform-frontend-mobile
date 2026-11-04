@@ -72,8 +72,32 @@ export default function ProductDetailScreen({
 
   const { productId } = route.params;
   const { data: product, isPending, isError, error, refetch } = useProductDetail(productId);
+  const sellerId = product?.sellerId;
+  const { data: shop } = useSellerShop(sellerId ?? '');
 
-  const { data: shop } = useSellerShop(product?.sellerId ?? '');
+  const sameShopQuery =
+    typeof useSameShopProducts === 'function'
+      ? useSameShopProducts(sellerId, productId)
+      : { data: undefined, isLoading: false, isError: false };
+  const sameShopProducts = sameShopQuery?.data;
+  const isSameShopLoading =
+    Boolean(sellerId && sellerId.length > 0) && (sameShopQuery?.isLoading ?? false);
+  const isSameShopError = sameShopQuery?.isError ?? false;
+
+  const displayedProducts = useMemo(() => {
+    if (!sameShopProducts || isSameShopError) {
+      return [];
+    }
+    return sameShopProducts.filter((p) => p.id !== productId && p.active !== false).slice(0, 8);
+  }, [sameShopProducts, isSameShopError, productId]);
+
+  const productRows = useMemo(() => {
+    const rows: Product[][] = [];
+    for (let i = 0; i < displayedProducts.length; i += 2) {
+      rows.push(displayedProducts.slice(i, i + 2));
+    }
+    return rows;
+  }, [displayedProducts]);
 
   useEffect(
     () => () => {
@@ -263,8 +287,6 @@ export default function ProductDetailScreen({
     }
   };
 
-  const sellerId = product.sellerId;
-
   const handleOpenChat = async () => {
     if (isOpeningChatRef.current || openConversationMutation.isPending) {
       return;
@@ -315,29 +337,6 @@ export default function ProductDetailScreen({
     }
     navigation.navigate('SellerShop', { sellerId });
   }
-
-  const sameShopQuery =
-    typeof useSameShopProducts === 'function'
-      ? useSameShopProducts(sellerId, productId)
-      : { data: undefined, isLoading: false, isError: false };
-  const sameShopProducts = sameShopQuery?.data;
-  const isSameShopLoading = sameShopQuery?.isLoading ?? false;
-  const isSameShopError = sameShopQuery?.isError ?? false;
-
-  const displayedProducts = useMemo(() => {
-    if (!sameShopProducts || isSameShopError) {
-      return [];
-    }
-    return sameShopProducts.filter((p) => p.id !== productId && p.active !== false).slice(0, 8);
-  }, [sameShopProducts, isSameShopError, productId]);
-
-  const productRows = useMemo(() => {
-    const rows: Product[][] = [];
-    for (let i = 0; i < displayedProducts.length; i += 2) {
-      rows.push(displayedProducts.slice(i, i + 2));
-    }
-    return rows;
-  }, [displayedProducts]);
 
   function handleSameShopProductPress(item: Product) {
     if (item.id === productId) {

@@ -299,4 +299,159 @@ describe('ProductDetailScreen - More Products From Same Shop', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('ProductDetail', { productId: 'prod-rec-2' });
   });
+
+  describe('React Hook Order Stability (Regression Test)', () => {
+    it('renders without hook-order errors across loading, loaded, and navigating to another product', () => {
+      // 1. Initial render: Product is loading
+      mockedUseProductDetail.mockReturnValue({
+        data: undefined,
+        isPending: true,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      } as any);
+      mockedUseSameShopProducts.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      const navigation = {
+        navigate: jest.fn(),
+        push: jest.fn(),
+        dispatch: jest.fn(),
+        goBack: jest.fn(),
+      };
+
+      const { getByText, queryByText, rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <AppThemeProvider initialPreference="light">
+            <AppI18nProvider initialLanguage="vi">
+              <ProductDetailScreen
+                navigation={navigation as any}
+                route={{
+                  key: 'ProductDetail',
+                  name: 'ProductDetail',
+                  params: { productId: CURRENT_PRODUCT.id },
+                } as any}
+              />
+            </AppI18nProvider>
+          </AppThemeProvider>
+        </QueryClientProvider>,
+      );
+
+      // Verify initial loading state
+      expect(getByText('Đang tải sản phẩm…')).toBeTruthy();
+
+      // 2. Data loads successfully for PRODUCT_A
+      mockedUseProductDetail.mockReturnValue({
+        data: CURRENT_PRODUCT,
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      } as any);
+      mockedUseSameShopProducts.mockReturnValue({
+        data: RECOMMENDATIONS,
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      // Rerender - must NOT throw "Rendered more hooks than during the previous render"
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AppThemeProvider initialPreference="light">
+            <AppI18nProvider initialLanguage="vi">
+              <ProductDetailScreen
+                navigation={navigation as any}
+                route={{
+                  key: 'ProductDetail',
+                  name: 'ProductDetail',
+                  params: { productId: CURRENT_PRODUCT.id },
+                } as any}
+              />
+            </AppI18nProvider>
+          </AppThemeProvider>
+        </QueryClientProvider>,
+      );
+
+      expect(queryByText('Đang tải sản phẩm…')).toBeNull();
+      expect(getByText(CURRENT_PRODUCT.name)).toBeTruthy();
+      expect(getByText('Sản phẩm khác của shop')).toBeTruthy();
+      expect(getByText(RECOMMENDATIONS[0].name)).toBeTruthy();
+
+      // 3. Navigate to another product: starts in loading state for PRODUCT_B
+      const NEXT_PRODUCT: Product = {
+        ...RECOMMENDATIONS[0],
+        sellerId: 'seller-abc',
+      };
+      mockedUseProductDetail.mockReturnValue({
+        data: undefined,
+        isPending: true,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      } as any);
+      mockedUseSameShopProducts.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AppThemeProvider initialPreference="light">
+            <AppI18nProvider initialLanguage="vi">
+              <ProductDetailScreen
+                navigation={navigation as any}
+                route={{
+                  key: 'ProductDetail',
+                  name: 'ProductDetail',
+                  params: { productId: NEXT_PRODUCT.id },
+                } as any}
+              />
+            </AppI18nProvider>
+          </AppThemeProvider>
+        </QueryClientProvider>,
+      );
+
+      expect(getByText('Đang tải sản phẩm…')).toBeTruthy();
+
+      // 4. Data loads for NEXT_PRODUCT
+      mockedUseProductDetail.mockReturnValue({
+        data: NEXT_PRODUCT,
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      } as any);
+      mockedUseSameShopProducts.mockReturnValue({
+        data: [CURRENT_PRODUCT, RECOMMENDATIONS[1]],
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AppThemeProvider initialPreference="light">
+            <AppI18nProvider initialLanguage="vi">
+              <ProductDetailScreen
+                navigation={navigation as any}
+                route={{
+                  key: 'ProductDetail',
+                  name: 'ProductDetail',
+                  params: { productId: NEXT_PRODUCT.id },
+                } as any}
+              />
+            </AppI18nProvider>
+          </AppThemeProvider>
+        </QueryClientProvider>,
+      );
+
+      expect(queryByText('Đang tải sản phẩm…')).toBeNull();
+      expect(getByText(NEXT_PRODUCT.name)).toBeTruthy();
+      expect(getByText('Sản phẩm khác của shop')).toBeTruthy();
+      expect(getByText(CURRENT_PRODUCT.name)).toBeTruthy();
+    });
+  });
 });
