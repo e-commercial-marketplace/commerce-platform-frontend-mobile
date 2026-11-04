@@ -34,6 +34,7 @@ export function mapProductSummaryToProduct(dto: ProductSummaryDto): Product {
     description: dto.description,
     sellerId: dto.sellerId,
     stock: typeof (dto as { stock?: number }).stock === 'number' ? (dto as { stock?: number }).stock : undefined,
+    active: typeof (dto as { active?: boolean }).active === 'boolean' ? (dto as { active?: boolean }).active : true,
   };
 }
 
@@ -53,5 +54,6 @@ export function mapProductDetailToProduct(dto: ProductDetailDto): Product {
     description: dto.description,
     sellerId: dto.sellerId,
     stock: typeof (dto as { stock?: number }).stock === 'number' ? (dto as { stock?: number }).stock : undefined,
+    active: typeof (dto as { active?: boolean }).active === 'boolean' ? (dto as { active?: boolean }).active : true,
   };
 }

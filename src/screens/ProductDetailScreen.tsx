@@ -7,13 +7,14 @@
  * Fully theme-aware with dynamic semantic tokens and localized strings.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
 import Button from '../components/Button';
 import PriceDisplay from '../components/PriceDisplay';
+import ProductCard from '../components/ProductCard';
 import ProductImage from '../components/ProductImage';
 import ProductReviews from '../components/ProductReviews';
 import Rating from '../components/Rating';
@@ -23,12 +24,13 @@ import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { useOpenConversation } from '../hooks/useChat';
-import { useProductDetail } from '../hooks/useProducts';
+import { useProductDetail, useSameShopProducts } from '../hooks/useProducts';
 import { useSellerShop } from '../hooks/useSellers';
 import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import { useAppTheme } from '../theme';
 import type { Cart } from '../types/cart';
+import type { Product } from '../types/product';
 import { findCartLineByProductId } from '../utils/cartSelection';
 
 /** How long the button keeps showing the "Added" confirmation. */
@@ -314,6 +316,40 @@ export default function ProductDetailScreen({
     navigation.navigate('SellerShop', { sellerId });
   }
 
+  const sameShopQuery =
+    typeof useSameShopProducts === 'function'
+      ? useSameShopProducts(sellerId, productId)
+      : { data: undefined, isLoading: false, isError: false };
+  const sameShopProducts = sameShopQuery?.data;
+  const isSameShopLoading = sameShopQuery?.isLoading ?? false;
+  const isSameShopError = sameShopQuery?.isError ?? false;
+
+  const displayedProducts = useMemo(() => {
+    if (!sameShopProducts || isSameShopError) {
+      return [];
+    }
+    return sameShopProducts.filter((p) => p.id !== productId && p.active !== false).slice(0, 8);
+  }, [sameShopProducts, isSameShopError, productId]);
+
+  const productRows = useMemo(() => {
+    const rows: Product[][] = [];
+    for (let i = 0; i < displayedProducts.length; i += 2) {
+      rows.push(displayedProducts.slice(i, i + 2));
+    }
+    return rows;
+  }, [displayedProducts]);
+
+  function handleSameShopProductPress(item: Product) {
+    if (item.id === productId) {
+      return;
+    }
+    if (typeof (navigation as any).push === 'function') {
+      (navigation as any).push('ProductDetail', { productId: item.id });
+    } else {
+      navigation.navigate('ProductDetail', { productId: item.id });
+    }
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -525,6 +561,37 @@ export default function ProductDetailScreen({
           onOpenWriteReview={handleOpenWriteReview}
           canWriteReview={!isAuthenticated || user?.role === 'CUSTOMER'}
         />
+
+        {sellerId != null && !isSameShopError && (
+          isSameShopLoading ? (
+            <View style={styles.sameShopSection} testID="same-shop-loading">
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              <ActivityIndicator size="small" color={theme.primary} />
+            </View>
+          ) : displayedProducts.length > 0 ? (
+            <View style={styles.sameShopSection} testID="same-shop-section">
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                {t('product.moreFromShop', 'More from this shop')}
+              </Text>
+              <View style={styles.sameShopGrid}>
+                {productRows.map((row, rowIndex) => (
+                  <View key={`same-shop-row-${rowIndex}`} style={styles.sameShopRow}>
+                    {row.map((item) => (
+                      <ProductCard
+                        key={item.id}
+                        product={item}
+                        viewMode="grid"
+                        onPress={handleSameShopProductPress}
+                      />
+                    ))}
+                    {row.length === 1 && <View style={styles.gridCardSpacer} />}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null
+        )}
       </ScrollView>
 
       <View
@@ -811,5 +878,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+  sameShopSection: {
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  sameShopGrid: {
+    gap: spacing.sm,
+  },
+  sameShopRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  gridCardSpacer: {
+    flex: 1,
+    maxWidth: '50%',
   },
 });

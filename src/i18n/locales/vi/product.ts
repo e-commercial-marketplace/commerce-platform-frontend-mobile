@@ -25,4 +25,5 @@ export const product = {
   notFoundInCart: 'Không tìm thấy sản phẩm trong giỏ hàng. Vui lòng thử lại.',
   sellerInfoNotFound: 'Không tìm thấy thông tin người bán.',
   cannotOpenChat: 'Không thể mở cuộc trò chuyện. Vui lòng thử lại.',
+  moreFromShop: 'Sản phẩm khác của shop',
 };
