@@ -10,7 +10,20 @@
 
 import { apiClient, unwrapData } from '../api/client';
 import type { ApiResponse } from '../types/api';
-import type { VoucherResponse } from '../types/voucherApi';
+import type { VoucherResponse, VoucherSummaryPage } from '../types/voucherApi';
+
+export const VOUCHERS_PAGE_SIZE = 20;
+
+/** GET /vouchers - usable vouchers, highest % first. Public, no sign-in needed. */
+export async function getUsableVouchers(
+  page = 0,
+  size = VOUCHERS_PAGE_SIZE,
+): Promise<VoucherSummaryPage> {
+  const response = await apiClient.get<ApiResponse<VoucherSummaryPage>>('/vouchers', {
+    params: { page, size },
+  });
+  return unwrapData(response);
+}
 
 /**
  * Validates a platform voucher code before checkout.

@@ -92,22 +92,19 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
           <Text style={styles.unauthorizedTitle}>
-            {t('admin.users.detail.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.users.detail.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={styles.unauthorizedMessage}>
-            {t(
-              'admin.users.detail.unauthorizedMessage',
-              'Chỉ Quản trị viên hệ thống mới có quyền truy cập vào thông tin chi tiết người dùng.',
-            )}
+            {t('admin.users.detail.unauthorizedMessage', 'Only system administrators have permission to view user details.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.back', 'Quay lại')}
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.common.actions.back', 'Quay lại')}
+              {t('admin.common.actions.back', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -121,7 +118,7 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>
-            {t('admin.users.detail.loading', 'Đang tải thông tin người dùng…')}
+            {t('admin.users.detail.loading', 'Loading user information…')}
           </Text>
         </View>
       </SafeAreaView>
@@ -131,13 +128,13 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
   if (isError || !user) {
     const errorMessage = error
       ? toApiError(error).message
-      : t('admin.users.detail.notFound', 'Người dùng không tồn tại');
+      : t('admin.users.detail.notFound', 'User not found');
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
           <Text style={styles.errorTitle}>
-            {t('admin.users.detail.errorTitle', 'Không thể tải thông tin')}
+            {t('admin.users.detail.errorTitle', 'Could not load information')}
           </Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
@@ -146,11 +143,11 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.retry', 'Thử lại')}
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="retry-button"
           >
             <Text style={styles.retryButtonText}>
-              {t('admin.common.actions.retry', 'Thử lại')}
+              {t('admin.common.actions.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -168,33 +165,33 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
   const handleDisablePress = () => {
     if (isSelf) {
       Alert.alert(
-        t('admin.users.detail.selfDisableAlertTitle', 'Không thể thực hiện'),
-        t('admin.users.detail.selfDisableAlertMsg', 'Bạn không thể tự vô hiệu hoá tài khoản của chính mình.'),
+        t('admin.users.detail.selfDisableAlertTitle', 'Cannot perform action'),
+        t('admin.users.detail.selfDisableAlertMsg', 'You cannot disable your own account.'),
       );
       return;
     }
 
     Alert.alert(
-      t('admin.users.detail.disableConfirmTitle', 'Vô hiệu hóa tài khoản'),
+      t('admin.users.detail.disableConfirmTitle', 'Disable account'),
       t(
         'admin.users.detail.disableConfirmMsg',
         `Bạn có chắc chắn muốn vô hiệu hóa tài khoản "${user.name}" không?\n\nNgười dùng sẽ không thể đăng nhập hoặc làm mới phiên, nhưng mọi dữ liệu đơn hàng và lịch sử sẽ được bảo lưu.`,
         { name: user.name },
       ),
       [
-        { text: t('admin.common.actions.cancel', 'Huỷ'), style: 'cancel' },
+        { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: t('admin.users.detail.disableConfirmBtn', 'Vô hiệu hóa'),
+          text: t('admin.users.detail.disableConfirmBtn', 'Disable'),
           style: 'destructive',
           onPress: async () => {
             try {
               await disableMutation.mutateAsync(user.id);
               Alert.alert(
-                t('admin.common.success', 'Thành công'),
-                t('admin.users.detail.disableSuccess', 'Tài khoản đã được vô hiệu hóa.'),
+                t('admin.common.success', 'Success'),
+                t('admin.users.detail.disableSuccess', 'The account has been disabled.'),
               );
             } catch (err: unknown) {
-              Alert.alert(t('admin.common.error', 'Lỗi'), toApiError(err).message);
+              Alert.alert(t('admin.common.error', 'Error'), toApiError(err).message);
             }
           },
         },
@@ -204,16 +201,16 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
 
   const handleEnablePress = () => {
     Alert.alert(
-      t('admin.users.detail.enableConfirmTitle', 'Kích hoạt lại tài khoản'),
+      t('admin.users.detail.enableConfirmTitle', 'Reactivate account'),
       t(
         'admin.users.detail.enableConfirmMsg',
         `Bạn có chắc chắn muốn kích hoạt lại tài khoản "${user.name}" không?\n\nNgười dùng sẽ có thể đăng nhập lại vào hệ thống.`,
         { name: user.name },
       ),
       [
-        { text: t('admin.common.actions.cancel', 'Huỷ'), style: 'cancel' },
+        { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: t('admin.users.detail.enableConfirmBtn', 'Kích hoạt'),
+          text: t('admin.users.detail.enableConfirmBtn', 'Activate'),
           onPress: async () => {
             try {
               await updateMutation.mutateAsync({
@@ -221,11 +218,11 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
                 payload: { enabled: true },
               });
               Alert.alert(
-                t('admin.common.success', 'Thành công'),
-                t('admin.users.detail.enableSuccess', 'Tài khoản đã được kích hoạt lại.'),
+                t('admin.common.success', 'Success'),
+                t('admin.users.detail.enableSuccess', 'The account has been reactivated.'),
               );
             } catch (err: unknown) {
-              Alert.alert(t('admin.common.error', 'Lỗi'), toApiError(err).message);
+              Alert.alert(t('admin.common.error', 'Error'), toApiError(err).message);
             }
           },
         },
@@ -294,12 +291,12 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
         {/* Information Section */}
         <View style={styles.infoSection}>
           <Text style={styles.sectionHeader}>
-            {t('admin.users.detail.sectionInfo', 'Thông tin chi tiết')}
+            {t('admin.users.detail.sectionInfo', 'Detailed information')}
           </Text>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {t('admin.users.detail.idLabel', 'Mã định danh (ID)')}
+              {t('admin.users.detail.idLabel', 'Identifier (ID)')}
             </Text>
             <Text style={styles.infoValue} selectable>
               {user.id}
@@ -315,32 +312,32 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {t('admin.users.detail.phoneLabel', 'Số điện thoại')}
+              {t('admin.users.detail.phoneLabel', 'Phone number')}
             </Text>
             <Text style={styles.infoValue}>
-              {user.phone ? user.phone : t('admin.users.detail.notUpdated', 'Chưa cập nhật')}
+              {user.phone ? user.phone : t('admin.users.detail.notUpdated', 'Not updated')}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {t('admin.users.detail.addressLabel', 'Địa chỉ')}
+              {t('admin.users.detail.addressLabel', 'Address')}
             </Text>
             <Text style={styles.infoValue}>
-              {user.address ? user.address : t('admin.users.detail.notUpdated', 'Chưa cập nhật')}
+              {user.address ? user.address : t('admin.users.detail.notUpdated', 'Not updated')}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {t('admin.users.detail.createdAtLabel', 'Ngày tạo tài khoản')}
+              {t('admin.users.detail.createdAtLabel', 'Account created on')}
             </Text>
             <Text style={styles.infoValue}>{formatDateTime(user.createdAt)}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {t('admin.users.detail.updatedAtLabel', 'Cập nhật lần cuối')}
+              {t('admin.users.detail.updatedAtLabel', 'Last updated')}
             </Text>
             <Text style={styles.infoValue}>{formatDateTime(user.updatedAt)}</Text>
           </View>
@@ -349,18 +346,18 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
         {/* Actions Section */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionHeader}>
-            {t('admin.users.detail.sectionActions', 'Thao tác quản lý')}
+            {t('admin.users.detail.sectionActions', 'Management actions')}
           </Text>
 
           <Pressable
             style={({ pressed }) => [styles.actionButton, styles.editButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.navigate('AdminUserEdit', { userId: user.id })}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.users.detail.editBtn', 'Chỉnh sửa thông tin')}
+            accessibilityLabel={t('admin.users.detail.editBtn', 'Edit information')}
             testID="edit-user-button"
           >
             <Text style={styles.actionButtonText}>
-              {t('admin.users.detail.editBtn', 'Chỉnh sửa thông tin')}
+              {t('admin.users.detail.editBtn', 'Edit information')}
             </Text>
           </Pressable>
 
@@ -375,14 +372,14 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
               onPress={handleDisablePress}
               disabled={disableMutation.isPending}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.users.detail.disableBtn', 'Vô hiệu hóa tài khoản')}
+              accessibilityLabel={t('admin.users.detail.disableBtn', 'Disable account')}
               testID="disable-user-button"
             >
               {disableMutation.isPending ? (
                 <ActivityIndicator size="small" color={theme.onPrimary} />
               ) : (
                 <Text style={styles.actionButtonText}>
-                  {t('admin.users.detail.disableBtn', 'Vô hiệu hóa tài khoản')}
+                  {t('admin.users.detail.disableBtn', 'Disable account')}
                 </Text>
               )}
             </Pressable>
@@ -399,14 +396,14 @@ export default function AdminUserDetailScreen({ route, navigation }: Props) {
               onPress={handleEnablePress}
               disabled={updateMutation.isPending}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.users.detail.enableBtn', 'Kích hoạt lại tài khoản')}
+              accessibilityLabel={t('admin.users.detail.enableBtn', 'Reactivate account')}
               testID="enable-user-button"
             >
               {updateMutation.isPending ? (
                 <ActivityIndicator size="small" color={theme.onPrimary} />
               ) : (
                 <Text style={styles.actionButtonText}>
-                  {t('admin.users.detail.enableBtn', 'Kích hoạt lại tài khoản')}
+                  {t('admin.users.detail.enableBtn', 'Reactivate account')}
                 </Text>
               )}
             </Pressable>

@@ -48,7 +48,7 @@ const mockMessage: MessageResponse = {
   id: 'msg-9999',
   conversationId: 'conv-1111-2222',
   senderId: 'cust-1111',
-  content: 'Shop còn hàng không?',
+  content: 'Is it in stock?',
   imageUrl: null,
   isRead: false,
   createdAt: '2026-10-30T10:05:00Z',
@@ -190,7 +190,7 @@ describe('chatService', () => {
       });
       expect(result).toEqual(mockPageResponse);
       expect(result.content).toHaveLength(1);
-      expect(result.content[0].content).toBe('Shop còn hàng không?');
+      expect(result.content[0].content).toBe('Is it in stock?');
     });
 
     it('passes custom page and size parameters when supplied', async () => {
@@ -253,7 +253,7 @@ describe('chatService', () => {
       } as any);
 
       const request: SendMessageRequest = {
-        content: 'Shop còn hàng không?',
+        content: 'Is it in stock?',
       };
       const key = 'client-key-12345';
 
@@ -299,11 +299,11 @@ describe('chatService', () => {
 
     it('requires a mandatory non-empty Idempotency-Key and throws if empty or whitespace', async () => {
       await expect(
-        sendMessage('conv-1111-2222', { content: 'Xin chào' }, ''),
+        sendMessage('conv-1111-2222', { content: 'Hello' }, ''),
       ).rejects.toThrow('sendMessage requires an explicit, non-empty idempotencyKey');
 
       await expect(
-        sendMessage('conv-1111-2222', { content: 'Xin chào' }, '   '),
+        sendMessage('conv-1111-2222', { content: 'Hello' }, '   '),
       ).rejects.toThrow('sendMessage requires an explicit, non-empty idempotencyKey');
 
       expect(mockedClient.post).not.toHaveBeenCalled();

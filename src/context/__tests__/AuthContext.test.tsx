@@ -10,7 +10,7 @@ import { queryClient } from '../../api/queryClient';
 import { useAuth } from '../../hooks/useAuth';
 import * as authService from '../../services/authService';
 import * as tokenStorage from '../../services/tokenStorage';
-import type { AuthResponse, User } from '../../types/auth';
+import type { AuthResponse, User, UserProfile } from '../../types/auth';
 import { AuthProvider } from '../AuthContext';
 
 jest.mock('../../services/authService');
@@ -19,10 +19,12 @@ jest.mock('../../services/tokenStorage');
 const mockedAuthService = authService as jest.Mocked<typeof authService>;
 const mockedTokenStorage = tokenStorage as jest.Mocked<typeof tokenStorage>;
 
-const initialUser: User = {
+const initialUser: UserProfile = {
   id: 'u-1',
   email: 'customer@marketplace.dev',
   name: 'Initial Customer',
+  phone: null,
+  address: null,
   role: 'CUSTOMER',
 };
 

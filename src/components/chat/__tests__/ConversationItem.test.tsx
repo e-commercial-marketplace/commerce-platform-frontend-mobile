@@ -45,11 +45,11 @@ describe('ConversationItem', () => {
 
       // STRICT BACKEND CONTRACT: No fake unread badge, no fake message preview, no online presence
       expect(queryByText(/unread/i)).toBeNull();
-      expect(queryByText(/đang hoạt động/i)).toBeNull();
+      expect(queryByText(/currently active/i)).toBeNull();
       expect(queryByText(/online/i)).toBeNull();
     });
 
-    it('displays "Đang tải..." while useSellerShop is loading', () => {
+    it('displays "Loading..." while useSellerShop is loading', () => {
       mockedUseSellerShop.mockReturnValue({
         data: undefined,
         isLoading: true,
@@ -59,7 +59,7 @@ describe('ConversationItem', () => {
         <ConversationItem item={baseConversation} isCustomer={true} />,
       );
 
-      expect(getByText('Đang tải...')).toBeTruthy();
+      expect(getByText('Loading...')).toBeTruthy();
     });
 
     it('displays fallback "Shop #<short-id>" when shop name cannot be resolved', () => {
@@ -77,7 +77,7 @@ describe('ConversationItem', () => {
   });
 
   describe('Seller perspective (counterpart is Customer)', () => {
-    it('displays neutral customer identifier "Khách hàng #<short-id>" without calling useSellerShop', () => {
+    it('displays neutral customer identifier "Customer #<short-id>" without calling useSellerShop', () => {
       mockedUseSellerShop.mockReturnValue({
         data: undefined,
         isLoading: false,
@@ -87,15 +87,15 @@ describe('ConversationItem', () => {
         <ConversationItem item={baseConversation} isCustomer={false} />,
       );
 
-      expect(getByText('Khách hàng #cust-111')).toBeTruthy();
-      // First letter of "Khách hàng" is K
-      expect(getByText('K')).toBeTruthy();
+      expect(getByText('Customer #cust-111')).toBeTruthy();
+      // First letter of "Customer" is K
+      expect(getByText('C')).toBeTruthy();
       // useSellerShop should be called with empty string (disabled)
       expect(mockedUseSellerShop).toHaveBeenCalledWith('');
 
       // STRICT BACKEND CONTRACT: No fake unread count, no fake preview
       expect(queryByText(/unread/i)).toBeNull();
-      expect(queryByText(/tin nhắn mới/i)).toBeNull();
+      expect(queryByText(/new message/i)).toBeNull();
     });
   });
 
@@ -139,7 +139,7 @@ describe('ConversationItem', () => {
   });
 
   describe('Context badges', () => {
-    it('renders "Sản phẩm" context badge when productId is present', () => {
+    it('renders "Product" context badge when productId is present', () => {
       mockedUseSellerShop.mockReturnValue({ data: undefined, isLoading: false } as any);
 
       const convWithProduct: ConversationResponse = {
@@ -151,10 +151,10 @@ describe('ConversationItem', () => {
         <ConversationItem item={convWithProduct} isCustomer={false} />,
       );
 
-      expect(getByText('Sản phẩm')).toBeTruthy();
+      expect(getByText('Product')).toBeTruthy();
     });
 
-    it('renders "Đơn #<short-id>" context badge when orderId is present', () => {
+    it('renders "Order #<short-id>" context badge when orderId is present', () => {
       mockedUseSellerShop.mockReturnValue({ data: undefined, isLoading: false } as any);
 
       const convWithOrder: ConversationResponse = {
@@ -166,7 +166,7 @@ describe('ConversationItem', () => {
         <ConversationItem item={convWithOrder} isCustomer={false} />,
       );
 
-      expect(getByText('Đơn #order-ab')).toBeTruthy();
+      expect(getByText('Order #order-ab')).toBeTruthy();
     });
 
     it('renders direct chat hint when neither productId nor orderId is present', () => {
@@ -176,7 +176,7 @@ describe('ConversationItem', () => {
         <ConversationItem item={baseConversation} isCustomer={false} />,
       );
 
-      expect(getByText('Trò chuyện trực tiếp')).toBeTruthy();
+      expect(getByText('Direct chat')).toBeTruthy();
     });
   });
 

@@ -39,6 +39,7 @@ export const chat = {
   composerPlaceholder: 'Nhập tin nhắn...',
   composerA11y: 'Nhập tin nhắn',
   sendA11y: 'Gửi tin nhắn',
+  sendImageA11y: 'Gửi hình ảnh',
 
   reconnecting: 'Đang kết nối lại thời gian thực…',
   disconnected: 'Mất kết nối thời gian thực',

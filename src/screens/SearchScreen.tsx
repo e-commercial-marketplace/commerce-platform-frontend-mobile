@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import PriceDisplay from '../components/PriceDisplay';
 import ProductCard from '../components/ProductCard';
 import ProductImage from '../components/ProductImage';
-import { radii, spacing } from '../constants/theme';
+import { colors, radii, spacing } from '../constants/theme';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useCategories, useProductList } from '../hooks/useProducts';
 import { useAppLanguage } from '../i18n';
@@ -32,7 +32,7 @@ import type { Product } from '../types/product';
 const PAGE_SIZE = 20;
 
 export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'>) {
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
   const { t } = useAppLanguage();
   const inputRef = useRef<TextInputInstance>(null);
   const [query, setQuery] = useState('');
@@ -40,6 +40,12 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
+
+  // Page is tied to the keyword + category pair: when this pair changes, `page` goes back to 0 within
+  // the same render, so a new keyword is never sent with an old page number.
+  const searchScope = `${debouncedQuery}|${selectedCategoryId}`;
+  const [pageState, setPageState] = useState({ scope: searchScope, page: 0 });
+  const page = pageState.scope === searchScope ? pageState.page : 0;
 
   const { data: categoriesData } = useCategories();
   const categories = useMemo(
@@ -51,14 +57,15 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
     () => ({
       q: debouncedQuery || undefined,
       categoryId: selectedCategoryId === 'all' ? undefined : selectedCategoryId,
-      page: 0,
+      page,
       size: PAGE_SIZE,
     }),
-    [debouncedQuery, selectedCategoryId],
+    [debouncedQuery, selectedCategoryId, page],
   );
   const { data, isPending, isError, refetch } = useProductList(filters);
   const allFetchedProducts = data?.products ?? [];
   const products = debouncedQuery ? allFetchedProducts : [];
+  const totalPages = data?.totalPages ?? 0;
   const categoryImageByName = useMemo(() => {
     const map = new Map<string, Product['image']>();
     for (const product of allFetchedProducts) {
@@ -66,6 +73,18 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
     }
     return map;
   }, [allFetchedProducts]);
+
+  function goToPreviousPage() {
+    if (page > 0) {
+      setPageState({ scope: searchScope, page: page - 1 });
+    }
+  }
+
+  function goToNextPage() {
+    if (totalPages > 0 && page < totalPages - 1) {
+      setPageState({ scope: searchScope, page: page + 1 });
+    }
+  }
 
   function rememberKeyword(value: string) {
     const keyword = value.trim();
@@ -367,6 +386,78 @@ export default function SearchScreen({ navigation }: MainTabScreenProps<'Search'
               </Text>
             </View>
           }
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={styles.pagination}>
+                <Pressable
+                  onPress={goToPreviousPage}
+                  disabled={page === 0}
+                  style={[
+                    styles.pageButton,
+                    { backgroundColor: theme.primary },
+                    page === 0 && [
+                      styles.pageButtonDisabled,
+                      {
+                        backgroundColor: isDark ? theme.border : theme.surface,
+                        borderColor: theme.border,
+                      },
+                    ],
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('catalog.previousPage', 'Previous page')}
+                >
+                  <Text
+                    style={[
+                      styles.pageButtonText,
+                      { color: theme.onPrimary },
+                      page === 0 && [
+                        styles.pageButtonTextDisabled,
+                        { color: theme.textSecondary },
+                      ],
+                    ]}
+                  >
+                    {t('catalog.previous', 'Previous')}
+                  </Text>
+                </Pressable>
+                <Text style={[styles.pageInfo, { color: theme.textSecondary }]}>
+                  {t('catalog.pageInfo', `Page ${page + 1} / ${totalPages}`, {
+                    page: page + 1,
+                    totalPages,
+                  })}
+                </Text>
+                <Pressable
+                  onPress={goToNextPage}
+                  disabled={page >= totalPages - 1}
+                  style={[
+                    styles.pageButton,
+                    { backgroundColor: theme.primary },
+                    page >= totalPages - 1 && [
+                      styles.pageButtonDisabled,
+                      {
+                        backgroundColor: isDark ? theme.border : theme.surface,
+                        borderColor: theme.border,
+                      },
+                    ],
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('catalog.nextPage', 'Next page')}
+                >
+                  <Text
+                    style={[
+                      styles.pageButtonText,
+                      { color: theme.onPrimary },
+                      page >= totalPages - 1 && [
+                        styles.pageButtonTextDisabled,
+                        { color: theme.textSecondary },
+                      ],
+                    ]}
+                  >
+                    {t('catalog.next', 'Next')}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : undefined
+          }
         />
       )}
     </SafeAreaView>
@@ -490,6 +581,12 @@ const styles = StyleSheet.create({
   retryText: { color: '#FFFFFF', fontWeight: '700' },
   results: { padding: spacing.md, paddingBottom: 36, gap: spacing.sm },
   gridRow: { gap: spacing.sm },
-  resultLabel: { marginBottom: spacing.md, fontSize: 14 },
-  emptyTitle: { fontSize: 17, fontWeight: '700' },
+  resultLabel: { marginBottom: spacing.md, fontSize: 14, color: colors.textSecondary },
+  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  pageButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radii.sm },
+  pageButtonDisabled: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  pageButtonText: { color: colors.onPrimary, fontWeight: '600' },
+  pageButtonTextDisabled: { color: colors.textSecondary },
+  pageInfo: { fontSize: 13, color: colors.textSecondary },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
 });

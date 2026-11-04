@@ -62,6 +62,11 @@ jest.mock('../../hooks/useVoucher', () => ({
     mutateAsync: mockValidateVoucher,
     isPending: false,
   }),
+  useUsableVouchers: () => ({
+    data: { pages: [{ content: [] }] },
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 describe('CheckoutScreen Personalization', () => {

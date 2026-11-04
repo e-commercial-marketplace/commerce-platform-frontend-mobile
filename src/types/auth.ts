@@ -18,6 +18,21 @@ export type User = {
   role: Role;
 };
 
+/** UserProfileResponse of GET and PATCH /users/me: adds contact info compared with User. */
+export type UserProfile = User & {
+  /** Phone number; null when not set. */
+  phone: string | null;
+  /** Address; null when not set. */
+  address: string | null;
+};
+
+/** Body of PATCH /users/me. A field that is not sent stays unchanged; an empty string clears phone or address. */
+export type UpdateProfileRequest = {
+  name?: string;
+  phone?: string;
+  address?: string;
+};
+
 /** Body of POST /auth/login. */
 export type LoginRequest = {
   email: string;

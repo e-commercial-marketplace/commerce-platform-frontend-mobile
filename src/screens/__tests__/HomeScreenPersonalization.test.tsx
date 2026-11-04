@@ -49,6 +49,14 @@ jest.mock('../../hooks/useProducts', () => ({
   }),
 }));
 
+jest.mock('../../hooks/useVoucher', () => ({
+  useUsableVouchers: () => ({
+    data: { pages: [{ content: [] }] },
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 describe('HomeScreen Personalization', () => {
   afterEach(async () => {
     await act(async () => {

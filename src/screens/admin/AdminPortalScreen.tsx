@@ -54,19 +54,19 @@ export default function AdminPortalScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
           <Text style={styles.unauthorizedTitle}>
-            {t('admin.portal.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.portal.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={styles.unauthorizedMessage}>
-            {t('admin.portal.unauthorizedMessage', 'Chỉ Quản trị viên hệ thống mới có quyền truy cập vào Cổng Quản trị.')}
+            {t('admin.portal.unauthorizedMessage', 'Only system administrators can access the Admin Portal.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.portal.backButton', 'Quay lại')}
+            accessibilityLabel={t('admin.portal.backButton', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.portal.backButton', 'Quay lại')}
+              {t('admin.portal.backButton', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -77,55 +77,55 @@ export default function AdminPortalScreen({ navigation }: Props) {
   const menuItems: MenuItem[] = [
     {
       id: 'users',
-      title: t('admin.portal.modules.users.title', 'Quản lý người dùng'),
-      description: t('admin.portal.modules.users.description', 'Xem danh sách, tìm kiếm, phân quyền và quản lý tài khoản người dùng'),
+      title: t('admin.portal.modules.users.title', 'User management'),
+      description: t('admin.portal.modules.users.description', 'View the list, search, assign roles and manage user accounts'),
       symbol: '👥',
       testID: 'admin-portal-user-management-btn',
       onPress: () => navigation.navigate('AdminUserList'),
     },
     {
       id: 'sellers',
-      title: t('admin.portal.modules.sellers.title', 'Quản lý người bán'),
-      description: t('admin.portal.modules.sellers.description', 'Xét duyệt hồ sơ đăng ký người bán và tạm ngưng hoạt động'),
+      title: t('admin.portal.modules.sellers.title', 'Seller management'),
+      description: t('admin.portal.modules.sellers.description', 'Review seller registration applications and suspend activity'),
       symbol: '🏪',
       testID: 'admin-portal-seller-management-btn',
       onPress: () => navigation.navigate('AdminSellerApproval'),
     },
     {
       id: 'categories',
-      title: t('admin.portal.modules.categories.title', 'Quản lý danh mục'),
-      description: t('admin.portal.modules.categories.description', 'Thêm, đổi tên và quản lý danh mục sản phẩm toàn sàn'),
+      title: t('admin.portal.modules.categories.title', 'Category management'),
+      description: t('admin.portal.modules.categories.description', 'Add, rename and manage product categories across the platform'),
       symbol: '📁',
       testID: 'admin-portal-category-management-btn',
       onPress: () => navigation.navigate('AdminCategory'),
     },
     {
       id: 'vouchers',
-      title: t('admin.portal.modules.vouchers.title', 'Quản lý mã giảm giá'),
-      description: t('admin.portal.modules.vouchers.description', 'Tạo mã, thiết lập tỷ lệ giảm giá, thời hạn và quản lý voucher toàn sàn'),
+      title: t('admin.portal.modules.vouchers.title', 'Voucher management'),
+      description: t('admin.portal.modules.vouchers.description', 'Create codes, set discount rates and validity periods and manage platform-wide vouchers'),
       symbol: '🎟️',
       testID: 'admin-portal-voucher-management-btn',
       onPress: () => navigation.navigate('AdminVoucher'),
     },
     {
       id: 'carriers',
-      title: t('admin.portal.modules.carriers.title', 'Quản lý đơn vị vận chuyển'),
-      description: t('admin.portal.modules.carriers.description', 'Thêm mới, đổi tên và bật/tắt hoạt động của các đơn vị giao hàng toàn sàn'),
+      title: t('admin.portal.modules.carriers.title', 'Carrier management'),
+      description: t('admin.portal.modules.carriers.description', 'Add, rename and enable/disable delivery carriers across the platform'),
       symbol: '🚚',
       testID: 'admin-portal-carrier-management-btn',
       onPress: () => navigation.navigate('AdminCarrier'),
     },
   ];
 
-  const adminName = user?.name || t('admin.portal.defaultAdmin', 'Quản trị viên');
-  const welcomeText = t('admin.portal.greeting', `Xin chào, ${adminName}. Chọn phân hệ quản lý bên dưới:`, { name: adminName });
+  const adminName = user?.name || t('admin.portal.defaultAdmin', 'Admin');
+  const welcomeText = t('admin.portal.greeting', `Hello, ${adminName}. Choose a management module below:`, { name: adminName });
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerBox}>
           <Text style={styles.headerTitle}>
-            {t('admin.portal.title', 'Quản trị hệ thống')}
+            {t('admin.portal.title', 'System administration')}
           </Text>
           <Text style={styles.headerSubtitle}>
             {welcomeText}

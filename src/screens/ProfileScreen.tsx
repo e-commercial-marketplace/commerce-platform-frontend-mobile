@@ -1,6 +1,6 @@
 /**
  * Profile tab: guest entry points or the signed-in account (name, email,
- * role from the backend UserSummaryResponse) with logout and password change.
+ * role, phone, address from GET /users/me) with profile edit, logout and password change.
  * Integrated with UI Personalization (Theme & Language selectors and Settings screen).
  * Fully theme-aware with dynamic semantic tokens for Light and Dark modes.
  */
@@ -267,6 +267,24 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
               {roleLabels[displayRole]}
             </Text>
           </View>
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.cardRow}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              {t('profile.phone', 'Phone')}
+            </Text>
+            <Text style={[styles.cardValue, { color: theme.text }]}>
+              {profile?.phone || t('profile.notSet', 'Not set')}
+            </Text>
+          </View>
+          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.cardRow}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              {t('profile.address', 'Address')}
+            </Text>
+            <Text style={[styles.cardValue, styles.cardValueWrap, { color: theme.text }]}>
+              {profile?.address || t('profile.notSet', 'Not set')}
+            </Text>
+          </View>
         </View>
 
         {/* Role-Specific Actions */}
@@ -425,7 +443,27 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
           </Text>
         </Pressable>
 
-        {/* Change Password */}
+        {/* Edit Profile */}
+        <Pressable
+          onPress={() => {
+            navigation.navigate('EditProfile');
+          }}
+          style={({ pressed }) => [
+            styles.menuButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+            pressed && styles.buttonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.editProfile', 'Edit Profile')}
+        >
+          <Text style={[styles.menuButtonText, { color: theme.text }]}>
+            {t('profile.editProfile', 'Edit Profile')}
+          </Text>
+        </Pressable>
+
         <Pressable
           onPress={() => {
             navigation.navigate('ChangePassword');
@@ -547,6 +585,11 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 14,
+  },
+  cardValueWrap: {
+    flexShrink: 1,
+    marginLeft: spacing.md,
+    textAlign: 'right',
   },
   cardValue: {
     flexShrink: 1,

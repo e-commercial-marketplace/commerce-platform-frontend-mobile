@@ -100,19 +100,19 @@ describe('ConversationListScreen UI Personalization (Theme & i18n)', () => {
   it('renders correctly in English with localized seller empty state', () => {
     const { getByText } = renderConversationListScreen('en', 'light', 'SELLER', []);
 
-    expect(getByText('No messages from customers')).toBeTruthy();
-    expect(getByText('Customer conversations will appear here.')).toBeTruthy();
+    expect(getByText('No messages from customers yet')).toBeTruthy();
+    expect(getByText('Conversations from customers will appear here.')).toBeTruthy();
     expect(getByText('Refresh')).toBeTruthy();
   });
 
   it('renders correctly in English with localized guest login required notice', () => {
     const { getByText, getAllByText } = renderConversationListScreen('en', 'light', 'GUEST', []);
 
-    expect(getByText('Login Required')).toBeTruthy();
+    expect(getByText('Sign-in required')).toBeTruthy();
     expect(
-      getByText('You need to log in with a Customer or Seller account to view messages.')
+      getByText('You need to sign in with a Buyer or Seller account to view messages.')
     ).toBeTruthy();
-    expect(getAllByText('Log In').length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText('Sign in').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders correctly in Dark Mode with dark theme background', () => {

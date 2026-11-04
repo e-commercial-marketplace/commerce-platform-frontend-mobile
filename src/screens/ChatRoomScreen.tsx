@@ -8,13 +8,14 @@
  * - Outgoing messages sent via POST /conversations/{id}/messages with client Idempotency-Key.
  * - Retry capability for failed messages reusing the EXACT same idempotency key.
  * - Mark conversation read via PATCH /conversations/{id}/read.
- * - Real-time read receipts (MessagesReadEvent) reflected on outgoing messages ("Đã xem").
+ * - Real-time read receipts (MessagesReadEvent) reflected on outgoing messages ("Seen").
  * - Role-based authorization: CUSTOMER and SELLER only.
  * - Android/iOS responsive keyboard avoidance.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
   Keyboard,
@@ -28,6 +29,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { toApiError } from '../api/errors';
 import { ChatMessageBubble } from '../components/chat/ChatMessageBubble';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAppTheme } from '../theme';
@@ -40,15 +42,20 @@ import {
   useSendMessage,
 } from '../hooks/useChat';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
+import { useImageUpload } from '../hooks/useImageUpload';
 import { useSellerShop } from '../hooks/useSellers';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import type { MessageResponse } from '../types/chatApi';
+import { isTempMessage } from '../utils/chatCacheUpdates';
 import { generateClientMessageKey } from '../utils/chatIdempotency';
+import { pickImage } from '../utils/imagePicker';
 
 export type FailedMessage = {
   tempId: string;
   idempotencyKey: string;
   content: string;
+  /** Image already uploaded: resending does not upload it again. */
+  imageUrl?: string | null;
   createdAt: string;
   senderId: string;
   isFailed: true;
@@ -88,15 +95,15 @@ export default function ChatRoomScreen({
       if (currentConversation?.sellerId) {
         return `Shop #${currentConversation.sellerId.slice(0, 8)}`;
       }
-      return t('chat.shopCounterpart', 'Cửa hàng');
+      return t('chat.shopCounterpart', 'Shop');
     }
     if (isSeller) {
       if (currentConversation?.customerId) {
-        return `Khách hàng #${currentConversation.customerId.slice(0, 8)}`;
+        return `Customer #${currentConversation.customerId.slice(0, 8)}`;
       }
-      return t('chat.customerCounterpart', 'Khách hàng');
+      return t('chat.customerCounterpart', 'Customer');
     }
-    return t('chat.defaultTitle', 'Trò chuyện');
+    return t('chat.defaultTitle', 'Chat');
   }, [counterpartName, isCustomer, isSeller, shop?.name, currentConversation, t]);
 
   // Synchronize screen title with resolved counterpart name
@@ -128,6 +135,7 @@ export default function ChatRoomScreen({
 
   // Message mutation & Mark read mutation
   const sendMessageMutation = useSendMessage();
+  const imageUpload = useImageUpload('CHAT');
   const markReadMutation = useMarkConversationRead();
 
   // Text composer state
@@ -183,15 +191,15 @@ export default function ChatRoomScreen({
 
   // Send message with caller-controlled Idempotency-Key
   const handleSendMessage = useCallback(
-    async (contentToSend?: string, existingKey?: string) => {
+    async (contentToSend?: string, existingKey?: string, imageUrl?: string | null) => {
       const content = (contentToSend ?? inputText).trim();
-      if (!content || isSendingRef.current || !user) return;
+      if ((!content && !imageUrl) || isSendingRef.current || !user) return;
 
       isSendingRef.current = true;
       const idempotencyKey = existingKey ?? generateClientMessageKey();
 
       // Clear input on new message
-      if (!contentToSend) {
+      if (contentToSend === undefined) {
         setInputText('');
       }
 
@@ -203,8 +211,9 @@ export default function ChatRoomScreen({
       try {
         await sendMessageMutation.mutateAsync({
           conversationId,
-          request: { content },
+          request: imageUrl ? { imageUrl } : { content },
           idempotencyKey,
+          senderId: user.id,
         });
       } catch (error) {
         // Retain failed message with EXACT same idempotencyKey for subsequent retry
@@ -212,6 +221,7 @@ export default function ChatRoomScreen({
           tempId: `failed_${idempotencyKey}`,
           idempotencyKey,
           content,
+          imageUrl,
           createdAt: new Date().toISOString(),
           senderId: user.id,
           isFailed: true,
@@ -226,6 +236,21 @@ export default function ChatRoomScreen({
     },
     [inputText, user, conversationId, sendMessageMutation],
   );
+
+  // Send the image right after picking. An upload error only reports the error; a send error creates a bubble to retry without uploading again.
+  // shortcut: if another message is sending exactly when the upload finishes, the image is dropped and the user picks again; add a queue if this happens for real.
+  const handlePickImage = useCallback(async () => {
+    if (imageUpload.isPending) return;
+    try {
+      const picked = await pickImage();
+      if (picked != null) {
+        const uploadedUrl = await imageUpload.mutateAsync(picked);
+        await handleSendMessage('', undefined, uploadedUrl);
+      }
+    } catch (error) {
+      Alert.alert('Could not send the image', toApiError(error).message);
+    }
+  }, [imageUpload, handleSendMessage]);
 
   // Older-message pagination handler (triggered when user scrolls towards top in inverted list)
   const handleLoadOlder = useCallback(() => {
@@ -245,12 +270,12 @@ export default function ChatRoomScreen({
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>🔒</Text>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
-            {t('chat.loginRequiredTitle', 'Yêu cầu đăng nhập')}
+            {t('chat.loginRequiredTitle', 'Sign-in required')}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {t(
               'chat.loginRequiredDescRoom',
-              'Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để tham gia trò chuyện.',
+              'You need to sign in with a Buyer or Seller account to join the chat.',
             )}
           </Text>
           <Pressable
@@ -261,10 +286,10 @@ export default function ChatRoomScreen({
             ]}
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel={t('chat.loginButton', 'Đăng nhập')}
+            accessibilityLabel={t('chat.loginButton', 'Sign in')}
           >
             <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
-              {t('chat.loginButton', 'Đăng nhập')}
+              {t('chat.loginButton', 'Sign in')}
             </Text>
           </Pressable>
         </View>
@@ -272,7 +297,8 @@ export default function ChatRoomScreen({
     );
   }
 
-  const isSendDisabled = inputText.trim().length === 0 || sendMessageMutation.isPending;
+  const isSendDisabled =
+    inputText.trim().length === 0 || sendMessageMutation.isPending || imageUpload.isPending;
 
   return (
     <SafeAreaView
@@ -307,17 +333,17 @@ export default function ChatRoomScreen({
               ]}
             >
               {connectionState === 'reconnecting'
-                ? t('chat.reconnecting', 'Đang kết nối lại thời gian thực…')
-                : t('chat.disconnected', 'Mất kết nối thời gian thực')}
+                ? t('chat.reconnecting', 'Reconnecting in real time…')
+                : t('chat.disconnected', 'Real-time connection lost')}
             </Text>
             {connectionState === 'disconnected' ? (
               <Pressable
                 onPress={reconnect}
                 accessibilityRole="button"
-                accessibilityLabel={t('chat.reconnectAction', 'Kết nối lại')}
+                accessibilityLabel={t('chat.reconnectAction', 'Reconnect')}
               >
                 <Text style={[styles.reconnectButtonText, { color: theme.primary }]}>
-                  {t('chat.reconnectAction', 'Kết nối lại')}
+                  {t('chat.reconnectAction', 'Reconnect')}
                 </Text>
               </Pressable>
             ) : null}
@@ -330,14 +356,14 @@ export default function ChatRoomScreen({
             <View style={styles.centerState}>
               <ActivityIndicator size="large" color={theme.primary} />
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                {t('chat.loadingMessages', 'Đang tải tin nhắn…')}
+                {t('chat.loadingMessages', 'Loading messages…')}
               </Text>
             </View>
           ) : isError && displayItems.length === 0 ? (
             <View style={styles.centerState}>
               <Text style={styles.emptyEmoji}>⚠️</Text>
               <Text style={[styles.emptyTitle, { color: theme.danger }]}>
-                {t('chat.loadFailedTitle', 'Không thể tải tin nhắn')}
+                {t('chat.loadFailedTitle', 'Could not load messages')}
               </Text>
               <Pressable
                 style={({ pressed }) => [
@@ -347,10 +373,10 @@ export default function ChatRoomScreen({
                 ]}
                 onPress={() => refetch()}
                 accessibilityRole="button"
-                accessibilityLabel={t('chat.retry', 'Thử lại')}
+                accessibilityLabel={t('chat.retry', 'Retry')}
               >
                 <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
-                  {t('chat.retry', 'Thử lại')}
+                  {t('chat.retry', 'Retry')}
                 </Text>
               </Pressable>
             </View>
@@ -358,12 +384,12 @@ export default function ChatRoomScreen({
             <View style={styles.centerState}>
               <Text style={styles.emptyEmoji}>💬</Text>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                {t('chat.emptyRoomTitle', 'Chưa có tin nhắn')}
+                {t('chat.emptyRoomTitle', 'No messages yet')}
               </Text>
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                 {t(
                   'chat.emptyRoomDesc',
-                  'Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện.',
+                  'Send the first message to start the conversation.',
                 )}
               </Text>
             </View>
@@ -382,12 +408,14 @@ export default function ChatRoomScreen({
                     message={item as MessageResponse}
                     isOutgoing={isOutgoing}
                     isFailed={isFailed}
+                    isPending={!isFailed && isTempMessage((item as MessageResponse).id)}
                     onRetry={
                       isFailed
                         ? () =>
                             handleSendMessage(
                               item.content,
                               (item as FailedMessage).idempotencyKey,
+                              item.imageUrl,
                             )
                         : undefined
                     }
@@ -403,7 +431,7 @@ export default function ChatRoomScreen({
                     <Text
                       style={[styles.loadingOlderText, { color: theme.textSecondary }]}
                     >
-                      {t('chat.loadingOlder', 'Đang tải tin nhắn cũ hơn…')}
+                      {t('chat.loadingOlder', 'Loading older messages…')}
                     </Text>
                   </View>
                 ) : undefined
@@ -421,6 +449,22 @@ export default function ChatRoomScreen({
             { backgroundColor: theme.background, borderTopColor: theme.border },
           ]}
         >
+          <Pressable
+            style={styles.imageButton}
+            onPress={() => {
+              void handlePickImage();
+            }}
+            disabled={imageUpload.isPending || sendMessageMutation.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.sendImageA11y', 'Send image')}
+            accessibilityState={{ busy: imageUpload.isPending }}
+          >
+            {imageUpload.isPending ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Text style={styles.imageButtonIcon}>🖼️</Text>
+            )}
+          </Pressable>
           <TextInput
             style={[
               styles.composerInput,
@@ -432,12 +476,12 @@ export default function ChatRoomScreen({
             ]}
             value={inputText}
             onChangeText={setInputText}
-            placeholder={t('chat.composerPlaceholder', 'Nhập tin nhắn...')}
+            placeholder={t('chat.composerPlaceholder', 'Type a message...')}
             placeholderTextColor={theme.textSecondary}
             multiline
             maxLength={2000}
             editable={!sendMessageMutation.isPending}
-            accessibilityLabel={t('chat.composerA11y', 'Nhập tin nhắn')}
+            accessibilityLabel={t('chat.composerA11y', 'Enter a message')}
           />
 
           <Pressable
@@ -452,7 +496,7 @@ export default function ChatRoomScreen({
             onPress={() => handleSendMessage()}
             disabled={isSendDisabled}
             accessibilityRole="button"
-            accessibilityLabel={t('chat.sendA11y', 'Gửi tin nhắn')}
+            accessibilityLabel={t('chat.sendA11y', 'Send message')}
           >
             {sendMessageMutation.isPending ? (
               <ActivityIndicator size="small" color={theme.onPrimary} />
@@ -568,6 +612,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderColor: colors.border,
     borderWidth: 1,
+  },
+  imageButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonIcon: {
+    fontSize: 22,
   },
   sendButton: {
     width: 40,

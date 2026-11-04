@@ -33,13 +33,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toApiError } from '../api/errors';
 import { queryKeys } from '../api/queryKeys';
 import Button from '../components/Button';
+import VoucherRow from '../components/VoucherRow';
 import FormField from '../components/FormField';
 import ProductImage from '../components/ProductImage';
-import { radii, spacing, typography } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useCart } from '../hooks/useCart';
 import { useCheckout } from '../hooks/useCheckout';
-import { useValidateVoucher } from '../hooks/useVoucher';
+import { useUsableVouchers, useValidateVoucher } from '../hooks/useVoucher';
 import { useAppLanguage } from '../i18n';
 import type { AppNavigatorScreenProps } from '../navigation/types';
 import { useAppTheme } from '../theme';
@@ -48,6 +50,9 @@ import type { OrderResponse, PaymentMethod } from '../types/orderApi';
 import type { VoucherResponse } from '../types/voucherApi';
 import { formatVND } from '../utils/format';
 import { markPaymentUrlHandled } from '../utils/paymentDeepLink';
+
+const CHECKOUT_VOUCHER_COUNT = 3;
+const BEST_VOUCHER_LABEL = 'Best choice';
 
 const MAX_ADDRESS_LENGTH = 1000;
 
@@ -140,10 +145,20 @@ export default function CheckoutScreen({
   const { items, isLoading, isFetching, isError, error, refetch, isCustomer } = useCart();
   const { placeOrder, isPending } = useCheckout();
   const validateVoucherMutation = useValidateVoucher();
+  // The API already sorts the highest % first, so the first row is the best choice; on error the suggestion is hidden and the input still works.
+  const suggestedVouchers =
+    useUsableVouchers().data?.pages[0]?.content.slice(0, CHECKOUT_VOUCHER_COUNT) ?? [];
   const queryClient = useQueryClient();
 
   const { cartItemIds } = route.params;
   const [address, setAddress] = useState('');
+  const { data: profile } = useCurrentUser(isCustomer);
+  // While the profile is loading, failed or has no address, this choice is absent and only the input remains.
+  const savedAddress = profile?.address?.trim() || null;
+  // The profile address is not used by default so a customer does not accidentally ship to an old address.
+  const [useSavedAddress, setUseSavedAddress] = useState(false);
+  const usingSavedAddress = useSavedAddress && savedAddress != null;
+  const selectedAddress = usingSavedAddress ? savedAddress : address;
   const [addressError, setAddressError] = useState<string | undefined>();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
   const [formError, setFormError] = useState<string | null>(null);
@@ -191,8 +206,8 @@ export default function CheckoutScreen({
     setFormError(null);
   };
 
-  const handleApplyVoucher = async () => {
-    const trimmed = voucherInput.trim();
+  const handleApplyVoucher = async (code?: string) => {
+    const trimmed = (code ?? voucherInput).trim();
     if (trimmed.length === 0) {
       setVoucherError(t('checkout.voucherRequired', 'Please enter a voucher code.'));
       return;
@@ -255,8 +270,8 @@ export default function CheckoutScreen({
       return;
     }
 
-    const trimmedAddress = address.trim();
-    const validationError = validateShippingAddress(address, t);
+    const trimmedAddress = selectedAddress.trim();
+    const validationError = validateShippingAddress(selectedAddress, t);
     if (validationError != null) {
       setAddressError(validationError);
       return;
@@ -729,22 +744,138 @@ export default function CheckoutScreen({
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {t('checkout.shippingAddress', 'Shipping address')}
           </Text>
-          <FormField
-            label={t('checkout.shippingAddress', 'Shipping address')}
-            value={address}
-            onChangeText={handleAddressChange}
-            placeholder={t(
-              'checkout.shippingAddressPlaceholder',
-              'Street, city, province…',
-            )}
-            error={addressError}
-            editable={!busy}
-            autoCapitalize="sentences"
-            returnKeyType="done"
-            onSubmitEditing={() => {
-              void handlePlaceOrder();
-            }}
-          />
+          {savedAddress != null ? (
+            <View style={styles.paymentMethodContainer} accessibilityRole="radiogroup">
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityLabel={t(
+                  'checkout.useSavedAddressLabel',
+                  `Use my saved address: ${savedAddress}`,
+                  { address: savedAddress },
+                )}
+                accessibilityState={{ checked: usingSavedAddress }}
+                disabled={busy}
+                onPress={() => {
+                  setUseSavedAddress(true);
+                  setAddressError(undefined);
+                }}
+                style={({ pressed }) => [
+                  styles.paymentOptionCard,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border,
+                  },
+                  usingSavedAddress && [
+                    styles.paymentOptionCardSelected,
+                    {
+                      borderColor: theme.primary,
+                      backgroundColor: isDark ? 'rgba(8, 145, 178, 0.12)' : '#F8FAFC',
+                    },
+                  ],
+                  pressed && !busy && styles.paymentOptionPressed,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    { borderColor: theme.border },
+                    usingSavedAddress && [
+                      styles.radioCircleSelected,
+                      { borderColor: theme.primary },
+                    ],
+                  ]}
+                >
+                  {usingSavedAddress && (
+                    <View
+                      style={[
+                        styles.radioCircleDot,
+                        { backgroundColor: theme.primary },
+                      ]}
+                    />
+                  )}
+                </View>
+                <View style={styles.paymentOptionInfo}>
+                  <Text style={[styles.paymentOptionTitle, { color: theme.text }]}>
+                    {t('checkout.useSavedAddress', 'Use my saved address')}
+                  </Text>
+                  <Text style={[styles.paymentOptionDesc, { color: theme.textSecondary }]}>
+                    {savedAddress}
+                  </Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityLabel={t('checkout.enterDifferentAddress', 'Enter a different address')}
+                accessibilityState={{ checked: !usingSavedAddress }}
+                disabled={busy}
+                onPress={() => {
+                  setUseSavedAddress(false);
+                  setAddressError(undefined);
+                }}
+                style={({ pressed }) => [
+                  styles.paymentOptionCard,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border,
+                  },
+                  !usingSavedAddress && [
+                    styles.paymentOptionCardSelected,
+                    {
+                      borderColor: theme.primary,
+                      backgroundColor: isDark ? 'rgba(8, 145, 178, 0.12)' : '#F8FAFC',
+                    },
+                  ],
+                  pressed && !busy && styles.paymentOptionPressed,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    { borderColor: theme.border },
+                    !usingSavedAddress && [
+                      styles.radioCircleSelected,
+                      { borderColor: theme.primary },
+                    ],
+                  ]}
+                >
+                  {!usingSavedAddress && (
+                    <View
+                      style={[
+                        styles.radioCircleDot,
+                        { backgroundColor: theme.primary },
+                      ]}
+                    />
+                  )}
+                </View>
+                <View style={styles.paymentOptionInfo}>
+                  <Text style={[styles.paymentOptionTitle, { color: theme.text }]}>
+                    {t('checkout.enterDifferentAddress', 'Enter a different address')}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+          ) : null}
+          {usingSavedAddress ? (
+            addressError != null && <Text style={[styles.savedAddressError, { color: theme.danger }]}>{addressError}</Text>
+          ) : (
+            <FormField
+              label={t('checkout.shippingAddress', 'Shipping address')}
+              value={address}
+              onChangeText={handleAddressChange}
+              placeholder={t(
+                'checkout.shippingAddressPlaceholder',
+                'Street, city, province…',
+              )}
+              error={addressError}
+              editable={!busy}
+              autoCapitalize="sentences"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                void handlePlaceOrder();
+              }}
+            />
+          )}
 
           <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -936,6 +1067,29 @@ export default function CheckoutScreen({
                     {voucherError}
                   </Text>
                 )}
+                {suggestedVouchers.map((voucher, index) => (
+                  <VoucherRow
+                    key={voucher.code}
+                    voucher={voucher}
+                    badge={index === 0 ? t('checkout.bestChoice', BEST_VOUCHER_LABEL) : undefined}
+                    disabled={busy || isValidatingVoucher}
+                    onApply={() => {
+                      void handleApplyVoucher(voucher.code);
+                    }}
+                  />
+                ))}
+                {suggestedVouchers.length > 0 ? (
+                  <Pressable
+                    style={styles.viewAllVouchers}
+                    onPress={() => navigation.navigate('Vouchers')}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('checkout.viewAllVouchersA11y', 'View all vouchers')}
+                  >
+                    <Text style={[styles.viewAllVouchersText, { color: theme.primary }]}>
+                      {t('checkout.viewAllVouchers', 'View all')}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : (
               <View style={styles.appliedVoucherCard}>
@@ -1247,6 +1401,16 @@ const styles = StyleSheet.create({
   voucherContainer: {
     gap: spacing.xs,
   },
+  viewAllVouchers: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewAllVouchersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
   voucherInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1311,6 +1475,10 @@ const styles = StyleSheet.create({
   removeVoucherText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  savedAddressError: {
+    fontSize: 13,
+    color: colors.danger,
   },
   paymentMethodContainer: {
     gap: spacing.sm,

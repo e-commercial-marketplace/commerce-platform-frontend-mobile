@@ -4,7 +4,8 @@
  * This replaces the old local CartContext as the single source of truth:
  * the cache entry `queryKeys.cart.current()` holds the raw `CartDto` returned
  * by the backend, and every mutation replaces it with the authoritative cart
- * from the response (there are NO optimistic updates).
+ * from the response. Changing the quantity and removing a line are optimistic updates: the UI changes immediately,
+ * the response replaces the predicted copy and an error rolls it back. Adding to the cart and clearing the whole cart are not optimistic.
  *
  * The query is enabled only for an authenticated CUSTOMER, matching the
  * backend rule that `/api/v1/cart/**` is customer-only. Guests, sellers and
@@ -24,11 +25,14 @@ import { queryKeys } from '../api/queryKeys';
 import * as cartService from '../services/cartService';
 import type { Cart, CartLine } from '../types/cart';
 import type { CartDto } from '../types/cartApi';
-import { mapCartDtoToCart } from '../utils/cartMapper';
+import { mapCartDtoToCart, predictLineRemoval, predictQuantityChange } from '../utils/cartMapper';
 import { useAuth } from './useAuth';
 
 /** Stable empty value so consumers can read `items` before/without data. */
 const EMPTY_CART: Cart = { items: [], subtotal: 0, totalItems: 0 };
+
+/** Data needed to roll back an optimistic update. */
+type CartRollback = { previous: CartDto; predicted: CartDto | undefined };
 
 type UpdateQuantityInput = {
   id: string;
@@ -62,19 +66,48 @@ export function useCart() {
     queryClient.setQueryData(queryKeys.cart.current(), cart);
   };
 
+  /** Cancel the running fetch so it does not overwrite the predicted copy, then write the predicted copy into the cache. */
+  const applyPrediction = async (
+    predict: (cart: CartDto) => CartDto,
+  ): Promise<CartRollback | undefined> => {
+    await queryClient.cancelQueries({ queryKey: queryKeys.cart.current() });
+    const previous = queryClient.getQueryData<CartDto>(queryKeys.cart.current());
+    if (previous == null) {
+      return undefined;
+    }
+    return {
+      previous,
+      predicted: queryClient.setQueryData<CartDto>(queryKeys.cart.current(), predict(previous)),
+    };
+  };
+
+  const rollback = (_error: unknown, _input: unknown, context: CartRollback | undefined) => {
+    // Only restore while the cache is still the predicted copy: right after sign-out the cache has been cleared,
+    // and the previous user cart must not be brought back.
+    if (context != null && queryClient.getQueryData(queryKeys.cart.current()) === context.predicted) {
+      queryClient.setQueryData(queryKeys.cart.current(), context.previous);
+    }
+    void queryClient.invalidateQueries({ queryKey: queryKeys.cart.current() });
+  };
+
   const addMutation = useMutation({
     mutationFn: cartService.addCartItem,
     onSuccess: storeCart,
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<CartDto, unknown, UpdateQuantityInput, CartRollback | undefined>({
     mutationFn: ({ id, quantity }: UpdateQuantityInput) =>
       cartService.updateCartItem(id, { quantity }),
+    onMutate: ({ id, quantity }) =>
+      applyPrediction((cart) => predictQuantityChange(cart, id, quantity)),
+    onError: rollback,
     onSuccess: storeCart,
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<CartDto, unknown, string, CartRollback | undefined>({
     mutationFn: (id: string) => cartService.deleteCartItem(id),
+    onMutate: (id) => applyPrediction((cart) => predictLineRemoval(cart, id)),
+    onError: rollback,
     onSuccess: storeCart,
   });
 
@@ -121,14 +154,6 @@ export function useCart() {
       inFlightRef.current = false;
     }
   };
-
-  /** Cart-item id of the row currently being updated/removed, if any. */
-  const pendingItemId =
-    updateMutation.isPending && updateMutation.variables != null
-      ? updateMutation.variables.id
-      : deleteMutation.isPending && deleteMutation.variables != null
-        ? deleteMutation.variables
-        : null;
 
   // Non-customers never read another account's cached rows, even while the
   // cache is being purged on logout.
@@ -197,7 +222,6 @@ export function useCart() {
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isClearing: clearMutation.isPending,
-    pendingItemId,
     /** Last mutation failure, when a caller has not handled it locally. */
     mutationError:
       addMutation.error ??

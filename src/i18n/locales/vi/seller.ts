@@ -87,7 +87,11 @@ export const seller = {
   val_stockRequired: 'Vui lòng nhập số lượng tồn kho ban đầu',
   val_stockNonNegative: 'Tồn kho phải là số nguyên không âm (từ 0 trở lên)',
   val_imageUrlRequired: 'Cần có đường dẫn ảnh khi chọn trạng thái đang bán',
+  val_productImageRequired: 'Hình ảnh sản phẩm là bắt buộc khi đăng bán',
   val_imageUrlMaxLength: 'Đường dẫn ảnh không được vượt quá 2048 ký tự',
+  changeImage: 'Đổi hình ảnh',
+  chooseImage: 'Chọn hình ảnh',
+  productImageLabel: 'Hình ảnh sản phẩm',
 
   // Fulfillment & Shipments
   fulfillmentTitle: 'Xử lý đơn hàng',

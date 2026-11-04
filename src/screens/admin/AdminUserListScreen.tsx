@@ -56,10 +56,10 @@ type RoleFilterOption = {
 };
 
 const ROLE_FILTER_OPTIONS: RoleFilterOption[] = [
-  { key: 'ALL', labelKey: 'admin.users.list.filterAll', defaultLabel: 'Tất cả', value: undefined },
-  { key: 'CUSTOMER', labelKey: 'admin.enums.role.customer', defaultLabel: 'Khách hàng', value: 'CUSTOMER' },
-  { key: 'SELLER', labelKey: 'admin.enums.role.seller', defaultLabel: 'Người bán', value: 'SELLER' },
-  { key: 'ADMIN', labelKey: 'admin.enums.role.admin', defaultLabel: 'Quản trị viên', value: 'ADMIN' },
+  { key: 'ALL', labelKey: 'admin.users.list.filterAll', defaultLabel: 'All', value: undefined },
+  { key: 'CUSTOMER', labelKey: 'admin.enums.role.customer', defaultLabel: 'Customer', value: 'CUSTOMER' },
+  { key: 'SELLER', labelKey: 'admin.enums.role.seller', defaultLabel: 'Seller', value: 'SELLER' },
+  { key: 'ADMIN', labelKey: 'admin.enums.role.admin', defaultLabel: 'Admin', value: 'ADMIN' },
 ];
 
 export function formatDate(isoString: string): string {
@@ -146,22 +146,19 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
           <Text style={styles.unauthorizedTitle}>
-            {t('admin.users.list.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.users.list.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={styles.unauthorizedMessage}>
-            {t(
-              'admin.users.list.unauthorizedMessage',
-              'Chỉ Quản trị viên hệ thống mới có quyền truy cập vào Quản lý người dùng.',
-            )}
+            {t('admin.users.list.unauthorizedMessage', 'Only system administrators have permission to access user management.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.back', 'Quay lại')}
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.common.actions.back', 'Quay lại')}
+              {t('admin.common.actions.back', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -182,7 +179,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
         style={({ pressed }) => [styles.userCard, pressed && styles.cardPressed]}
         onPress={() => navigation.navigate('AdminUserDetail', { userId: item.id })}
         accessibilityRole="button"
-        accessibilityLabel={t('admin.users.userAccessibility', `Người dùng ${item.name}`, { name: item.name })}
+        accessibilityLabel={t('admin.users.userAccessibility', `User ${item.name}`, { name: item.name })}
         testID={`user-item-${item.id}`}
       >
         <View style={styles.cardHeader}>
@@ -249,17 +246,17 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <Text style={styles.totalCountText}>
           {totalElements > 0
             ? t('admin.users.list.totalCount', `Tổng cộng: ${totalElements} tài khoản`, { count: totalElements })
-            : t('admin.users.list.defaultTitle', 'Danh sách tài khoản')}
+            : t('admin.users.list.defaultTitle', 'Account list')}
         </Text>
         <Pressable
           style={({ pressed }) => [styles.createButton, pressed && styles.buttonPressed]}
           onPress={() => navigation.navigate('AdminUserCreate')}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.users.list.createBtn', '+ Thêm mới')}
+          accessibilityLabel={t('admin.users.list.createBtn', '+ Add new')}
           testID="create-user-button"
         >
           <Text style={styles.createButtonText}>
-            {t('admin.users.list.createBtn', '+ Thêm mới')}
+            {t('admin.users.list.createBtn', '+ Add new')}
           </Text>
         </Pressable>
       </View>
@@ -269,14 +266,14 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder={t('admin.users.list.searchPlaceholder', 'Tìm theo tên hoặc email…')}
+          placeholder={t('admin.users.list.searchPlaceholder', 'Search by name or email…')}
           placeholderTextColor={theme.textSecondary}
           value={searchText}
           onChangeText={handleSearchChange}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
-          accessibilityLabel={t('admin.users.list.searchPlaceholder', 'Tìm theo tên hoặc email…')}
+          accessibilityLabel={t('admin.users.list.searchPlaceholder', 'Search by name or email…')}
           testID="user-search-input"
         />
         {searchText.length > 0 ? (
@@ -284,7 +281,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
             onPress={handleClearSearch}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.clear', 'Xóa')}
+            accessibilityLabel={t('admin.common.actions.clear', 'Clear')}
             testID="clear-search-button"
           >
             <Text style={styles.clearIcon}>✕</Text>
@@ -378,7 +375,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>
-            {t('admin.users.list.loading', 'Đang tải danh sách người dùng…')}
+            {t('admin.users.list.loading', 'Loading users…')}
           </Text>
         </View>
       );
@@ -392,7 +389,7 @@ export default function AdminUserListScreen({ navigation }: Props) {
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
           <Text style={styles.errorTitle}>
-            {t('admin.users.list.errorTitle', 'Không thể tải danh sách')}
+            {t('admin.users.list.errorTitle', 'Could not load the list')}
           </Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
@@ -401,11 +398,11 @@ export default function AdminUserListScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.retry', 'Thử lại')}
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="retry-button"
           >
             <Text style={styles.retryButtonText}>
-              {t('admin.common.actions.retry', 'Thử lại')}
+              {t('admin.common.actions.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -416,12 +413,12 @@ export default function AdminUserListScreen({ navigation }: Props) {
       <View style={styles.centerContainer}>
         <Text style={styles.stateIcon}>👥</Text>
         <Text style={styles.emptyTitle}>
-          {t('admin.users.list.emptyTitle', 'Không tìm thấy người dùng nào')}
+          {t('admin.users.list.emptyTitle', 'No users found')}
         </Text>
         <Text style={styles.emptySubtitle}>
           {searchText
-            ? t('admin.users.list.emptySearch', 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc vai trò')
-            : t('admin.users.list.emptyNone', 'Hệ thống chưa có người dùng nào')}
+            ? t('admin.users.list.emptySearch', 'Try changing search keywords or role filters')
+            : t('admin.users.list.emptyNone', 'No users found in the system')}
         </Text>
       </View>
     );

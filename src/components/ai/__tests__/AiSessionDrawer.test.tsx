@@ -56,7 +56,7 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      const sessionItems = getAllByText(/Cuộc trò chuyện/);
+      const sessionItems = getAllByText(/^Conversation [0-9]/);
       expect(sessionItems.length).toBeGreaterThanOrEqual(2);
 
       // Raw UUIDs must not be displayed as primary labels
@@ -64,7 +64,7 @@ describe('AiSessionDrawer', () => {
       expect(queryByText('session-id-2')).toBeNull();
     });
 
-    it('highlights currently active session with "Đang mở" indicator', () => {
+    it('highlights currently active session with "Open" indicator', () => {
       const { getByText } = render(
         <AiSessionDrawer
           visible={true}
@@ -75,7 +75,7 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      expect(getByText('Đang mở')).toBeTruthy();
+      expect(getByText('Open')).toBeTruthy();
     });
   });
 
@@ -99,7 +99,7 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      expect(getByText('Đang tải lịch sử...')).toBeTruthy();
+      expect(getByText('Loading history...')).toBeTruthy();
     });
 
     it('renders empty state when session list is empty', () => {
@@ -121,7 +121,7 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      expect(getByText('Chưa có cuộc trò chuyện nào.')).toBeTruthy();
+      expect(getByText('No conversations yet.')).toBeTruthy();
     });
 
     it('renders error state and triggers refetch on retry press', () => {
@@ -143,9 +143,9 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      expect(getByText('Không thể tải danh sách phiên trò chuyện.')).toBeTruthy();
+      expect(getByText('Could not load the conversation sessions.')).toBeTruthy();
 
-      const retryButton = getByRole('button', { name: 'Thử lại' });
+      const retryButton = getByRole('button', { name: 'Retry' });
       fireEvent.press(retryButton);
       expect(mockRefetch).toHaveBeenCalledTimes(1);
     });
@@ -158,11 +158,11 @@ describe('AiSessionDrawer', () => {
           onClose={mockOnClose}
           onSelectSession={mockOnSelectSession}
           onNewChat={mockOnNewChat}
-          errorMessage="Cuộc trò chuyện này không còn tồn tại."
+          errorMessage="This conversation no longer exists."
         />,
       );
 
-      expect(getByText('Cuộc trò chuyện này không còn tồn tại.')).toBeTruthy();
+      expect(getByText('This conversation no longer exists.')).toBeTruthy();
     });
   });
 
@@ -180,14 +180,14 @@ describe('AiSessionDrawer', () => {
 
       // Tap first session card
       const sessionButtons = getAllByRole('button').filter(
-        (btn) => btn.props.accessibilityLabel && btn.props.accessibilityLabel.includes('Cuộc trò chuyện'),
+        (btn) => btn.props.accessibilityLabel && btn.props.accessibilityLabel.includes('Conversation'),
       );
       fireEvent.press(sessionButtons[0]);
 
       expect(mockOnSelectSession).toHaveBeenCalledWith('session-id-1');
     });
 
-    it('calls onNewChat when tapping "+ Đoạn chat mới" button', () => {
+    it('calls onNewChat when tapping "+ New chat" button', () => {
       const { getByRole } = render(
         <AiSessionDrawer
           visible={true}
@@ -198,7 +198,7 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      const newChatButton = getByRole('button', { name: 'Đoạn chat mới' });
+      const newChatButton = getByRole('button', { name: 'New chat' });
       fireEvent.press(newChatButton);
 
       expect(mockOnNewChat).toHaveBeenCalledTimes(1);
@@ -215,11 +215,11 @@ describe('AiSessionDrawer', () => {
         />,
       );
 
-      const closeButton = getByRole('button', { name: 'Đóng lịch sử' });
+      const closeButton = getByRole('button', { name: 'Close history' });
       fireEvent.press(closeButton);
       expect(mockOnClose).toHaveBeenCalledTimes(1);
 
-      const backdrop = getByLabelText('Đóng lịch sử trò chuyện');
+      const backdrop = getByLabelText('Close conversation history');
       fireEvent.press(backdrop);
       expect(mockOnClose).toHaveBeenCalledTimes(2);
     });

@@ -82,19 +82,19 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
   const roleOptions: { role: Role; label: string }[] = useMemo(
     () => [
-      { role: 'CUSTOMER', label: t('admin.enums.role.customer', 'Khách hàng') },
-      { role: 'SELLER', label: t('admin.enums.role.seller', 'Người bán') },
-      { role: 'ADMIN', label: t('admin.enums.role.admin', 'Quản trị viên') },
+      { role: 'CUSTOMER', label: t('admin.enums.role.customer', 'Customer') },
+      { role: 'SELLER', label: t('admin.enums.role.seller', 'Seller') },
+      { role: 'ADMIN', label: t('admin.enums.role.admin', 'Admin') },
     ],
     [t],
   );
 
   const sellerStatusOptions: { status: SellerStatus; label: string }[] = useMemo(
     () => [
-      { status: 'PENDING', label: t('admin.users.sellerStatusPending', 'Chờ duyệt (PENDING)') },
-      { status: 'APPROVED', label: t('admin.users.sellerStatusApproved', 'Đã duyệt (APPROVED)') },
-      { status: 'SUSPENDED', label: t('admin.users.sellerStatusSuspended', 'Tạm ngưng (SUSPENDED)') },
-      { status: 'REJECTED', label: t('admin.users.sellerStatusRejected', 'Từ chối (REJECTED)') },
+      { status: 'PENDING', label: t('admin.users.sellerStatusPending', 'Pending (PENDING)') },
+      { status: 'APPROVED', label: t('admin.users.sellerStatusApproved', 'Approved (APPROVED)') },
+      { status: 'SUSPENDED', label: t('admin.users.sellerStatusSuspended', 'Suspended (SUSPENDED)') },
+      { status: 'REJECTED', label: t('admin.users.sellerStatusRejected', 'Rejected (REJECTED)') },
     ],
     [t],
   );
@@ -116,22 +116,19 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
           <Text style={styles.unauthorizedTitle}>
-            {t('admin.users.edit.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.users.edit.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={styles.unauthorizedMessage}>
-            {t(
-              'admin.users.edit.unauthorizedMessage',
-              'Chỉ Quản trị viên hệ thống mới có quyền chỉnh sửa thông tin người dùng.',
-            )}
+            {t('admin.users.edit.unauthorizedMessage', 'Only system administrators have permission to edit user information.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.back', 'Quay lại')}
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.common.actions.back', 'Quay lại')}
+              {t('admin.common.actions.back', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -161,7 +158,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
         <View style={styles.centerContainer}>
           <Text style={styles.stateIcon}>⚠️</Text>
           <Text style={styles.errorTitle}>
-            {t('admin.users.detail.errorTitle', 'Không thể tải thông tin')}
+            {t('admin.users.detail.errorTitle', 'Could not load information')}
           </Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <Pressable
@@ -170,11 +167,11 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.retry', 'Thử lại')}
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="retry-button"
           >
             <Text style={styles.retryButtonText}>
-              {t('admin.common.actions.retry', 'Thử lại')}
+              {t('admin.common.actions.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -187,21 +184,21 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = t('admin.users.edit.validation.nameRequired', 'Họ và tên không được để trống');
+      errors.name = t('admin.users.edit.validation.nameRequired', 'Please enter your full name');
     } else if (trimmedName.length > 255) {
-      errors.name = t('admin.users.edit.validation.nameTooLong', 'Họ và tên tối đa 255 ký tự');
+      errors.name = t('admin.users.edit.validation.nameTooLong', 'Full name must be at most 255 characters');
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
       errors.phone = t(
         'admin.users.edit.validation.phoneInvalid',
-        'Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)',
+        'Invalid Vietnamese mobile phone number (e.g. 0912345678)',
       );
     }
 
     if (address.length > 500) {
-      errors.address = t('admin.users.edit.validation.addressTooLong', 'Địa chỉ tối đa 500 ký tự');
+      errors.address = t('admin.users.edit.validation.addressTooLong', 'Address must be at most 500 characters');
     }
 
     setFormErrors(errors);
@@ -209,7 +206,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
   };
 
   const executeUpdate = async () => {
-    setServerError(null);
+        setServerError(null);
 
     const payload: AdminUserUpdateRequest = {};
 
@@ -241,8 +238,8 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
     // If nothing changed, return
     if (Object.keys(payload).length === 0) {
       Alert.alert(
-        t('admin.users.edit.noChangeTitle', 'Thông báo'),
-        t('admin.users.edit.noChangeMsg', 'Không có thông tin nào thay đổi.'),
+        t('admin.users.edit.noChangeTitle', 'Notice'),
+        t('admin.users.edit.noChangeMsg', 'No information has changed.'),
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
       return;
@@ -251,18 +248,18 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
     try {
       await updateMutation.mutateAsync({ id: user.id, payload });
       Alert.alert(
-        t('admin.users.edit.successTitle', 'Thành công'),
-        t('admin.users.edit.successMsg', 'Đã cập nhật thông tin người dùng thành công.'),
+        t('admin.users.edit.successTitle', 'Success'),
+        t('admin.users.edit.successMsg', 'User information updated successfully.'),
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
     } catch (err: unknown) {
       const apiErr = toApiError(err);
-      setServerError(apiErr.message);
+            setServerError(apiErr.message);
     }
   };
 
   const handleSavePress = () => {
-    if (!validateForm()) return;
+        if (!validateForm()) return;
 
     // If role changed and not self, require explicit confirmation
     if (!isSelf && role !== user.role) {
@@ -270,15 +267,15 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
       const newRoleLabel = roleOptions.find((r) => r.role === role)?.label ?? role;
 
       Alert.alert(
-        t('admin.users.edit.roleChangeConfirmTitle', 'Xác nhận thay đổi vai trò'),
+        t('admin.users.edit.roleChangeConfirmTitle', 'Confirm role change'),
         t(
           'admin.users.edit.roleChangeConfirmMsg',
           `Vai trò của tài khoản sẽ thay đổi từ "${oldRoleLabel}" sang "${newRoleLabel}".\n\nBạn có chắc chắn muốn áp dụng thay đổi này không?`,
           { oldRole: oldRoleLabel, newRole: newRoleLabel },
         ),
         [
-          { text: t('admin.common.actions.cancel', 'Huỷ'), style: 'cancel' },
-          { text: t('admin.common.actions.confirm', 'Đồng ý'), onPress: executeUpdate },
+          { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
+          { text: t('admin.common.actions.confirm', 'Agree'), onPress: executeUpdate },
         ],
       );
       return;
@@ -307,7 +304,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
             <View style={styles.readOnlyContainer}>
               <Text style={styles.readOnlyText}>{user.email}</Text>
               <Text style={styles.readOnlyHelp}>
-                {t('admin.users.edit.emailReadonlyHelp', 'Email không thể thay đổi sau khi tạo')}
+                {t('admin.users.edit.emailReadonlyHelp', 'Email cannot be changed after creation')}
               </Text>
             </View>
           </View>
@@ -315,7 +312,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Full Name */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.nameLabel', 'Họ và tên')} <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.nameLabel', 'Full name')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
@@ -332,7 +329,7 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.roleLabel', 'Vai trò')} <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.roleLabel', 'Role')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             {isSelf ? (
               <View style={styles.selfNoticeBox} testID="edit-self-role-notice">
@@ -410,11 +407,11 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Phone */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.detail.phoneLabel', 'Số điện thoại')}
+              {t('admin.users.detail.phoneLabel', 'Phone number')}
             </Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
-              placeholder={t('admin.users.edit.phonePlaceholder', '0912345678 (để trống để xóa)')}
+              placeholder={t('admin.users.edit.phonePlaceholder', '0912345678 (leave empty to clear)')}
               placeholderTextColor={theme.textSecondary}
               value={phone}
               onChangeText={(text) => {
@@ -430,11 +427,11 @@ export default function AdminUserEditScreen({ route, navigation }: Props) {
           {/* Address */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.detail.addressLabel', 'Địa chỉ')}
+              {t('admin.users.detail.addressLabel', 'Address')}
             </Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder={t('admin.users.edit.addressPlaceholder', 'Địa chỉ liên hệ (để trống để xóa)')}
+              placeholder={t('admin.users.edit.addressPlaceholder', 'Contact address (leave empty to clear)')}
               placeholderTextColor={theme.textSecondary}
               value={address}
               onChangeText={(text) => {

@@ -45,7 +45,6 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
     isCustomer,
     isMutating,
     isClearing,
-    pendingItemId,
     increaseQuantity,
     decreaseQuantity,
     removeItem,
@@ -345,7 +344,6 @@ export default function CartScreen({ navigation }: MainTabScreenProps<'Cart'>) {
             selected={selectedIds.has(item.id)}
             onToggleSelected={() => toggleSelected(item.id)}
             disabled={isMutating}
-            pending={pendingItemId === item.id}
             onIncrease={() => {
               void runAction(() => increaseQuantity(item.id));
             }}

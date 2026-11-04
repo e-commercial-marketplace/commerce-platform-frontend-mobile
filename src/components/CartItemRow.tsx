@@ -10,7 +10,7 @@
  * Fully theme-aware with dynamic semantic tokens and localized strings.
  */
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { radii, spacing } from '../constants/theme';
 import { useAppLanguage } from '../i18n';
@@ -31,8 +31,6 @@ type CartItemRowProps = {
   onToggleSelected?: () => void;
   /** Disables every control (another cart mutation is in flight). */
   disabled?: boolean;
-  /** This specific row is the one being updated/removed. */
-  pending?: boolean;
 };
 
 export default function CartItemRow({
@@ -43,7 +41,6 @@ export default function CartItemRow({
   selected = false,
   onToggleSelected,
   disabled = false,
-  pending = false,
 }: CartItemRowProps) {
   const { theme } = useAppTheme();
   const { t } = useAppLanguage();
@@ -170,8 +167,6 @@ export default function CartItemRow({
                 </Pressable>
               </View>
             )}
-
-            {pending && <ActivityIndicator size="small" color={theme.primary} />}
 
             <Pressable
               onPress={onRemove}

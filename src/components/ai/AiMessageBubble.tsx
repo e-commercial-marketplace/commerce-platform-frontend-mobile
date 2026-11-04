@@ -3,12 +3,12 @@
  *
  * Distinct styling for USER vs ASSISTANT turns:
  * - USER: right-aligned, primary blue theme, white text.
- *   When send fails (isFailed === true): red background, "Gửi không thành công" status, and explicit "Thử lại" action.
+ *   When send fails (isFailed === true): red background, "Failed to send" status, and explicit "Retry" action.
  * - ASSISTANT: left-aligned, light neutral surface, dark text, subtle answer-source indicator.
  *
  * Source indicator:
  * - answeredBy === 'AI'    -> "AI" (✨)
- * - answeredBy === 'RULES' -> "Trả lời nhanh" (⚡ - valid backend rule-based fallback, never shown as error)
+ * - answeredBy === 'RULES' -> "Quick reply" (⚡ - valid backend rule-based fallback, never shown as error)
  * - answeredBy === undefined -> No badge (historical restored messages)
  *
  * Rich Product Recommendations:
@@ -78,7 +78,7 @@ export default function AiMessageBubble({
                 { color: isDark ? '#FCA5A5' : '#DC2626' },
               ]}
             >
-              {t('ai.failedToSend', 'Gửi không thành công')}
+              {t('ai.failedToSend', 'Failed to send')}
             </Text>
             {onRetry ? (
               <Pressable
@@ -91,7 +91,7 @@ export default function AiMessageBubble({
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={t('ai.retryA11y', 'Thử lại gửi câu hỏi')}
+                accessibilityLabel={t('ai.retryA11y', 'Retry sending question')}
               >
                 <Text
                   style={[
@@ -99,7 +99,7 @@ export default function AiMessageBubble({
                     { color: isDark ? '#FCA5A5' : '#B91C1C' },
                   ]}
                 >
-                  {t('ai.retry', 'Thử lại')}
+                  {t('ai.retry', 'Retry')}
                 </Text>
               </Pressable>
             ) : null}
@@ -135,7 +135,7 @@ export default function AiMessageBubble({
           >
             <Text style={styles.sourceTagIcon}>{isRules ? '⚡' : '✨'}</Text>
             <Text style={[styles.sourceTagText, { color: theme.textSecondary }]}>
-              {isRules ? t('ai.answeredByRules', 'Trả lời nhanh') : t('ai.answeredByAi', 'AI')}
+              {isRules ? t('ai.answeredByRules', 'Quick reply') : t('ai.answeredByAi', 'AI')}
             </Text>
           </View>
         ) : null}

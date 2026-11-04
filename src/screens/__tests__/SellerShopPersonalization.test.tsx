@@ -123,7 +123,7 @@ describe('SellerShopScreen Personalization', () => {
 
     // English localized copy
     expect(getByText('20 products for sale')).toBeTruthy();
-    expect(getByText('Chat with shop')).toBeTruthy();
+    expect(getByText('Message the shop')).toBeTruthy();
     expect(getByText('Products')).toBeTruthy();
     expect(getByText('Previous')).toBeTruthy();
     expect(getByText('Next')).toBeTruthy();

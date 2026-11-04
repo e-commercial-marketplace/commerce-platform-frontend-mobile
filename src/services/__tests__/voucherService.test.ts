@@ -5,7 +5,7 @@
 import { apiClient } from '../../api/client';
 import { ApiError } from '../../api/errors';
 import type { VoucherResponse } from '../../types/voucherApi';
-import { validateVoucher } from '../voucherService';
+import { getUsableVouchers, validateVoucher } from '../voucherService';
 
 jest.mock('../../api/client', () => {
   const actual = jest.requireActual('../../api/client');
@@ -21,7 +21,7 @@ const mockedClient = apiClient as jest.Mocked<typeof apiClient>;
 
 const mockVoucher: VoucherResponse = {
   code: 'WELCOME10',
-  description: 'Giảm 10% cho đơn đầu tiên',
+  description: '10% off your first order',
   discountPercent: 10,
   validFrom: '2026-10-24T00:00:00Z',
   validTo: '2027-01-23T00:00:00Z',
@@ -32,6 +32,16 @@ const mockVoucher: VoucherResponse = {
 describe('voucherService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('getUsableVouchers', () => {
+    it('calls GET /vouchers with the page parameters and unwraps data', async () => {
+      const page = { content: [], page: 2, size: 20, totalElements: 0, totalPages: 0 };
+      mockedClient.get.mockResolvedValueOnce({ data: { success: true, data: page }, status: 200 } as any);
+
+      await expect(getUsableVouchers(2)).resolves.toEqual(page);
+      expect(mockedClient.get).toHaveBeenCalledWith('/vouchers', { params: { page: 2, size: 20 } });
+    });
   });
 
   describe('validateVoucher', () => {

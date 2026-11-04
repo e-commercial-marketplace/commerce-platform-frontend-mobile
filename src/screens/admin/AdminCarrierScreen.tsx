@@ -129,13 +129,10 @@ export default function AdminCarrierScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
           <Text style={[styles.unauthorizedTitle, { color: theme.text }]}>
-            {t('admin.portal.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.portal.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={[styles.unauthorizedMessage, { color: theme.textSecondary }]}>
-            {t(
-              'admin.carriers.unauthorizedAdminOnly',
-              'Chỉ Quản trị viên hệ thống mới có quyền quản lý đơn vị vận chuyển.',
-            )}
+            {t('admin.carriers.unauthorizedAdminOnly', 'Only system administrators can manage carriers.')}
           </Text>
           <Pressable
             style={({ pressed }) => [
@@ -145,10 +142,10 @@ export default function AdminCarrierScreen({ navigation }: Props) {
             ]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.portal.backButton', 'Quay lại')}
+            accessibilityLabel={t('admin.portal.backButton', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.portal.backButton', 'Quay lại')}
+              {t('admin.portal.backButton', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -174,17 +171,13 @@ export default function AdminCarrierScreen({ navigation }: Props) {
     const trimmed = createName.trim();
     if (!trimmed) {
       setCreateError(
-        t('admin.carriers.validation.nameRequired', 'Vui lòng nhập tên đơn vị vận chuyển.'),
+        t('admin.carriers.validation.nameRequired', 'Please enter the carrier name.'),
       );
       return;
     }
     if (trimmed.length > MAX_CARRIER_NAME_LENGTH) {
       setCreateError(
-        t(
-          'admin.carriers.validation.nameTooLong',
-          'Tên đơn vị vận chuyển không được vượt quá {{max}} ký tự.',
-          { max: MAX_CARRIER_NAME_LENGTH },
-        ),
+        t('admin.carriers.validation.nameTooLong', `Carrier name must not exceed ${MAX_CARRIER_NAME_LENGTH} characters.`, { max: MAX_CARRIER_NAME_LENGTH }),
       );
       return;
     }
@@ -195,10 +188,8 @@ export default function AdminCarrierScreen({ navigation }: Props) {
       setCreateName('');
       setCreateError(null);
       Alert.alert(
-        t('admin.common.success', 'Thành công'),
-        t('admin.carriers.createSuccess', 'Đã thêm đơn vị vận chuyển "{{name}}".', {
-          name: trimmed,
-        }),
+        t('admin.common.success', 'Success'),
+        t('admin.carriers.createSuccess', `Added carrier "${trimmed}".`, { name: trimmed }),
       );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
@@ -211,19 +202,13 @@ export default function AdminCarrierScreen({ navigation }: Props) {
         apiError.code === 'VALIDATION_ERROR'
       ) {
         setCreateError(
-          t(
-            'admin.carriers.validation.nameExists',
-            'Tên đơn vị vận chuyển đã tồn tại trên hệ thống. Vui lòng chọn tên khác.',
-          ),
+          t('admin.carriers.validation.nameExists', 'The carrier name already exists in the system. Please choose another name.'),
         );
       } else {
         setCreateError(
           rawMsg ||
             apiError.message ||
-            t(
-              'admin.carriers.validation.createFailed',
-              'Không thể tạo đơn vị vận chuyển. Vui lòng thử lại.',
-            ),
+            t('admin.carriers.validation.createFailed', 'Could not create the carrier. Please try again.'),
         );
       }
     }
@@ -249,17 +234,13 @@ export default function AdminCarrierScreen({ navigation }: Props) {
     const trimmed = editName.trim();
     if (!trimmed) {
       setEditError(
-        t('admin.carriers.validation.nameRequired', 'Vui lòng nhập tên đơn vị vận chuyển.'),
+        t('admin.carriers.validation.nameRequired', 'Please enter the carrier name.'),
       );
       return;
     }
     if (trimmed.length > MAX_CARRIER_NAME_LENGTH) {
       setEditError(
-        t(
-          'admin.carriers.validation.nameTooLong',
-          'Tên đơn vị vận chuyển không được vượt quá {{max}} ký tự.',
-          { max: MAX_CARRIER_NAME_LENGTH },
-        ),
+        t('admin.carriers.validation.nameTooLong', `Carrier name must not exceed ${MAX_CARRIER_NAME_LENGTH} characters.`, { max: MAX_CARRIER_NAME_LENGTH }),
       );
       return;
     }
@@ -284,8 +265,8 @@ export default function AdminCarrierScreen({ navigation }: Props) {
       setEditName('');
       setEditError(null);
       Alert.alert(
-        t('admin.common.success', 'Thành công'),
-        t('admin.carriers.updateSuccess', 'Đã cập nhật thông tin đơn vị vận chuyển.'),
+        t('admin.common.success', 'Success'),
+        t('admin.carriers.updateSuccess', 'Carrier information updated.'),
       );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
@@ -298,19 +279,13 @@ export default function AdminCarrierScreen({ navigation }: Props) {
         apiError.code === 'VALIDATION_ERROR'
       ) {
         setEditError(
-          t(
-            'admin.carriers.validation.nameExists',
-            'Tên đơn vị vận chuyển đã tồn tại trên hệ thống. Vui lòng chọn tên khác.',
-          ),
+          t('admin.carriers.validation.nameExists', 'The carrier name already exists in the system. Please choose another name.'),
         );
       } else {
         setEditError(
           rawMsg ||
             apiError.message ||
-            t(
-              'admin.carriers.validation.updateFailed',
-              'Không thể cập nhật đơn vị vận chuyển. Vui lòng thử lại.',
-            ),
+            t('admin.carriers.validation.updateFailed', 'Could not update the carrier. Please try again.'),
         );
       }
     }
@@ -320,16 +295,12 @@ export default function AdminCarrierScreen({ navigation }: Props) {
   const handleToggleStatus = (carrier: Carrier) => {
     if (carrier.active) {
       Alert.alert(
-        t('admin.carriers.suspendConfirmTitle', 'Xác nhận tạm ngừng'),
-        t(
-          'admin.carriers.suspendConfirmMsg',
-          'Bạn có chắc chắn muốn tạm ngừng đơn vị "{{name}}"? Người bán sẽ không thể chọn đơn vị này khi tạo đơn vận chuyển mới.',
-          { name: carrier.name },
-        ),
+        t('admin.carriers.suspendConfirmTitle', 'Confirm suspension'),
+        t('admin.carriers.suspendConfirmMsg', `Are you sure you want to suspend the carrier "${carrier.name}"? Sellers will not be able to choose this carrier when creating new shipments.`, { name: carrier.name }),
         [
-          { text: t('admin.common.actions.cancel', 'Hủy'), style: 'cancel' },
+          { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
           {
-            text: t('admin.carriers.suspendBtn', 'Tạm ngừng'),
+            text: t('admin.carriers.suspendBtn', 'Suspend'),
             style: 'destructive',
             onPress: async () => {
               try {
@@ -338,20 +309,15 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                   payload: { active: false },
                 });
                 Alert.alert(
-                  t('admin.common.success', 'Thành công'),
-                  t('admin.carriers.suspendSuccess', 'Đã tạm ngừng đơn vị "{{name}}".', {
-                    name: carrier.name,
-                  }),
+                  t('admin.common.success', 'Success'),
+                  t('admin.carriers.suspendSuccess', `Suspended carrier "${carrier.name}".`, { name: carrier.name }),
                 );
               } catch (err: unknown) {
                 const apiError = toApiError(err);
                 Alert.alert(
-                  t('admin.common.error', 'Lỗi'),
+                  t('admin.common.error', 'Error'),
                   apiError.message ||
-                    t(
-                      'admin.carriers.validation.suspendFailed',
-                      'Không thể tạm ngừng đơn vị. Vui lòng thử lại.',
-                    ),
+                    t('admin.carriers.validation.suspendFailed', 'Could not suspend the carrier. Please try again.'),
                 );
               }
             },
@@ -360,16 +326,12 @@ export default function AdminCarrierScreen({ navigation }: Props) {
       );
     } else {
       Alert.alert(
-        t('admin.carriers.activateConfirmTitle', 'Xác nhận kích hoạt'),
-        t(
-          'admin.carriers.activateConfirmMsg',
-          'Kích hoạt lại đơn vị vận chuyển "{{name}}" cho toàn sàn? Người bán sẽ có thể chọn đơn vị này khi giao hàng.',
-          { name: carrier.name },
-        ),
+        t('admin.carriers.activateConfirmTitle', 'Confirm activation'),
+        t('admin.carriers.activateConfirmMsg', `Reactivate carrier "${carrier.name}" for the whole platform? Sellers will be able to choose this carrier when shipping.`, { name: carrier.name }),
         [
-          { text: t('admin.common.actions.cancel', 'Hủy'), style: 'cancel' },
+          { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
           {
-            text: t('admin.carriers.activateBtn', 'Kích hoạt'),
+            text: t('admin.carriers.activateBtn', 'Activate'),
             onPress: async () => {
               try {
                 await updateMutation.mutateAsync({
@@ -377,20 +339,15 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                   payload: { active: true },
                 });
                 Alert.alert(
-                  t('admin.common.success', 'Thành công'),
-                  t('admin.carriers.activateSuccess', 'Đã kích hoạt lại đơn vị "{{name}}".', {
-                    name: carrier.name,
-                  }),
+                  t('admin.common.success', 'Success'),
+                  t('admin.carriers.activateSuccess', `Reactivated carrier "${carrier.name}".`, { name: carrier.name }),
                 );
               } catch (err: unknown) {
                 const apiError = toApiError(err);
                 Alert.alert(
-                  t('admin.common.error', 'Lỗi'),
+                  t('admin.common.error', 'Error'),
                   apiError.message ||
-                    t(
-                      'admin.carriers.validation.activateFailed',
-                      'Không thể kích hoạt đơn vị. Vui lòng thử lại.',
-                    ),
+                    t('admin.carriers.validation.activateFailed', 'Could not activate the carrier. Please try again.'),
                 );
               }
             },
@@ -468,11 +425,11 @@ export default function AdminCarrierScreen({ navigation }: Props) {
             ]}
             onPress={() => handleOpenEditModal(item)}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.carriers.renameBtn', '✏️ Đổi tên / Chỉnh sửa')}
+            accessibilityLabel={t('admin.carriers.renameBtn', '✏️ Rename / Edit')}
             testID={`admin-carrier-rename-btn-${item.id}`}
           >
             <Text style={[styles.renameButtonText, { color: theme.text }]}>
-              {t('admin.carriers.renameBtn', '✏️ Đổi tên / Chỉnh sửa')}
+              {t('admin.carriers.renameBtn', '✏️ Rename / Edit')}
             </Text>
           </Pressable>
 
@@ -493,8 +450,8 @@ export default function AdminCarrierScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel={
               item.active
-                ? t('admin.carriers.suspendBtn', 'Tạm ngừng')
-                : t('admin.carriers.activateBtn', 'Kích hoạt')
+                ? t('admin.carriers.suspendBtn', 'Suspend')
+                : t('admin.carriers.activateBtn', 'Activate')
             }
             testID={`admin-carrier-toggle-btn-${item.id}`}
           >
@@ -509,8 +466,8 @@ export default function AdminCarrierScreen({ navigation }: Props) {
               ]}
             >
               {item.active
-                ? t('admin.carriers.suspendBtn', 'Tạm ngừng')
-                : t('admin.carriers.activateBtn', 'Kích hoạt')}
+                ? t('admin.carriers.suspendBtn', 'Suspend')
+                : t('admin.carriers.activateBtn', 'Activate')}
             </Text>
           </Pressable>
         </View>
@@ -535,14 +492,10 @@ export default function AdminCarrierScreen({ navigation }: Props) {
       >
         <View style={styles.topBarTextContainer}>
           <Text style={[styles.screenTitle, { color: theme.text }]}>
-            {t('admin.carriers.title', 'Đơn vị vận chuyển')}
+            {t('admin.carriers.title', 'Carriers')}
           </Text>
           <Text style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
-            {t(
-              'admin.carriers.subtitle',
-              'Tổng: {{total}} • Hoạt động: {{active}} • Tạm ngừng: {{inactive}}',
-              { total: totalCount, active: activeCount, inactive: inactiveCount },
-            )}
+            {t('admin.carriers.subtitle', `Total: ${totalCount} • Active: ${activeCount} • Suspended: ${inactiveCount}`, { total: totalCount, active: activeCount, inactive: inactiveCount })}
           </Text>
         </View>
         <Pressable
@@ -553,11 +506,11 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           ]}
           onPress={handleOpenCreateModal}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.carriers.createBtn', '＋ Thêm đơn vị')}
+          accessibilityLabel={t('admin.carriers.createBtn', '＋ Add carrier')}
           testID="admin-carrier-create-btn"
         >
           <Text style={styles.createButtonText}>
-            {t('admin.carriers.createBtn', '＋ Thêm đơn vị')}
+            {t('admin.carriers.createBtn', '＋ Add carrier')}
           </Text>
         </Pressable>
       </View>
@@ -581,17 +534,14 @@ export default function AdminCarrierScreen({ navigation }: Props) {
               borderWidth: 1,
             },
           ]}
-          placeholder={t(
-            'admin.carriers.searchPlaceholder',
-            'Tìm theo tên đơn vị hoặc UUID...',
-          )}
+          placeholder={t('admin.carriers.searchPlaceholder', 'Search by carrier name or UUID...')}
           placeholderTextColor={theme.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
           clearButtonMode="while-editing"
           autoCorrect={false}
           autoCapitalize="none"
-          accessibilityLabel={t('admin.carriers.searchPlaceholder', 'Tìm theo tên đơn vị hoặc UUID...')}
+          accessibilityLabel={t('admin.carriers.searchPlaceholder', 'Search by carrier name or UUID...')}
           testID="admin-carrier-search-input"
         />
       </View>
@@ -616,9 +566,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           ]}
           onPress={() => setStatusFilter('ALL')}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.carriers.filterAll', 'Tất cả ({{count}})', {
-            count: totalCount,
-          })}
+          accessibilityLabel={t('admin.carriers.filterAll', `All (${totalCount})`, { count: totalCount })}
           testID="admin-carrier-filter-all"
         >
           <Text
@@ -629,7 +577,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
               },
             ]}
           >
-            {t('admin.carriers.filterAll', 'Tất cả ({{count}})', { count: totalCount })}
+            {t('admin.carriers.filterAll', `All (${totalCount})`, { count: totalCount })}
           </Text>
         </Pressable>
         <Pressable
@@ -642,9 +590,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           ]}
           onPress={() => setStatusFilter('ACTIVE')}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.carriers.filterActive', 'Hoạt động ({{count}})', {
-            count: activeCount,
-          })}
+          accessibilityLabel={t('admin.carriers.filterActive', `Active (${activeCount})`, { count: activeCount })}
           testID="admin-carrier-filter-active"
         >
           <Text
@@ -655,7 +601,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
               },
             ]}
           >
-            {t('admin.carriers.filterActive', 'Hoạt động ({{count}})', { count: activeCount })}
+            {t('admin.carriers.filterActive', `Active (${activeCount})`, { count: activeCount })}
           </Text>
         </Pressable>
         <Pressable
@@ -668,9 +614,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           ]}
           onPress={() => setStatusFilter('INACTIVE')}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.carriers.filterInactive', 'Tạm ngừng ({{count}})', {
-            count: inactiveCount,
-          })}
+          accessibilityLabel={t('admin.carriers.filterInactive', `Suspended (${inactiveCount})`, { count: inactiveCount })}
           testID="admin-carrier-filter-inactive"
         >
           <Text
@@ -681,7 +625,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
               },
             ]}
           >
-            {t('admin.carriers.filterInactive', 'Tạm ngừng ({{count}})', { count: inactiveCount })}
+            {t('admin.carriers.filterInactive', `Suspended (${inactiveCount})`, { count: inactiveCount })}
           </Text>
         </Pressable>
       </View>
@@ -691,19 +635,19 @@ export default function AdminCarrierScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-carrier-loading">
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-            {t('admin.carriers.loading', 'Đang tải danh sách đơn vị vận chuyển...')}
+            {t('admin.carriers.loading', 'Loading carriers...')}
           </Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer} testID="admin-carrier-error">
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={[styles.errorTitle, { color: theme.danger }]}>
-            {t('admin.carriers.errorTitle', 'Không thể tải danh sách')}
+            {t('admin.carriers.errorTitle', 'Could not load the list')}
           </Text>
           <Text style={[styles.errorMessage, { color: theme.textSecondary }]}>
             {error instanceof Error
               ? error.message
-              : t('admin.common.error', 'Đã có lỗi xảy ra khi kết nối máy chủ.')}
+              : t('admin.common.error', 'Could not connect to the server.')}
           </Text>
           <Pressable
             style={({ pressed }) => [
@@ -715,11 +659,11 @@ export default function AdminCarrierScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.retry', 'Thử lại')}
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="admin-carrier-retry-btn"
           >
             <Text style={styles.retryButtonText}>
-              {t('admin.common.actions.retry', 'Thử lại')}
+              {t('admin.common.actions.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -728,19 +672,13 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           <Text style={styles.emptyIcon}>🚚</Text>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
             {searchQuery.trim() || statusFilter !== 'ALL'
-              ? t('admin.carriers.emptyFound', 'Không tìm thấy đơn vị nào')
-              : t('admin.carriers.emptyNone', 'Chưa có đơn vị vận chuyển nào')}
+              ? t('admin.carriers.emptyFound', 'No carriers found')
+              : t('admin.carriers.emptyNone', 'No carriers yet')}
           </Text>
           <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
             {searchQuery.trim() || statusFilter !== 'ALL'
-              ? t(
-                  'admin.carriers.emptyFilterHelp',
-                  'Vui lòng thử đổi từ khóa tìm kiếm hoặc bỏ bộ lọc.',
-                )
-              : t(
-                  'admin.carriers.emptyCreateHelp',
-                  'Nhấn "＋ Thêm đơn vị" bên trên để tạo đơn vị giao hàng đầu tiên cho hệ thống.',
-                )}
+              ? t('admin.carriers.emptyFilterHelp', 'Try changing search keywords or removing filters.')
+              : t('admin.carriers.emptyCreateHelp', 'Tap "＋ Add carrier" above to create the first carrier for the system.')}
           </Text>
         </View>
       ) : (
@@ -787,14 +725,14 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {t('admin.carriers.createModalTitle', 'Thêm đơn vị vận chuyển')}
+                {t('admin.carriers.createModalTitle', 'Add carrier')}
               </Text>
               <Pressable
                 onPress={handleCloseCreateModal}
                 hitSlop={8}
                 disabled={createMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.close', 'Đóng')}
+                accessibilityLabel={t('admin.common.actions.close', 'Close')}
                 testID="admin-carrier-create-close-btn"
               >
                 <Text style={[styles.modalCloseText, { color: theme.textSecondary }]}>✕</Text>
@@ -802,15 +740,12 @@ export default function AdminCarrierScreen({ navigation }: Props) {
             </View>
 
             <Text style={[styles.modalDescription, { color: theme.textSecondary }]}>
-              {t(
-                'admin.carriers.createModalDesc',
-                'Tên đơn vị vận chuyển mới sẽ được thêm vào hệ thống và kích hoạt mặc định để người bán chọn khi giao hàng.',
-              )}
+              {t('admin.carriers.createModalDesc', 'The new carrier name will be added to the system and activated by default so sellers can choose it when shipping.')}
             </Text>
 
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                {t('admin.carriers.nameLabel', 'Tên đơn vị vận chuyển *')}
+                {t('admin.carriers.nameLabel', 'Carrier name *')}
               </Text>
               <TextInput
                 style={[
@@ -821,10 +756,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                     color: theme.text,
                   },
                 ]}
-                placeholder={t(
-                  'admin.carriers.namePlaceholder',
-                  'Ví dụ: Giao Hàng Nhanh (GHN), Viettel Post...',
-                )}
+                placeholder={t('admin.carriers.namePlaceholder', 'e.g. Fast Delivery, Postal Express...')}
                 placeholderTextColor={theme.textSecondary}
                 value={createName}
                 onChangeText={(text) => {
@@ -866,11 +798,11 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                 onPress={handleCloseCreateModal}
                 disabled={createMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.cancel', 'Hủy')}
+                accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                 testID="admin-carrier-create-cancel-btn"
               >
                 <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>
-                  {t('admin.common.actions.cancel', 'Hủy')}
+                  {t('admin.common.actions.cancel', 'Cancel')}
                 </Text>
               </Pressable>
               <Pressable
@@ -883,14 +815,14 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                 onPress={handleSubmitCreate}
                 disabled={createMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.create', 'Thêm mới')}
+                accessibilityLabel={t('admin.common.actions.create', 'Add new')}
                 testID="admin-carrier-create-submit-btn"
               >
                 {createMutation.isPending ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.submitButtonText}>
-                    {t('admin.common.actions.create', 'Thêm mới')}
+                    {t('admin.common.actions.create', 'Add new')}
                   </Text>
                 )}
               </Pressable>
@@ -923,14 +855,14 @@ export default function AdminCarrierScreen({ navigation }: Props) {
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {t('admin.carriers.editModalTitle', 'Chỉnh sửa đơn vị vận chuyển')}
+                {t('admin.carriers.editModalTitle', 'Edit carrier')}
               </Text>
               <Pressable
                 onPress={handleCloseEditModal}
                 hitSlop={8}
                 disabled={updateMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.close', 'Đóng')}
+                accessibilityLabel={t('admin.common.actions.close', 'Close')}
                 testID="admin-carrier-edit-close-btn"
               >
                 <Text style={[styles.modalCloseText, { color: theme.textSecondary }]}>✕</Text>
@@ -946,7 +878,7 @@ export default function AdminCarrierScreen({ navigation }: Props) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: theme.text }]}>
-                {t('admin.carriers.nameLabel', 'Tên đơn vị vận chuyển *')}
+                {t('admin.carriers.nameLabel', 'Carrier name *')}
               </Text>
               <TextInput
                 style={[
@@ -1036,11 +968,11 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                 onPress={handleCloseEditModal}
                 disabled={updateMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.cancel', 'Hủy')}
+                accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                 testID="admin-carrier-edit-cancel-btn"
               >
                 <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>
-                  {t('admin.common.actions.cancel', 'Hủy')}
+                  {t('admin.common.actions.cancel', 'Cancel')}
                 </Text>
               </Pressable>
               <Pressable
@@ -1053,14 +985,14 @@ export default function AdminCarrierScreen({ navigation }: Props) {
                 onPress={handleSubmitEdit}
                 disabled={updateMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.save', 'Lưu thay đổi')}
+                accessibilityLabel={t('admin.common.actions.save', 'Save changes')}
                 testID="admin-carrier-edit-submit-btn"
               >
                 {updateMutation.isPending ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.submitButtonText}>
-                    {t('admin.common.actions.save', 'Lưu thay đổi')}
+                    {t('admin.common.actions.save', 'Save changes')}
                   </Text>
                 )}
               </Pressable>

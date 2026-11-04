@@ -15,12 +15,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppLanguage } from '../i18n';
 import AiAssistantScreen from '../screens/AiAssistantScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import ConversationListScreen from '../screens/ConversationListScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MyOrdersScreen from '../screens/MyOrdersScreen';
+import VouchersScreen from '../screens/VouchersScreen';
 import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -82,6 +84,14 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: t('nav.shop', 'Cửa hàng'),
+        }}
+      />
+      <Stack.Screen
+        name="Vouchers"
+        component={VouchersScreen}
+        options={{
+          headerShown: true,
+          title: t('nav.vouchers', 'Mã giảm giá'),
         }}
       />
       <Stack.Screen
@@ -157,6 +167,14 @@ export default function AppNavigator() {
         options={{
           headerShown: true,
           title: t('nav.resetPassword', 'Đặt lại mật khẩu'),
+        }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{
+          headerShown: true,
+          title: t('nav.editProfile', 'Chỉnh sửa hồ sơ'),
         }}
       />
       <Stack.Screen

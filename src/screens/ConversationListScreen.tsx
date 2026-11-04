@@ -6,7 +6,7 @@
  * - Real-time sync via useChatWebSocket() triggers instant query updates.
  * - Adheres strictly to backend data contracts:
  *   - Customer resolves shop names via useSellerShop.
- *   - Seller displays neutral customer identifier (Khách hàng #...).
+ *   - Seller displays neutral customer identifier (Customer #...).
  *   - No fake unread badges or last message previews.
  * - Row tap opens ChatRoom for the selected conversation.
  */
@@ -84,12 +84,12 @@ export default function ConversationListScreen({
         <View style={styles.centerState}>
           <Text style={styles.emptyEmoji}>🔒</Text>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
-            {t('chat.loginRequiredTitle', 'Yêu cầu đăng nhập')}
+            {t('chat.loginRequiredTitle', 'Sign-in required')}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {t(
               'chat.loginRequiredDescList',
-              'Bạn cần đăng nhập bằng tài khoản Người mua hoặc Người bán để xem tin nhắn.',
+              'You need to sign in with a Buyer or Seller account to view messages.',
             )}
           </Text>
           <Pressable
@@ -100,10 +100,10 @@ export default function ConversationListScreen({
             ]}
             onPress={() => navigation.navigate('Login')}
             accessibilityRole="button"
-            accessibilityLabel={t('chat.loginButton', 'Đăng nhập')}
+            accessibilityLabel={t('chat.loginButton', 'Sign in')}
           >
             <Text style={[styles.primaryButtonText, { color: theme.onPrimary }]}>
-              {t('chat.loginButton', 'Đăng nhập')}
+              {t('chat.loginButton', 'Sign in')}
             </Text>
           </Pressable>
         </View>
@@ -122,7 +122,7 @@ export default function ConversationListScreen({
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {t('chat.loadingMessages', 'Đang tải tin nhắn…')}
+            {t('chat.loadingMessages', 'Loading messages…')}
           </Text>
         </View>
       </SafeAreaView>
@@ -140,12 +140,12 @@ export default function ConversationListScreen({
         <View style={styles.centerState}>
           <Text style={styles.errorEmoji}>⚠️</Text>
           <Text style={[styles.errorTitle, { color: theme.danger }]}>
-            {t('chat.loadFailedTitle', 'Không thể tải tin nhắn')}
+            {t('chat.loadFailedTitle', 'Could not load messages')}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {t(
               'chat.networkFailedDesc',
-              'Vui lòng kiểm tra kết nối mạng và thử lại.',
+              'Please check your network connection and try again.',
             )}
           </Text>
           <Pressable
@@ -156,10 +156,10 @@ export default function ConversationListScreen({
             ]}
             onPress={() => refetch()}
             accessibilityRole="button"
-            accessibilityLabel={t('chat.retry', 'Thử lại')}
+            accessibilityLabel={t('chat.retry', 'Retry')}
           >
             <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
-              {t('chat.retry', 'Thử lại')}
+              {t('chat.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -179,18 +179,18 @@ export default function ConversationListScreen({
           <Text style={styles.emptyEmoji}>💬</Text>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
             {isCustomer
-              ? t('chat.emptyCustomerTitle', 'Chưa có cuộc trò chuyện nào')
-              : t('chat.emptySellerTitle', 'Chưa có tin nhắn từ khách hàng')}
+              ? t('chat.emptyCustomerTitle', 'No conversations yet')
+              : t('chat.emptySellerTitle', 'No messages from customers yet')}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {isCustomer
               ? t(
                   'chat.emptyCustomerDesc',
-                  'Tin nhắn giữa bạn và các shop sẽ xuất hiện ở đây.',
+                  'Messages between you and shops will appear here.',
                 )
               : t(
                   'chat.emptySellerDesc',
-                  'Các cuộc hội thoại từ khách hàng sẽ xuất hiện ở đây.',
+                  'Conversations from customers will appear here.',
                 )}
           </Text>
           <Pressable
@@ -201,10 +201,10 @@ export default function ConversationListScreen({
             ]}
             onPress={() => refetch()}
             accessibilityRole="button"
-            accessibilityLabel={t('chat.refreshA11y', 'Làm mới danh sách tin nhắn')}
+            accessibilityLabel={t('chat.refreshA11y', 'Refresh message list')}
           >
             <Text style={[styles.outlineButtonText, { color: theme.text }]}>
-              {t('chat.refresh', 'Làm mới')}
+              {t('chat.refresh', 'Refresh')}
             </Text>
           </Pressable>
         </View>

@@ -39,6 +39,8 @@ export type AuthContextValue = {
   logout: () => Promise<void>;
   /** Changes password, rotates session tokens, and keeps the user signed in. */
   changePassword: (data: ChangePasswordRequest) => Promise<void>;
+  /** Update the name in the session after editing the profile so screens reading user.name do not show the old name. */
+  updateUserName: (name: string) => void;
 };
 
 /** Typed context; null until an AuthProvider mounts (consumers handle that). */
@@ -148,6 +150,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(auth.user);
   }, []);
 
+  const updateUserName = useCallback((name: string) => {
+    setUser((current) => (current == null ? current : { ...current, name }));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -157,8 +163,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       register,
       logout,
       changePassword,
+      updateUserName,
     }),
-    [user, isRestoring, login, register, logout, changePassword],
+    [user, isRestoring, login, register, logout, changePassword, updateUserName],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

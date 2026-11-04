@@ -3,11 +3,11 @@
  *
  * Supports:
  * - Create Mode: route.params.mode === 'create'
- *   - Fields: Name, Description, Image URL, Price, Initial Stock, Category, Listed switch
+ *   - Fields: Name, Description, Product Image, Price, Initial Stock, Category, Listed switch
  *   - Submits via POST /api/v1/seller/products (useCreateSellerProduct)
  * - Edit Mode: route.params.mode === 'edit' & route.params.productId
  *   - Loads existing product via useSellerProduct(productId)
- *   - Prefills: Name, Description, Image URL, Price, Category, Listed switch
+ *   - Prefills: Name, Description, Product Image, Price, Category, Listed switch
  *   - CRITICAL: Does NOT include editable stock (stock is managed separately from list)
  *   - Submits via PATCH /api/v1/seller/products/{id} (useUpdateSellerProduct)
  * - Category Selector via useCategories()
@@ -15,7 +15,7 @@
  * - Comprehensive states: Loading detail, 403 authorization blocked, 404 not found, generic error retry
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,9 +34,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { toApiError } from '../api/errors';
+import ProductImage from '../components/ProductImage';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAppTheme } from '../theme';
 import { useAppLanguage } from '../i18n';
+import { useImageUpload } from '../hooks/useImageUpload';
 import { useCategories } from '../hooks/useProducts';
 import {
   useCreateSellerProduct,
@@ -48,6 +50,7 @@ import type {
   ProductCreateRequest,
   ProductUpdateRequest,
 } from '../types/sellerProductApi';
+import { pickImage } from '../utils/imagePicker';
 
 type FormErrors = {
   name?: string;
@@ -87,11 +90,14 @@ export default function SellerProductFormScreen({
   const createMutation = useCreateSellerProduct();
   const updateMutation = useUpdateSellerProduct();
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const imageUpload = useImageUpload('PRODUCT');
 
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  // Keep a stable object so ProductImage remembers which image failed to load.
+  const imageSource = useMemo(() => ({ uri: imageUrl }), [imageUrl]);
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -223,17 +229,11 @@ export default function SellerProductFormScreen({
       }
     }
 
-    // 5. Image URL validation
-    const trimmedImageUrl = imageUrl.trim();
-    if (active && trimmedImageUrl.length === 0) {
+    // 5. Product image validation
+    if (active && imageUrl.trim().length === 0) {
       validationErrors.imageUrl = t(
-        'seller.val_imageUrlRequired',
-        'Image URL is required when listing product as active',
-      );
-    } else if (trimmedImageUrl.length > 2048) {
-      validationErrors.imageUrl = t(
-        'seller.val_imageUrlMaxLength',
-        'Image URL must not exceed 2048 characters',
+        'seller.val_productImageRequired',
+        'Product image is required when listing product as active',
       );
     }
 
@@ -243,9 +243,25 @@ export default function SellerProductFormScreen({
     };
   };
 
+  // Pick an image and upload right away; imageUrl only changes when the upload succeeds, so an error never loses the old image.
+  const handlePickImage = async () => {
+    if (imageUpload.isPending || isSubmitting) {
+      return;
+    }
+    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
+    try {
+      const picked = await pickImage();
+      if (picked != null) {
+        setImageUrl(await imageUpload.mutateAsync(picked));
+      }
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, imageUrl: toApiError(error).message }));
+    }
+  };
+
   // Submit handler
   const handleSubmit = async () => {
-    if (isSubmitting) {
+    if (isSubmitting || imageUpload.isPending) {
       return;
     }
 
@@ -798,42 +814,47 @@ export default function SellerProductFormScreen({
             </View>
           )}
 
-          {/* Image URL */}
+          {/* Product image */}
           <View
             style={styles.field}
             onLayout={(e) => handleFieldLayout('imageUrl', e.nativeEvent.layout.y)}
           >
             <Text style={[styles.label, { color: theme.text }]}>
-              {active
-                ? t('seller.imageUrlLabel', 'Image URL *')
-                : t('seller.imageUrlLabel', 'Image URL (Optional)')}
+              {t('seller.productImageLabel', 'Product Image')} {active ? '*' : '(Optional)'}
             </Text>
-            <View
+            {imageUrl.length > 0 ? (
+              <ProductImage source={imageSource} style={styles.imagePreview} testID="image-preview" />
+            ) : null}
+            <Pressable
               style={[
-                styles.inputShell,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                styles.imageButton,
+                { borderColor: theme.primary },
                 errors.imageUrl != null && [styles.inputShellError, { borderColor: theme.danger }],
+                imageUpload.isPending && styles.submitButtonDisabled,
               ]}
+              onPress={() => {
+                void handlePickImage();
+              }}
+              disabled={imageUpload.isPending || isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel={
+                imageUrl.length > 0
+                  ? t('seller.changeImage', 'Change image')
+                  : t('seller.chooseImage', 'Choose image')
+              }
+              accessibilityState={{ busy: imageUpload.isPending }}
+              testID="pick-image-button"
             >
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                value={imageUrl}
-                onFocus={() => handleFieldFocus('imageUrl')}
-                onChangeText={(val) => {
-                  setImageUrl(val);
-                  if (errors.imageUrl) {
-                    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
-                  }
-                }}
-                placeholder={t('seller.imageUrlPlaceholder', 'https://example.com/product.jpg')}
-                placeholderTextColor={theme.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                accessibilityLabel="Image URL"
-                testID="image-url-input"
-              />
-            </View>
+              {imageUpload.isPending ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Text style={[styles.imageButtonText, { color: theme.primary }]}>
+                  {imageUrl.length > 0
+                    ? t('seller.changeImage', 'Change image')
+                    : t('seller.chooseImage', 'Choose image')}
+                </Text>
+              )}
+            </Pressable>
             {errors.imageUrl ? (
               <Text
                 style={[styles.errorText, { color: theme.danger }]}
@@ -920,10 +941,10 @@ export default function SellerProductFormScreen({
               style={[
                 styles.submitButton,
                 { backgroundColor: theme.primary },
-                isSubmitting && styles.submitButtonDisabled,
+                (isSubmitting || imageUpload.isPending) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || imageUpload.isPending}
               accessibilityRole="button"
               accessibilityLabel={isEdit ? 'Save Changes' : 'Create Product'}
               testID="submit-button"
@@ -1135,6 +1156,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
+  },
+  imagePreview: {
+    width: 120,
+    height: 120,
+    borderRadius: radii.md,
+    marginBottom: spacing.sm,
+  },
+  imageButton: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonText: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.primary,
   },
   submitButtonDisabled: {
     opacity: 0.6,

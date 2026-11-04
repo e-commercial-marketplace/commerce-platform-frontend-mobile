@@ -21,6 +21,8 @@ export const nav = {
   forgotPassword: 'Forgot Password',
   resetPassword: 'Reset Password',
   changePassword: 'Change Password',
+  editProfile: 'Edit Profile',
+  vouchers: 'Vouchers',
   aiAssistant: 'AI Assistant',
   messages: 'Messages',
   chat: 'Chat',

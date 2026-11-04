@@ -70,4 +70,20 @@ export const catalog = {
   products: 'Sản phẩm',
   noShopProducts: 'Cửa hàng này chưa có sản phẩm nào.',
   chatWithShop: 'Nhắn tin với shop',
+
+  // Vouchers
+  vouchers: 'Mã giảm giá',
+  viewAll: 'Xem tất cả',
+  viewAllVouchers: 'Xem tất cả mã giảm giá',
+  expiresOn: 'Hết hạn {{date}}',
+  copied: 'Đã sao chép',
+  copy: 'Sao chép',
+  copyVoucherCode: 'Sao chép mã {{code}}',
+  copiedVoucherCode: 'Đã sao chép mã {{code}}',
+  applyVoucher: 'Áp dụng mã {{code}}',
+  errorLoadingVouchers: 'Không thể tải mã giảm giá',
+  signInToUseVoucher: 'Đăng nhập để sử dụng mã giảm giá khi thanh toán',
+  noVouchersTitle: 'Hiện chưa có mã giảm giá nào',
+  noVouchersDesc: 'Vui lòng quay lại sau.',
+  bestChoice: 'Lựa chọn tốt nhất',
 };

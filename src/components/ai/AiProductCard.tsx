@@ -6,7 +6,7 @@
  * - Product title (max 2 lines)
  * - Average rating and review count
  * - Price formatted in VND via PriceDisplay
- * - Stock status badge: "Hết hàng" (stock 0), "Chỉ còn X" (1..5), "Còn hàng" (> 5)
+ * - Stock status badge: "Out of stock" (stock 0), "X left" (1..5), "In stock" (> 5)
  *
  * Tapping triggers onPress (navigation to ProductDetail). Does NOT trigger any API calls.
  */
@@ -38,12 +38,12 @@ function parseDecimalString(value: string | undefined): number {
 
 export function getStockStatus(stock: number): { label: string; bg: string; text: string } {
   if (stock <= 0) {
-    return { label: 'Hết hàng', bg: '#FEE2E2', text: '#DC2626' };
+    return { label: 'Out of stock', bg: '#FEE2E2', text: '#DC2626' };
   }
   if (stock <= 5) {
-    return { label: `Chỉ còn ${stock}`, bg: '#FEF3C7', text: '#D97706' };
+    return { label: `${stock} left`, bg: '#FEF3C7', text: '#D97706' };
   }
-  return { label: 'Còn hàng', bg: '#ECFDF5', text: '#059669' };
+  return { label: 'In stock', bg: '#ECFDF5', text: '#059669' };
 }
 
 export default function AiProductCard({ product, onPress }: AiProductCardProps) {

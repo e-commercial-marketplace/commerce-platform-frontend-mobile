@@ -47,6 +47,7 @@ describe('RegisterScreen', () => {
       register: mockRegister,
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
   });
 

@@ -9,7 +9,7 @@ describe('ChatMessageBubble', () => {
     id: 'msg-1',
     conversationId: 'conv-1',
     senderId: 'user-sender',
-    content: 'Xin chào, sản phẩm này còn hàng không?',
+    content: 'Hello, is this product in stock?',
     imageUrl: null,
     isRead: false,
     createdAt: '2026-10-30T10:00:00Z',
@@ -20,18 +20,18 @@ describe('ChatMessageBubble', () => {
       <ChatMessageBubble message={baseMessage} isOutgoing={true} />,
     );
 
-    expect(getByText('Xin chào, sản phẩm này còn hàng không?')).toBeTruthy();
-    expect(queryByText('Đã xem')).toBeNull();
-    expect(queryByText('Thử lại')).toBeNull();
+    expect(getByText('Hello, is this product in stock?')).toBeTruthy();
+    expect(queryByText('Seen')).toBeNull();
+    expect(queryByText('Retry')).toBeNull();
   });
 
-  it('renders "Đã xem" indicator only for outgoing messages when isRead is true', () => {
+  it('renders "Seen" indicator only for outgoing messages when isRead is true', () => {
     const readMessage: MessageResponse = { ...baseMessage, isRead: true };
     const { getByText } = render(
       <ChatMessageBubble message={readMessage} isOutgoing={true} />,
     );
 
-    expect(getByText('Đã xem')).toBeTruthy();
+    expect(getByText('Seen')).toBeTruthy();
   });
 
   it('does NOT render read indicator for incoming messages even if isRead is true', () => {
@@ -40,7 +40,7 @@ describe('ChatMessageBubble', () => {
       <ChatMessageBubble message={readMessage} isOutgoing={false} />,
     );
 
-    expect(queryByText('Đã xem')).toBeNull();
+    expect(queryByText('Seen')).toBeNull();
   });
 
   it('renders failed state with retry button and calls onRetry when tapped', () => {
@@ -54,8 +54,8 @@ describe('ChatMessageBubble', () => {
       />,
     );
 
-    expect(getByText('⚠️ Lỗi gửi')).toBeTruthy();
-    const retryButton = getByText('Thử lại');
+    expect(getByText('⚠️ Send failed')).toBeTruthy();
+    const retryButton = getByText('Retry');
     expect(retryButton).toBeTruthy();
 
     fireEvent.press(retryButton);
@@ -71,6 +71,6 @@ describe('ChatMessageBubble', () => {
       <ChatMessageBubble message={imageMessage} isOutgoing={false} />,
     );
 
-    expect(getByLabelText('Hình ảnh đính kèm')).toBeTruthy();
+    expect(getByLabelText('Attached image')).toBeTruthy();
   });
 });

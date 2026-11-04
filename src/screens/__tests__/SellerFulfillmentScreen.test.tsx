@@ -206,6 +206,7 @@ describe('SellerFulfillmentScreen (Phases 3, 4 & 5)', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     mockedUseConfirmSellerOrderItem.mockReturnValue({

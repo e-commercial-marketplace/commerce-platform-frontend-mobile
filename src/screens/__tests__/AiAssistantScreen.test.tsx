@@ -60,12 +60,12 @@ const ADMIN_USER: User = {
 };
 
 const mockAiResponse: AiProductSearchResponse = {
-  answer: 'Mình tìm thấy 2 mẫu tai nghe cho bạn.',
+  answer: 'I found 2 headphone models for you.',
   query: null,
   products: [
     {
       id: 'p-1',
-      name: 'Tai nghe chống ồn Sony',
+      name: 'Sony Noise-Cancelling Headphones',
       imageUrl: 'https://example.com/sony.jpg',
       price: '1990000.00',
       stock: 10,
@@ -79,7 +79,7 @@ const mockAiResponse: AiProductSearchResponse = {
 };
 
 const mockRulesResponse: AiProductSearchResponse = {
-  answer: 'Marketplace có 2 cách thanh toán: COD và VNPAY.',
+  answer: 'The marketplace has 2 payment methods: COD and VNPAY.',
   query: null,
   products: [],
   sessionId: 'session-cust-123',
@@ -87,12 +87,12 @@ const mockRulesResponse: AiProductSearchResponse = {
 };
 
 const mockRulesResponseWithProducts: AiProductSearchResponse = {
-  answer: 'Gợi ý sản phẩm tìm kiếm theo quy tắc:',
+  answer: 'Product suggestions based on rules:',
   query: null,
   products: [
     {
       id: 'p-rules-1',
-      name: 'Tai nghe chống ồn JBL',
+      name: 'JBL Noise-Cancelling Headphones',
       imageUrl: null,
       price: '890000.00',
       stock: 3,
@@ -123,7 +123,7 @@ const mockHistoricalMessages: AiMessageResponse[] = [
     id: 'hist-msg-1',
     sessionId: 'session-history-1',
     role: 'USER',
-    content: 'Bạn có tai nghe Sony không?',
+    content: 'Do you have Sony headphones?',
     confidence: null,
     createdAt: '2026-10-30T08:30:10.000Z',
   },
@@ -131,7 +131,7 @@ const mockHistoricalMessages: AiMessageResponse[] = [
     id: 'hist-msg-2',
     sessionId: 'session-history-1',
     role: 'ASSISTANT',
-    content: 'Có, cửa hàng có nhiều mẫu tai nghe Sony chống ồn tốt.',
+    content: 'Yes, the store has several good noise-cancelling Sony headphones.',
     confidence: 0.95,
     createdAt: '2026-10-30T08:30:20.000Z',
   },
@@ -158,6 +158,7 @@ describe('AiAssistantScreen', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     mockedUseAskAi.mockReturnValue({
@@ -195,13 +196,13 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      expect(getByText('Xin chào! Mình là trợ lý mua sắm.')).toBeTruthy();
-      expect(getByText('Bạn muốn tìm sản phẩm hoặc hỏi gì về cửa hàng?')).toBeTruthy();
-      expect(getByText('Tìm tai nghe chống ồn dưới 2 triệu')).toBeTruthy();
-      expect(getByText('Gợi ý laptop có đánh giá tốt')).toBeTruthy();
-      expect(getByText('Có những hình thức thanh toán nào?')).toBeTruthy();
-      expect(getByText('Chính sách hủy đơn như thế nào?')).toBeTruthy();
-      expect(getByPlaceholderText('Hỏi về sản phẩm, chính sách...')).toBeTruthy();
+      expect(getByText('Hello! I am your shopping assistant.')).toBeTruthy();
+      expect(getByText('Do you want to find a product or ask something about the store?')).toBeTruthy();
+      expect(getByText('Find noise-cancelling headphones under 2 million')).toBeTruthy();
+      expect(getByText('Suggest well-rated laptops')).toBeTruthy();
+      expect(getByText('What payment methods are available?')).toBeTruthy();
+      expect(getByText('What is the order cancellation policy?')).toBeTruthy();
+      expect(getByPlaceholderText('Ask about products, policies...')).toBeTruthy();
     });
 
     it('sends prompt immediately when tapping a suggested prompt', async () => {
@@ -211,14 +212,14 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.press(getByText('Tìm tai nghe chống ồn dưới 2 triệu'));
+      fireEvent.press(getByText('Find noise-cancelling headphones under 2 million'));
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTìm tai nghe chống ồn dưới 2 triệu',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nFind noise-cancelling headphones under 2 million',
       });
 
       await waitFor(() => {
-        expect(getByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeTruthy();
+        expect(getByText('I found 2 headphone models for you.')).toBeTruthy();
       });
     });
   });
@@ -229,11 +230,11 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      const sendButton = getByRole('button', { name: 'Gửi câu hỏi' });
+      const sendButton = getByRole('button', { name: 'Send question' });
       fireEvent.press(sendButton);
       expect(mockMutateAsync).not.toHaveBeenCalled();
 
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
+      const input = getByLabelText('Enter a question for the AI assistant');
       fireEvent.changeText(input, '    ');
       fireEvent.press(sendButton);
       expect(mockMutateAsync).not.toHaveBeenCalled();
@@ -250,10 +251,10 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
-      const sendButton = getByRole('button', { name: 'Gửi câu hỏi' });
+      const input = getByLabelText('Enter a question for the AI assistant');
+      const sendButton = getByRole('button', { name: 'Send question' });
 
-      fireEvent.changeText(input, 'Tìm tai nghe');
+      fireEvent.changeText(input, 'Find headphones');
       fireEvent.press(sendButton);
       fireEvent.press(sendButton); // Rapid second press
 
@@ -272,38 +273,38 @@ describe('AiAssistantScreen', () => {
       );
 
       // Guest must NOT see the history button
-      expect(queryByText('Lịch sử')).toBeNull();
+      expect(queryByText('History')).toBeNull();
 
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
-      const sendButton = getByRole('button', { name: 'Gửi câu hỏi' });
+      const input = getByLabelText('Enter a question for the AI assistant');
+      const sendButton = getByRole('button', { name: 'Send question' });
 
-      fireEvent.changeText(input, 'Tìm tai nghe');
+      fireEvent.changeText(input, 'Find headphones');
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTìm tai nghe',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nFind headphones',
       });
 
       await waitFor(() => {
-        expect(getByText('Tìm tai nghe')).toBeTruthy();
-        expect(getByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeTruthy();
+        expect(getByText('Find headphones')).toBeTruthy();
+        expect(getByText('I found 2 headphone models for you.')).toBeTruthy();
         expect(getByText('AI')).toBeTruthy();
       });
     });
 
-    it('renders RULES response as a successful answer with "Trả lời nhanh" tag', async () => {
+    it('renders RULES response as a successful answer with "Quick reply" tag', async () => {
       mockMutateAsync.mockResolvedValueOnce(mockRulesResponse);
 
       const { getByLabelText, getByRole, getByText } = render(
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Thanh toán thế nào');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'How to pay');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Marketplace có 2 cách thanh toán: COD và VNPAY.')).toBeTruthy();
-        expect(getByText('Trả lời nhanh')).toBeTruthy();
+        expect(getByText('The marketplace has 2 payment methods: COD and VNPAY.')).toBeTruthy();
+        expect(getByText('Quick reply')).toBeTruthy();
       });
     });
   });
@@ -318,6 +319,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
     });
 
@@ -326,39 +328,39 @@ describe('AiAssistantScreen', () => {
         .mockResolvedValueOnce(mockAiResponse) // first turn returns sessionId 'session-cust-123'
         .mockResolvedValueOnce({
           ...mockAiResponse,
-          answer: 'Mẫu rẻ nhất là 1.990.000 ₫.',
+          answer: 'The cheapest model is 1.990.000 ₫.',
         });
 
       const { getByLabelText, getByRole, getByText } = render(
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
-      const sendButton = getByRole('button', { name: 'Gửi câu hỏi' });
+      const input = getByLabelText('Enter a question for the AI assistant');
+      const sendButton = getByRole('button', { name: 'Send question' });
 
       // First query (omits sessionId)
-      fireEvent.changeText(input, 'Tìm tai nghe');
+      fireEvent.changeText(input, 'Find headphones');
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nTìm tai nghe',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nFind headphones',
       });
 
       await waitFor(() => {
-        expect(getByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeTruthy();
+        expect(getByText('I found 2 headphone models for you.')).toBeTruthy();
       });
 
       // Second query (includes activeSessionId 'session-cust-123')
-      fireEvent.changeText(input, 'Cái nào rẻ nhất?');
+      fireEvent.changeText(input, 'Which one is the cheapest?');
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nCái nào rẻ nhất?',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nWhich one is the cheapest?',
         sessionId: 'session-cust-123',
       });
 
       await waitFor(() => {
-        expect(getByText('Mẫu rẻ nhất là 1.990.000 ₫.')).toBeTruthy();
+        expect(getByText('The cheapest model is 1.990.000 ₫.')).toBeTruthy();
       });
     });
   });
@@ -373,13 +375,13 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Hỏi nhiều câu liên tiếp');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Ask many questions in a row');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Hỏi nhiều câu liên tiếp')).toBeTruthy(); // User message stays visible
+        expect(getByText('Ask many questions in a row')).toBeTruthy(); // User message stays visible
         expect(
-          getByText('Bạn đã hỏi quá nhiều câu trong 1 phút. Vui lòng chờ một chút rồi thử lại.'),
+          getByText('You have asked too many questions in 1 minute. Please wait a moment and try again.'),
         ).toBeTruthy();
       });
     });
@@ -393,16 +395,16 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Mạng chập chờn');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Unstable network');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Không thể kết nối tới trợ lý lúc này. Vui lòng thử lại.')).toBeTruthy();
+        expect(getByText('Could not connect to the assistant right now. Please try again.')).toBeTruthy();
       });
 
       // Close the error banner
-      fireEvent.press(getByRole('button', { name: 'Đóng thông báo lỗi' }));
-      expect(queryByText('Không thể kết nối tới trợ lý lúc này. Vui lòng thử lại.')).toBeNull();
+      fireEvent.press(getByRole('button', { name: 'Close error notice' }));
+      expect(queryByText('Could not connect to the assistant right now. Please try again.')).toBeNull();
     });
 
     it('resets activeSessionId on 404 RESOURCE_NOT_FOUND', async () => {
@@ -414,6 +416,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       mockMutateAsync
@@ -425,8 +428,8 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
-      const sendButton = getByRole('button', { name: 'Gửi câu hỏi' });
+      const input = getByLabelText('Enter a question for the AI assistant');
+      const sendButton = getByRole('button', { name: 'Send question' });
 
       // Turn 1
       fireEvent.changeText(input, 'Turn 1');
@@ -439,7 +442,7 @@ describe('AiAssistantScreen', () => {
       await waitFor(() => {
         expect(
           getByText(
-            'Phiên trò chuyện trước đó đã kết thúc. Câu hỏi tiếp theo sẽ bắt đầu cuộc trò chuyện mới.',
+            'The previous conversation session has ended. The next question will start a new conversation.',
           ),
         ).toBeTruthy();
       });
@@ -464,6 +467,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getByText, queryByPlaceholderText } = render(
@@ -472,13 +476,13 @@ describe('AiAssistantScreen', () => {
 
       expect(
         getByText(
-          'Trợ lý AI chỉ khả dụng cho Khách hàng và Khách vãng lai để tìm kiếm sản phẩm và giải đáp chính sách.',
+          'The AI assistant is only available to Customers and Guests for searching products and answering policy questions.',
         ),
       ).toBeTruthy();
-      expect(queryByPlaceholderText('Hỏi về sản phẩm, chính sách...')).toBeNull();
+      expect(queryByPlaceholderText('Ask about products, policies...')).toBeNull();
       expect(mockMutateAsync).not.toHaveBeenCalled();
 
-      fireEvent.press(getByText('Quay lại'));
+      fireEvent.press(getByText('Go back'));
       expect(mockGoBack).toHaveBeenCalled();
     });
 
@@ -491,6 +495,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getByText } = render(
@@ -499,7 +504,7 @@ describe('AiAssistantScreen', () => {
 
       expect(
         getByText(
-          'Trợ lý AI chỉ khả dụng cho Khách hàng và Khách vãng lai để tìm kiếm sản phẩm và giải đáp chính sách.',
+          'The AI assistant is only available to Customers and Guests for searching products and answering policy questions.',
         ),
       ).toBeTruthy();
       expect(mockMutateAsync).not.toHaveBeenCalled();
@@ -514,15 +519,15 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tìm tai nghe');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Find headphones');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Tai nghe chống ồn Sony')).toBeTruthy();
+        expect(getByText('Sony Noise-Cancelling Headphones')).toBeTruthy();
         expect(getByText('1.990.000 ₫')).toBeTruthy();
         expect(getByText('4.8')).toBeTruthy();
         expect(getByText('(45 reviews)')).toBeTruthy();
-        expect(getByText('Còn hàng')).toBeTruthy();
+        expect(getByText('In stock')).toBeTruthy();
       });
     });
 
@@ -533,16 +538,16 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Thanh toán thế nào?');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'How to pay?');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Marketplace có 2 cách thanh toán: COD và VNPAY.')).toBeTruthy();
+        expect(getByText('The marketplace has 2 payment methods: COD and VNPAY.')).toBeTruthy();
       });
 
-      expect(queryByText('Tai nghe chống ồn Sony')).toBeNull();
-      expect(queryByText('Còn hàng')).toBeNull();
-      expect(queryByText('Hết hàng')).toBeNull();
+      expect(queryByText('Sony Noise-Cancelling Headphones')).toBeNull();
+      expect(queryByText('In stock')).toBeNull();
+      expect(queryByText('Out of stock')).toBeNull();
     });
 
     it('navigates to ProductDetail with productId when tapping a product card', async () => {
@@ -552,14 +557,14 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tìm tai nghe');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Find headphones');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Tai nghe chống ồn Sony')).toBeTruthy();
+        expect(getByText('Sony Noise-Cancelling Headphones')).toBeTruthy();
       });
 
-      fireEvent.press(getByText('Tai nghe chống ồn Sony'));
+      fireEvent.press(getByText('Sony Noise-Cancelling Headphones'));
 
       expect(mockNavigate).toHaveBeenCalledTimes(1);
       expect(mockNavigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p-1' });
@@ -572,18 +577,18 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tìm tai nghe JBL');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Find JBL headphones');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Gợi ý sản phẩm tìm kiếm theo quy tắc:')).toBeTruthy();
-        expect(getByText('Trả lời nhanh')).toBeTruthy();
-        expect(getByText('Tai nghe chống ồn JBL')).toBeTruthy();
+        expect(getByText('Product suggestions based on rules:')).toBeTruthy();
+        expect(getByText('Quick reply')).toBeTruthy();
+        expect(getByText('JBL Noise-Cancelling Headphones')).toBeTruthy();
         expect(getByText('890.000 ₫')).toBeTruthy();
-        expect(getByText('Chỉ còn 3')).toBeTruthy();
+        expect(getByText('3 left')).toBeTruthy();
       });
 
-      fireEvent.press(getByText('Tai nghe chống ồn JBL'));
+      fireEvent.press(getByText('JBL Noise-Cancelling Headphones'));
       expect(mockNavigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p-rules-1' });
     });
 
@@ -595,11 +600,11 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tìm tai nghe');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Find headphones');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Tai nghe chống ồn Sony')).toBeTruthy();
+        expect(getByText('Sony Noise-Cancelling Headphones')).toBeTruthy();
       });
 
       expect(getProductByIdSpy).not.toHaveBeenCalled();
@@ -617,21 +622,22 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
     });
 
-    it('renders "Lịch sử" button for CUSTOMER and opens drawer on tap', () => {
+    it('renders "History" button for CUSTOMER and opens drawer on tap', () => {
       const { getByText, queryByText } = render(
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      expect(getByText('Lịch sử')).toBeTruthy();
-      expect(getByText('Đoạn chat mới')).toBeTruthy();
+      expect(getByText('History')).toBeTruthy();
+      expect(getByText('New chat')).toBeTruthy();
 
       // Open history drawer
-      fireEvent.press(getByText('Lịch sử'));
+      fireEvent.press(getByText('History'));
 
-      expect(getByText('Lịch sử trò chuyện')).toBeTruthy();
+      expect(getByText('Conversation history')).toBeTruthy();
     });
 
     it('restores historical session messages in chronological order without fake badges or product cards', async () => {
@@ -662,22 +668,22 @@ describe('AiAssistantScreen', () => {
       );
 
       // Open drawer
-      fireEvent.press(getByText('Lịch sử'));
+      fireEvent.press(getByText('History'));
 
       // Tap on the session card
-      const sessionButtons = getAllByText(/Cuộc trò chuyện/);
+      const sessionButtons = getAllByText(/^Conversation [0-9]/);
       fireEvent.press(sessionButtons[0]);
 
       // Wait for conversation to be restored
       await waitFor(() => {
-        expect(getByText('Bạn có tai nghe Sony không?')).toBeTruthy();
-        expect(getByText('Có, cửa hàng có nhiều mẫu tai nghe Sony chống ồn tốt.')).toBeTruthy();
+        expect(getByText('Do you have Sony headphones?')).toBeTruthy();
+        expect(getByText('Yes, the store has several good noise-cancelling Sony headphones.')).toBeTruthy();
       });
 
       // Historical messages must NOT show fake AI/RULES badges or product cards
       expect(queryByText('AI')).toBeNull();
-      expect(queryByText('Trả lời nhanh')).toBeNull();
-      expect(queryByText('Tai nghe chống ồn Sony')).toBeNull();
+      expect(queryByText('Quick reply')).toBeNull();
+      expect(queryByText('Sony Noise-Cancelling Headphones')).toBeNull();
     });
 
     it('continues restored session: next question sends selected sessionId and displays live AI response', async () => {
@@ -703,7 +709,7 @@ describe('AiAssistantScreen', () => {
       });
 
       mockMutateAsync.mockResolvedValueOnce({
-        answer: 'Dòng WH-1000XM5 giá 6.490.000 ₫.',
+        answer: 'The WH-1000XM5 costs 6.490.000 ₫.',
         query: null,
         products: [
           {
@@ -726,28 +732,28 @@ describe('AiAssistantScreen', () => {
       );
 
       // Open drawer & select session
-      fireEvent.press(getByText('Lịch sử'));
-      const sessionButtons = getAllByText(/Cuộc trò chuyện/);
+      fireEvent.press(getByText('History'));
+      const sessionButtons = getAllByText(/^Conversation [0-9]/);
       fireEvent.press(sessionButtons[0]);
 
       await waitFor(() => {
-        expect(getByText('Bạn có tai nghe Sony không?')).toBeTruthy();
+        expect(getByText('Do you have Sony headphones?')).toBeTruthy();
       });
 
       // Send next message
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
-      const sendButton = getByRole('button', { name: 'Gửi câu hỏi' });
+      const input = getByLabelText('Enter a question for the AI assistant');
+      const sendButton = getByRole('button', { name: 'Send question' });
 
-      fireEvent.changeText(input, 'Giá bao nhiêu?');
+      fireEvent.changeText(input, 'How much is it?');
       fireEvent.press(sendButton);
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nGiá bao nhiêu?',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nHow much is it?',
         sessionId: 'session-history-1',
       });
 
       await waitFor(() => {
-        expect(getByText('Dòng WH-1000XM5 giá 6.490.000 ₫.')).toBeTruthy();
+        expect(getByText('The WH-1000XM5 costs 6.490.000 ₫.')).toBeTruthy();
         expect(getByText('AI')).toBeTruthy();
         expect(getByText('Sony WH-1000XM5')).toBeTruthy();
       });
@@ -761,26 +767,26 @@ describe('AiAssistantScreen', () => {
       );
 
       // First question creates session 'session-cust-123'
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Hỏi câu đầu');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Ask the first question');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeTruthy();
+        expect(getByText('I found 2 headphone models for you.')).toBeTruthy();
       });
 
-      // Press "Đoạn chat mới"
-      fireEvent.press(getByText('Đoạn chat mới'));
+      // Press "New chat"
+      fireEvent.press(getByText('New chat'));
 
       // Messages should be cleared and empty greeting restored
-      expect(queryByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeNull();
-      expect(getByText('Xin chào! Mình là trợ lý mua sắm.')).toBeTruthy();
+      expect(queryByText('I found 2 headphone models for you.')).toBeNull();
+      expect(getByText('Hello! I am your shopping assistant.')).toBeTruthy();
 
       // Subsequent question must omit sessionId
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Bắt đầu chat mới');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Start a new chat');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       expect(mockMutateAsync).toHaveBeenLastCalledWith({
-        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nBắt đầu chat mới',
+        message: 'Vui lòng trả lời bằng tiếng Việt.\n\nStart a new chat',
       });
     });
 
@@ -791,8 +797,8 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tạo phiên mới');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Create new session');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
@@ -831,11 +837,11 @@ describe('AiAssistantScreen', () => {
       );
 
       // Existing conversation
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tin nhắn hiện tại');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Current message');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Tin nhắn hiện tại')).toBeTruthy();
+        expect(getByText('Current message')).toBeTruthy();
       });
 
       // Open drawer & trigger 404 session
@@ -846,16 +852,16 @@ describe('AiAssistantScreen', () => {
         refetch: jest.fn(),
       } as any);
 
-      fireEvent.press(getByText('Lịch sử'));
-      const sessionButtons = getAllByText(/Cuộc trò chuyện/);
+      fireEvent.press(getByText('History'));
+      const sessionButtons = getAllByText(/^Conversation [0-9]/);
       fireEvent.press(sessionButtons[0]);
 
       await waitFor(() => {
-        expect(getAllByText('Cuộc trò chuyện này không còn tồn tại.').length).toBeGreaterThanOrEqual(1);
+        expect(getAllByText('This conversation no longer exists.').length).toBeGreaterThanOrEqual(1);
       });
 
       // Existing chat must NOT be wiped out!
-      expect(getByText('Tin nhắn hiện tại')).toBeTruthy();
+      expect(getByText('Current message')).toBeTruthy();
     });
 
     it('clears server-restored session state and closes drawer when customer logs out', async () => {
@@ -873,12 +879,12 @@ describe('AiAssistantScreen', () => {
       );
 
       // Restore session
-      fireEvent.press(getByText('Lịch sử'));
-      const sessionButtons = getAllByText(/Cuộc trò chuyện/);
+      fireEvent.press(getByText('History'));
+      const sessionButtons = getAllByText(/^Conversation [0-9]/);
       fireEvent.press(sessionButtons[0]);
 
       await waitFor(() => {
-        expect(getByText('Bạn có tai nghe Sony không?')).toBeTruthy();
+        expect(getByText('Do you have Sony headphones?')).toBeTruthy();
       });
 
       // Customer logs out
@@ -890,14 +896,15 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       rerender(<AiAssistantScreen navigation={navigation} route={{} as never} />);
 
       await waitFor(() => {
-        expect(queryByText('Bạn có tai nghe Sony không?')).toBeNull();
-        expect(getByText('Xin chào! Mình là trợ lý mua sắm.')).toBeTruthy();
-        expect(queryByText('Lịch sử')).toBeNull();
+        expect(queryByText('Do you have Sony headphones?')).toBeNull();
+        expect(getByText('Hello! I am your shopping assistant.')).toBeTruthy();
+        expect(queryByText('History')).toBeNull();
       });
     });
   });
@@ -912,20 +919,20 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Hỏi thử nghiệm lỗi');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Ask a question to test the error');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Hỏi thử nghiệm lỗi')).toBeTruthy();
-        expect(getByText('Gửi không thành công')).toBeTruthy();
+        expect(getByText('Ask a question to test the error')).toBeTruthy();
+        expect(getByText('Failed to send')).toBeTruthy();
       });
 
       // Explicit retry succeeds
       mockMutateAsync.mockResolvedValueOnce(mockAiResponse);
-      fireEvent.press(getByRole('button', { name: 'Thử lại gửi câu hỏi' }));
+      fireEvent.press(getByRole('button', { name: 'Retry sending question' }));
 
       await waitFor(() => {
-        expect(getByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeTruthy();
+        expect(getByText('I found 2 headphone models for you.')).toBeTruthy();
       });
     });
 
@@ -938,21 +945,21 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Tin nhắn duy nhất');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Only message');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Gửi không thành công')).toBeTruthy();
+        expect(getByText('Failed to send')).toBeTruthy();
       });
 
-      fireEvent.press(getByRole('button', { name: 'Thử lại gửi câu hỏi' }));
+      fireEvent.press(getByRole('button', { name: 'Retry sending question' }));
 
       await waitFor(() => {
-        expect(getByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeTruthy();
+        expect(getByText('I found 2 headphone models for you.')).toBeTruthy();
       });
 
       // Verify user message only appears once
-      expect(getAllByText('Tin nhắn duy nhất').length).toBe(1);
+      expect(getAllByText('Only message').length).toBe(1);
     });
 
     it('stale response from old conversation does not append after New Chat', async () => {
@@ -966,13 +973,13 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Câu hỏi cũ bị bỏ rơi');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Old abandoned question');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
-      // While in flight, user taps "Đoạn chat mới"
-      fireEvent.press(getByText('Đoạn chat mới'));
+      // While in flight, user taps "New chat"
+      fireEvent.press(getByText('New chat'));
 
-      expect(getByText('Xin chào! Mình là trợ lý mua sắm.')).toBeTruthy();
+      expect(getByText('Hello! I am your shopping assistant.')).toBeTruthy();
 
       // Late response resolves
       await act(async () => {
@@ -980,7 +987,7 @@ describe('AiAssistantScreen', () => {
       });
 
       // Stale assistant answer must NOT appear in the fresh chat!
-      expect(queryByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeNull();
+      expect(queryByText('I found 2 headphone models for you.')).toBeNull();
     });
 
     it('stale response does not append after switching sessions', async () => {
@@ -992,6 +999,7 @@ describe('AiAssistantScreen', () => {
         register: jest.fn(),
         logout: jest.fn(),
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       let resolveLateResponse: (val: any) => void = () => {};
@@ -1014,16 +1022,16 @@ describe('AiAssistantScreen', () => {
       );
 
       // Send in session A
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Câu hỏi Session A');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Question Session A');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       // Switch to Session B via drawer
-      fireEvent.press(getByText('Lịch sử'));
-      const sessionButtons = getAllByText(/Cuộc trò chuyện/);
+      fireEvent.press(getByText('History'));
+      const sessionButtons = getAllByText(/^Conversation [0-9]/);
       fireEvent.press(sessionButtons[0]);
 
       await waitFor(() => {
-        expect(getByText('Bạn có tai nghe Sony không?')).toBeTruthy();
+        expect(getByText('Do you have Sony headphones?')).toBeTruthy();
       });
 
       // Late response resolves
@@ -1032,7 +1040,7 @@ describe('AiAssistantScreen', () => {
       });
 
       // Stale response from Session A must NOT be appended into Session B!
-      expect(queryByText('Mình tìm thấy 2 mẫu tai nghe cho bạn.')).toBeNull();
+      expect(queryByText('I found 2 headphone models for you.')).toBeNull();
     });
 
     it('composer displays character counter when input length is >= 900', () => {
@@ -1040,10 +1048,10 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      const input = getByLabelText('Nhập câu hỏi cho trợ lý AI');
+      const input = getByLabelText('Enter a question for the AI assistant');
 
       // Normal length: no counter
-      fireEvent.changeText(input, 'Câu hỏi bình thường ngắn gọn');
+      fireEvent.changeText(input, 'A short normal question');
       expect(queryByTestId('composer-char-counter')).toBeNull();
 
       // Length 920: shows counter
@@ -1063,11 +1071,11 @@ describe('AiAssistantScreen', () => {
         <AiAssistantScreen navigation={navigation} route={{} as never} />,
       );
 
-      fireEvent.changeText(getByLabelText('Nhập câu hỏi cho trợ lý AI'), 'Câu hỏi lỗi cú pháp');
-      fireEvent.press(getByRole('button', { name: 'Gửi câu hỏi' }));
+      fireEvent.changeText(getByLabelText('Enter a question for the AI assistant'), 'Question with a syntax error');
+      fireEvent.press(getByRole('button', { name: 'Send question' }));
 
       await waitFor(() => {
-        expect(getByText('Vui lòng kiểm tra lại câu hỏi.')).toBeTruthy();
+        expect(getByText('Please check the question again.')).toBeTruthy();
       });
     });
 

@@ -2,7 +2,12 @@
  * Unit tests for the backend cart DTO -> UI cart model mapper.
  */
 
-import { mapCartDtoToCart, mapCartItemToLine } from '../cartMapper';
+import {
+  mapCartDtoToCart,
+  mapCartItemToLine,
+  predictLineRemoval,
+  predictQuantityChange,
+} from '../cartMapper';
 import type { CartDto, CartItemDto } from '../../types/cartApi';
 
 const itemDto: CartItemDto = {
@@ -139,5 +144,41 @@ describe('mapCartDtoToCart', () => {
     expect(cart.items).toEqual([]);
     expect(cart.totalItems).toBe(0);
     expect(cart.subtotal).toBe(0);
+  });
+
+  describe('cart predictions', () => {
+    const line = (id: string, over: object = {}) => ({
+      id,
+      productId: `p-${id}`,
+      name: id,
+      imageUrl: null,
+      unitPrice: '10.50',
+      quantity: 1,
+      lineTotal: '10.50',
+      availableStock: 5,
+      active: true,
+      sellerId: 's',
+      createdAt: '2026-01-01T00:00:00Z',
+      ...over,
+    });
+
+    it('recalculates the line total and subtotal after a quantity change', () => {
+      const predicted = predictQuantityChange({ items: [line('a'), line('b')], subtotal: '21.00' }, 'a', 3);
+      expect(predicted.items[0]).toMatchObject({ quantity: 3, lineTotal: '31.50' });
+      expect(predicted.subtotal).toBe('42.00');
+    });
+
+    it('leaves lines that cannot be bought out of the subtotal, like the backend', () => {
+      const predicted = predictQuantityChange(
+        { items: [line('a'), line('off', { active: false }), line('over', { quantity: 9, availableStock: 2, lineTotal: '94.50' })], subtotal: '10.50' },
+        'a',
+        2,
+      );
+      expect(predicted.subtotal).toBe('21.00');
+    });
+
+    it('removes a line and gives 0.00 for an empty cart', () => {
+      expect(predictLineRemoval({ items: [line('a')], subtotal: '10.50' }, 'a')).toEqual({ items: [], subtotal: '0.00' });
+    });
   });
 });

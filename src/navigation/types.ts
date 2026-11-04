@@ -42,6 +42,8 @@ export type RootStackParamList = {
   Checkout: { cartItemIds: string[] };
   /** Public seller shop opened from a product detail; carries only the seller id. */
   SellerShop: { sellerId: string };
+  /** All usable vouchers; public, including Guests. */
+  Vouchers: undefined;
   /** Customer order history. */
   MyOrders: undefined;
   /** Customer order detail. */
@@ -65,6 +67,8 @@ export type RootStackParamList = {
   ResetPassword: { email?: string } | undefined;
   /** Authenticated user password change. */
   ChangePassword: undefined;
+  /** Edit the name, phone number and address of the signed-in user. */
+  EditProfile: undefined;
   /** AI shopping assistant. */
   AiAssistant: undefined;
   /** Human Customer–Seller chat conversation list. */

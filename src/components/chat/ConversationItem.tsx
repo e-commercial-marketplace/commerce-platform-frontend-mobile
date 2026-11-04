@@ -46,12 +46,12 @@ export const ConversationItem = React.memo(function ConversationItem({
   });
 
   const displayName = isCustomer
-    ? shop?.name ?? (shopLoading ? t('chat.loadingShop', 'Đang tải...') : fallbackShopName)
-    : t('chat.fallbackCustomer', `Khách hàng #${item.customerId.slice(0, 8)}`, {
+    ? shop?.name ?? (shopLoading ? t('chat.loadingShop', 'Loading...') : fallbackShopName)
+    : t('chat.fallbackCustomer', `Customer #${item.customerId.slice(0, 8)}`, {
         id: item.customerId.slice(0, 8),
       });
 
-  const avatarInitial = displayName.trim().charAt(0).toUpperCase() || (isCustomer ? 'S' : 'K');
+  const avatarInitial = displayName.trim().charAt(0).toUpperCase() || (isCustomer ? 'S' : 'C');
   const timestamp = formatChatTimestamp(item.lastMessageAt || item.createdAt);
 
   return (
@@ -66,10 +66,10 @@ export const ConversationItem = React.memo(function ConversationItem({
       ]}
       onPress={() => onPress?.(item)}
       accessibilityRole="button"
-      accessibilityLabel={t('chat.conversationWith', `Cuộc trò chuyện với ${displayName}`, {
+      accessibilityLabel={t('chat.conversationWith', `Conversation with ${displayName}`, {
         name: displayName,
       })}
-      accessibilityHint={t('chat.viewConversationHint', 'Xem chi tiết cuộc trò chuyện')}
+      accessibilityHint={t('chat.viewConversationHint', 'View conversation details')}
     >
       {/* Avatar Initial Circle */}
       <View
@@ -115,7 +115,7 @@ export const ConversationItem = React.memo(function ConversationItem({
                   { color: isDark ? '#A5B4FC' : '#3730A3' },
                 ]}
               >
-                {t('chat.contextProduct', 'Sản phẩm')}
+                {t('chat.contextProduct', 'Product')}
               </Text>
             </View>
           ) : null}
@@ -135,7 +135,7 @@ export const ConversationItem = React.memo(function ConversationItem({
                 ]}
                 numberOfLines={1}
               >
-                {t('chat.contextOrder', `Đơn #${item.orderId.slice(0, 8)}`, {
+                {t('chat.contextOrder', `Order #${item.orderId.slice(0, 8)}`, {
                   id: item.orderId.slice(0, 8),
                 })}
               </Text>
@@ -144,7 +144,7 @@ export const ConversationItem = React.memo(function ConversationItem({
 
           {!item.productId && !item.orderId ? (
             <Text style={[styles.idleHint, { color: theme.textSecondary }]}>
-              {t('chat.directChat', 'Trò chuyện trực tiếp')}
+              {t('chat.directChat', 'Direct chat')}
             </Text>
           ) : null}
         </View>

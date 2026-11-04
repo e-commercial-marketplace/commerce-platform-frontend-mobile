@@ -190,7 +190,7 @@ describe('ChatRoomScreen UI Personalization (Theme & i18n)', () => {
       'reconnecting',
       []
     );
-    expect(getByTextReconnecting('Reconnecting real-time chat…')).toBeTruthy();
+    expect(getByTextReconnecting('Reconnecting in real time…')).toBeTruthy();
 
     const { getByText: getByTextDisconnected } = renderChatRoomScreen(
       'en',
@@ -198,7 +198,7 @@ describe('ChatRoomScreen UI Personalization (Theme & i18n)', () => {
       'disconnected',
       []
     );
-    expect(getByTextDisconnected('Real-time chat disconnected')).toBeTruthy();
+    expect(getByTextDisconnected('Real-time connection lost')).toBeTruthy();
     expect(getByTextDisconnected('Reconnect')).toBeTruthy();
   });
 

@@ -87,7 +87,11 @@ export const seller = {
   val_stockRequired: 'Initial stock is required',
   val_stockNonNegative: 'Stock must be a non-negative integer (0 or greater)',
   val_imageUrlRequired: 'Image URL is required when listing product as active',
+  val_productImageRequired: 'Product image is required when listing product as active',
   val_imageUrlMaxLength: 'Image URL must not exceed 2048 characters',
+  changeImage: 'Change image',
+  chooseImage: 'Choose image',
+  productImageLabel: 'Product Image',
 
   // Fulfillment & Shipments
   fulfillmentTitle: 'Seller Fulfillment',

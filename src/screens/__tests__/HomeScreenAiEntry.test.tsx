@@ -7,11 +7,14 @@ import { fireEvent, render } from '@testing-library/react-native';
 
 import { useAuth } from '../../hooks/useAuth';
 import { useCategories, useProductList } from '../../hooks/useProducts';
+import { useUsableVouchers } from '../../hooks/useVoucher';
+import { AppI18nProvider } from '../../i18n';
 import type { User } from '../../types/auth';
 import HomeScreen from '../HomeScreen';
 
 jest.mock('../../hooks/useAuth');
 jest.mock('../../hooks/useProducts');
+jest.mock('../../hooks/useVoucher');
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockedUseCategories = useCategories as jest.MockedFunction<typeof useCategories>;
@@ -44,11 +47,20 @@ describe('HomeScreen AI Entry Point', () => {
     navigate: mockNavigate,
   } as never;
 
+  const renderScreen = () =>
+    render(
+      <AppI18nProvider initialLanguage="en">
+        <HomeScreen navigation={navigation} route={{} as never} />
+      </AppI18nProvider>,
+    );
+
   beforeEach(() => {
     jest.clearAllMocks();
 
+    (useUsableVouchers as jest.Mock).mockReturnValue({ data: undefined });
+
     mockedUseCategories.mockReturnValue({
-      data: [{ id: 'cat-1', name: 'Điện tử' }],
+      data: [{ id: 'cat-1', name: 'Electronics' }],
       isPending: false,
       isError: false,
       error: null,
@@ -80,16 +92,15 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
-    const { getByRole, getByText } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { getByRole, getByText } = renderScreen();
 
-    const aiButton = getByRole('button', { name: 'Mở trợ lý AI' });
+    const aiButton = getByRole('button', { name: 'Open AI assistant' });
     expect(aiButton).toBeTruthy();
-    expect(getByText('Trợ lý AI')).toBeTruthy();
-    expect(getByText('Hỏi đáp sản phẩm & gợi ý mua sắm thông minh')).toBeTruthy();
+    expect(getByText('AI assistant')).toBeTruthy();
+    expect(getByText('Product Q&A and smart shopping suggestions')).toBeTruthy();
 
     fireEvent.press(aiButton);
     expect(mockNavigate).toHaveBeenCalledWith('AiAssistant');
@@ -104,13 +115,12 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
-    const { getByRole } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { getByRole } = renderScreen();
 
-    expect(getByRole('button', { name: 'Mở trợ lý AI' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Open AI assistant' })).toBeTruthy();
   });
 
   it('hides AI Assistant entry card for SELLER', () => {
@@ -122,13 +132,12 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
-    const { queryByRole } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { queryByRole } = renderScreen();
 
-    expect(queryByRole('button', { name: 'Mở trợ lý AI' })).toBeNull();
+    expect(queryByRole('button', { name: 'Open AI assistant' })).toBeNull();
   });
 
   it('hides AI Assistant entry card for ADMIN', () => {
@@ -140,12 +149,11 @@ describe('HomeScreen AI Entry Point', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
-    const { queryByRole } = render(
-      <HomeScreen navigation={navigation} route={{} as never} />,
-    );
+    const { queryByRole } = renderScreen();
 
-    expect(queryByRole('button', { name: 'Mở trợ lý AI' })).toBeNull();
+    expect(queryByRole('button', { name: 'Open AI assistant' })).toBeNull();
   });
 });

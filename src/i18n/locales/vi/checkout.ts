@@ -73,4 +73,10 @@ export const checkout = {
     'Mã giảm giá này không còn hiệu lực. Vui lòng thử mã khác hoặc tiếp tục mà không dùng mã.',
   voucherInvalidOrder:
     'Mã giảm giá không còn hợp lệ. Vui lòng thử mã khác hoặc tiếp tục mà không dùng mã.',
+  useSavedAddress: 'Dùng địa chỉ đã lưu',
+  useSavedAddressLabel: 'Dùng địa chỉ đã lưu: {{address}}',
+  enterDifferentAddress: 'Nhập địa chỉ khác',
+  viewAllVouchers: 'Xem tất cả',
+  viewAllVouchersA11y: 'Xem tất cả mã giảm giá',
+  bestChoice: 'Tốt nhất',
 };

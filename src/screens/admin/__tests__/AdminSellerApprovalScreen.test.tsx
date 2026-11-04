@@ -134,9 +134,9 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Yêu cầu quyền Quản trị viên')).toBeTruthy();
+      expect(getByText('Admin permission required')).toBeTruthy();
       expect(
-        getByText('Chỉ tài khoản Quản trị viên (ADMIN) mới có quyền truy cập trang quản lý người bán.'),
+        getByText('Only Admin (ADMIN) accounts can access the seller management page.'),
       ).toBeTruthy();
       expect(queryByTestId('search-input')).toBeNull();
     });
@@ -151,7 +151,7 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Yêu cầu quyền Quản trị viên')).toBeTruthy();
+      expect(getByText('Admin permission required')).toBeTruthy();
       expect(queryByTestId('search-input')).toBeNull();
     });
 
@@ -165,11 +165,11 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Yêu cầu quyền Quản trị viên')).toBeTruthy();
+      expect(getByText('Admin permission required')).toBeTruthy();
       expect(queryByTestId('search-input')).toBeNull();
     });
 
-    it('navigates back when pressing Quay lại on unauthorized view', () => {
+    it('navigates back when pressing Go back on unauthorized view', () => {
       mockedUseAuth.mockReturnValue({
         user: mockCustomerUser,
         isAuthenticated: true,
@@ -179,7 +179,7 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      fireEvent.press(getByText('Quay lại'));
+      fireEvent.press(getByText('Go back'));
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
@@ -211,17 +211,17 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      // PENDING seller: shows "Chờ duyệt", has "Phê duyệt" button, does NOT have "Tạm ngưng"
+      // PENDING seller: shows "Pending", has "Approve" button, does NOT have "Suspend"
       expect(getByTestId('seller-status-PENDING')).toBeTruthy();
       expect(getByTestId('approve-btn-seller-pending-1')).toBeTruthy();
       expect(queryByTestId('suspend-btn-seller-pending-1')).toBeNull();
 
-      // APPROVED seller: shows "Đã duyệt", has "Tạm ngưng" button, does NOT have "Phê duyệt"
+      // APPROVED seller: shows "Approved", has "Suspend" button, does NOT have "Approve"
       expect(getByTestId('seller-status-APPROVED')).toBeTruthy();
       expect(getByTestId('suspend-btn-seller-approved-2')).toBeTruthy();
       expect(queryByTestId('approve-btn-seller-approved-2')).toBeNull();
 
-      // SUSPENDED seller: shows "Tạm ngưng", has "Phê duyệt" button to reactivate
+      // SUSPENDED seller: shows "Suspend", has "Approve" button to reactivate
       expect(getByTestId('seller-status-SUSPENDED')).toBeTruthy();
       expect(getByTestId('approve-btn-seller-suspended-3')).toBeTruthy();
       expect(queryByTestId('suspend-btn-seller-suspended-3')).toBeNull();
@@ -241,7 +241,7 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Đang tải danh sách người bán…')).toBeTruthy();
+      expect(getByText('Loading sellers…')).toBeTruthy();
     });
 
     it('renders error state and retries on press', () => {
@@ -258,7 +258,7 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Không thể tải danh sách người bán')).toBeTruthy();
+      expect(getByText('Could not load the seller list')).toBeTruthy();
       expect(getByText('Failed to load')).toBeTruthy();
 
       fireEvent.press(getByTestId('retry-button'));
@@ -285,7 +285,7 @@ describe('AdminSellerApprovalScreen', () => {
         <AdminSellerApprovalScreen navigation={mockNavigation as any} route={{} as any} />,
       );
 
-      expect(getByText('Không tìm thấy người bán nào')).toBeTruthy();
+      expect(getByText('No sellers found')).toBeTruthy();
     });
   });
 
@@ -305,11 +305,11 @@ describe('AdminSellerApprovalScreen', () => {
       fireEvent.press(getByTestId('approve-btn-seller-pending-1'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Phê duyệt người bán',
+        'Approve seller',
         expect.stringContaining('Shop Cho Duyet'),
         expect.arrayContaining([
-          expect.objectContaining({ text: 'Huỷ', style: 'cancel' }),
-          expect.objectContaining({ text: 'Phê duyệt' }),
+          expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
+          expect.objectContaining({ text: 'Approve' }),
         ]),
       );
       expect(mockMutateApprove).not.toHaveBeenCalled();
@@ -328,7 +328,7 @@ describe('AdminSellerApprovalScreen', () => {
       fireEvent.press(getByTestId('approve-btn-seller-pending-1'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const approveAction = alertButtons.find((b: any) => b.text === 'Phê duyệt');
+      const approveAction = alertButtons.find((b: any) => b.text === 'Approve');
 
       await act(async () => {
         await approveAction.onPress();
@@ -337,8 +337,8 @@ describe('AdminSellerApprovalScreen', () => {
       expect(mockMutateApprove).toHaveBeenCalledWith('seller-pending-1');
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Thành công',
-          expect.stringContaining('Đã phê duyệt người bán "Shop Cho Duyet".'),
+          'Success',
+          expect.stringContaining('Approved seller "Shop Cho Duyet".'),
         );
       });
     });
@@ -355,7 +355,7 @@ describe('AdminSellerApprovalScreen', () => {
       fireEvent.press(getByTestId('approve-btn-seller-pending-1'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const approveAction = alertButtons.find((b: any) => b.text === 'Phê duyệt');
+      const approveAction = alertButtons.find((b: any) => b.text === 'Approve');
 
       await act(async () => {
         await approveAction.onPress();
@@ -363,7 +363,7 @@ describe('AdminSellerApprovalScreen', () => {
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Không thể phê duyệt',
+          'Cannot approve',
           'Seller is already approved',
         );
       });
@@ -386,11 +386,11 @@ describe('AdminSellerApprovalScreen', () => {
       fireEvent.press(getByTestId('suspend-btn-seller-approved-2'));
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Tạm ngưng người bán',
+        'Suspend seller',
         expect.stringContaining('Shop Da Duyet'),
         expect.arrayContaining([
-          expect.objectContaining({ text: 'Huỷ', style: 'cancel' }),
-          expect.objectContaining({ text: 'Tạm ngưng', style: 'destructive' }),
+          expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
+          expect.objectContaining({ text: 'Suspend', style: 'destructive' }),
         ]),
       );
       expect(mockMutateSuspend).not.toHaveBeenCalled();
@@ -409,7 +409,7 @@ describe('AdminSellerApprovalScreen', () => {
       fireEvent.press(getByTestId('suspend-btn-seller-approved-2'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const suspendAction = alertButtons.find((b: any) => b.text === 'Tạm ngưng');
+      const suspendAction = alertButtons.find((b: any) => b.text === 'Suspend');
 
       await act(async () => {
         await suspendAction.onPress();
@@ -418,8 +418,8 @@ describe('AdminSellerApprovalScreen', () => {
       expect(mockMutateSuspend).toHaveBeenCalledWith('seller-approved-2');
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Thành công',
-          expect.stringContaining('Đã tạm ngưng người bán "Shop Da Duyet".'),
+          'Success',
+          expect.stringContaining('Suspended seller "Shop Da Duyet".'),
         );
       });
     });
@@ -436,7 +436,7 @@ describe('AdminSellerApprovalScreen', () => {
       fireEvent.press(getByTestId('suspend-btn-seller-approved-2'));
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const suspendAction = alertButtons.find((b: any) => b.text === 'Tạm ngưng');
+      const suspendAction = alertButtons.find((b: any) => b.text === 'Suspend');
 
       await act(async () => {
         await suspendAction.onPress();
@@ -444,7 +444,7 @@ describe('AdminSellerApprovalScreen', () => {
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Không thể tạm ngưng',
+          'Cannot suspend',
           'Only an approved seller can be suspended',
         );
       });
@@ -495,7 +495,7 @@ describe('AdminSellerApprovalScreen', () => {
       );
 
       expect(getByText('Trang 1 / 2')).toBeTruthy();
-      expect(getByText('25 người bán')).toBeTruthy();
+      expect(getByText('25 sellers')).toBeTruthy();
 
       // On page 0, previous button is disabled
       const prevBtn = getByTestId('prev-page-button');

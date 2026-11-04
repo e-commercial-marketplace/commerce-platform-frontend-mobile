@@ -673,7 +673,7 @@ describe('OrderDetailScreen', () => {
   });
 
   describe('Human Chat Integration — Contact Seller from Order Detail (Phase 5B)', () => {
-    it('allows a Customer to see "Nhắn tin với shop" and start/open a conversation', async () => {
+    it('allows a Customer to see "Message the shop" and start/open a conversation', async () => {
       mockedUseOrderDetail.mockReturnValue({
         data: baseOrder,
         isLoading: false,
@@ -694,7 +694,7 @@ describe('OrderDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(undefined, mockNav);
 
-      const chatButton = getByText('Nhắn tin với shop');
+      const chatButton = getByText('Message the shop');
       expect(chatButton).toBeTruthy();
 
       fireEvent.press(chatButton);
@@ -741,7 +741,7 @@ describe('OrderDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(undefined, mockNav);
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       await waitFor(() => {
         expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
@@ -755,7 +755,7 @@ describe('OrderDetailScreen', () => {
       });
     });
 
-    it('hides "Nhắn tin với shop" button for SELLER role', () => {
+    it('hides "Message the shop" button for SELLER role', () => {
       mockedUseAuth.mockReturnValue({
         user: { id: 'seller-uuid-1', role: 'SELLER', email: 'seller@test.com' },
         token: 'jwt-token',
@@ -770,10 +770,10 @@ describe('OrderDetailScreen', () => {
       } as any);
 
       const { queryByText } = renderScreen();
-      expect(queryByText('Nhắn tin với shop')).toBeNull();
+      expect(queryByText('Message the shop')).toBeNull();
     });
 
-    it('hides "Nhắn tin với shop" button for ADMIN role', () => {
+    it('hides "Message the shop" button for ADMIN role', () => {
       mockedUseAuth.mockReturnValue({
         user: { id: 'admin-uuid-1', role: 'ADMIN', email: 'admin@test.com' },
         token: 'jwt-token',
@@ -788,7 +788,7 @@ describe('OrderDetailScreen', () => {
       } as any);
 
       const { queryByText } = renderScreen();
-      expect(queryByText('Nhắn tin với shop')).toBeNull();
+      expect(queryByText('Message the shop')).toBeNull();
     });
 
     it('navigates unauthenticated user to Login on chat press if rendered', () => {
@@ -807,7 +807,7 @@ describe('OrderDetailScreen', () => {
 
       const { queryByText } = renderScreen();
       // Since isCustomer is false when unauthenticated, button is not rendered
-      expect(queryByText('Nhắn tin với shop')).toBeNull();
+      expect(queryByText('Message the shop')).toBeNull();
     });
 
     it('supports multi-seller orders with distinct chat action per seller without arbitrary selection', async () => {
@@ -858,7 +858,7 @@ describe('OrderDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getAllByText, getByTestId } = renderScreen({ orderId: 'order-multi-seller-9' }, mockNav);
 
-      const chatButtons = getAllByText('Nhắn tin với shop');
+      const chatButtons = getAllByText('Message the shop');
       expect(chatButtons).toHaveLength(2);
 
       // Explicitly tap Seller Apple's chat button
@@ -899,7 +899,7 @@ describe('OrderDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(undefined, mockNav);
 
-      const chatButton = getByText('Nhắn tin với shop');
+      const chatButton = getByText('Message the shop');
       fireEvent.press(chatButton);
 
       expect(mockOpenConversationMutateAsync).not.toHaveBeenCalled();
@@ -915,20 +915,20 @@ describe('OrderDetailScreen', () => {
       } as any);
 
       mockOpenConversationMutateAsync.mockRejectedValueOnce(
-        new ApiError('Lỗi kết nối máy chủ', 'NETWORK_ERROR', null),
+        new ApiError('Server connection error', 'NETWORK_ERROR', null),
       );
 
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(undefined, mockNav);
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       await waitFor(() => {
         expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
       });
 
       expect(mockNav.navigate).not.toHaveBeenCalled();
-      expect(getByText('Lỗi kết nối máy chủ')).toBeTruthy();
+      expect(getByText('Server connection error')).toBeTruthy();
 
       // Retry remains possible
       mockOpenConversationMutateAsync.mockResolvedValueOnce({
@@ -941,7 +941,7 @@ describe('OrderDetailScreen', () => {
         lastMessageAt: null,
       });
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       await waitFor(() => {
         expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(2);

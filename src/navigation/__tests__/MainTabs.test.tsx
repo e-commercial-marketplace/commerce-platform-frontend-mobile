@@ -91,6 +91,7 @@ describe('MainTabs - Orders Tab Role Routing', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -123,6 +124,7 @@ describe('MainTabs - Orders Tab Role Routing', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -150,6 +152,7 @@ describe('MainTabs - Orders Tab Role Routing', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -182,6 +185,7 @@ describe('MainTabs - Orders Tab Role Routing', () => {
       register: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const navigationRef = createNavigationContainerRef<RootStackParamList>();

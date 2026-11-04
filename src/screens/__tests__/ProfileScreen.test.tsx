@@ -6,15 +6,15 @@
  * - Authenticated state for CUSTOMER:
  *   - displays profile info
  *   - renders "My Orders" button and navigates to 'MyOrders'
- *   - renders "Tin nhắn" button and navigates to 'ConversationList'
- *   - does NOT render "Seller Orders", "My Products", or "Tin nhắn khách hàng" buttons
+ *   - renders "Messages" button and navigates to 'ConversationList'
+ *   - does NOT render "Seller Orders", "My Products", or "Customer messages" buttons
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for SELLER:
  *   - renders "My Products" button and navigates to 'SellerProducts'
  *   - renders "Seller Orders" button and navigates to 'SellerFulfillment'
- *   - renders "Tin nhắn khách hàng" button and navigates to 'ConversationList'
- *   - does NOT render "My Orders" or customer "Tin nhắn" button
+ *   - renders "Customer messages" button and navigates to 'ConversationList'
+ *   - does NOT render "My Orders" or customer "Messages" button
  *   - renders "Change Password" button
  *   - navigates to 'ChangePassword'
  * - Authenticated state for ADMIN:
@@ -86,6 +86,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByText, queryByText } = renderWithClient(
@@ -114,6 +115,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -148,6 +150,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -201,6 +204,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -258,6 +262,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole, getByText, queryByText } = renderWithClient(
@@ -308,6 +313,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { getByRole } = renderWithClient(
@@ -321,6 +327,33 @@ describe('ProfileScreen', () => {
       expect(mockLogout).toHaveBeenCalledTimes(1);
     });
   });
+  it('shows contact details and opens Edit Profile', () => {
+    mockedUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'u@test.dev', name: 'U', role: 'CUSTOMER' },
+      isAuthenticated: true,
+      isRestoring: false,
+      login: jest.fn(),
+      register: jest.fn(),
+      logout: mockLogout,
+      changePassword: jest.fn(),
+      updateUserName: jest.fn(),
+    });
+    mockedUseCurrentUser.mockReturnValue({
+      data: { id: 'u1', email: 'u@test.dev', name: 'U', role: 'CUSTOMER', phone: '0912345678', address: null },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const { getByRole, getByText } = renderWithClient(
+      <ProfileScreen navigation={navigation} route={{} as never} />,
+    );
+
+    expect(getByText('0912345678')).toBeTruthy();
+    expect(getByText('Not set')).toBeTruthy();
+    fireEvent.press(getByRole('button', { name: 'Edit Profile' }));
+    expect(mockNavigate).toHaveBeenCalledWith('EditProfile');
+  });
 
   it('does not render ThemeSelector or LanguageSelector directly and navigates to Settings screen', () => {
     mockedUseAuth.mockReturnValue({
@@ -331,6 +364,7 @@ describe('ProfileScreen', () => {
       register: jest.fn(),
       logout: mockLogout,
       changePassword: jest.fn(),
+      updateUserName: jest.fn(),
     });
 
     const { queryByTestId, getByTestId } = renderWithClient(
@@ -367,6 +401,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getAllByText, getByRole } = renderWithClient(
@@ -402,6 +437,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getAllByText, getByRole, queryByText } = renderWithClient(
@@ -441,6 +477,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getAllByText } = renderWithClient(
@@ -470,6 +507,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getAllByText, queryByText } = renderWithClient(
@@ -500,6 +538,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getByText, queryByText } = renderWithClient(
@@ -530,6 +569,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       const { getByText, queryByText } = renderWithClient(
@@ -558,6 +598,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       // Test Vietnamese
@@ -605,6 +646,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       // Test Vietnamese
@@ -654,6 +696,7 @@ describe('ProfileScreen', () => {
         register: jest.fn(),
         logout: mockLogout,
         changePassword: jest.fn(),
+        updateUserName: jest.fn(),
       });
 
       // VI

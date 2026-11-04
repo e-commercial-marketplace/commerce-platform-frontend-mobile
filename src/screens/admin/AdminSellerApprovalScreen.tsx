@@ -114,35 +114,32 @@ export default function AdminSellerApprovalScreen({
               onPress={() => navigation.goBack()}
               style={styles.backButton}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.common.actions.back', 'Quay lại')}
+              accessibilityLabel={t('admin.common.actions.back', 'Go back')}
             >
               <Text style={styles.backButtonText}>←</Text>
             </Pressable>
           ) : null}
           <Text style={styles.headerTitle}>
-            {t('admin.sellers.title', 'Quản lý người bán')}
+            {t('admin.sellers.title', 'Seller management')}
           </Text>
         </View>
         <View style={styles.centerState}>
           <Text style={styles.stateIcon}>🔒</Text>
           <Text style={styles.errorTitle}>
-            {t('admin.sellers.unauthorizedTitle', 'Yêu cầu quyền Quản trị viên')}
+            {t('admin.sellers.unauthorizedTitle', 'Admin permission required')}
           </Text>
           <Text style={styles.subtitle}>
-            {t(
-              'admin.sellers.unauthorizedMessage',
-              'Chỉ tài khoản Quản trị viên (ADMIN) mới có quyền truy cập trang quản lý người bán.',
-            )}
+            {t('admin.sellers.unauthorizedMessage', 'Only Admin (ADMIN) accounts can access the seller management page.')}
           </Text>
           {navigation.canGoBack?.() ? (
             <Pressable
               onPress={() => navigation.goBack()}
               style={styles.primaryActionButton}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.common.actions.back', 'Quay lại trang trước')}
+              accessibilityLabel={t('admin.common.actions.back', 'Go back to the previous page')}
             >
               <Text style={styles.primaryActionButtonText}>
-                {t('admin.common.actions.back', 'Quay lại')}
+                {t('admin.common.actions.back', 'Go back')}
               </Text>
             </Pressable>
           ) : null}
@@ -176,29 +173,29 @@ export default function AdminSellerApprovalScreen({
     }
 
     Alert.alert(
-      t('admin.sellers.approveConfirmTitle', 'Phê duyệt người bán'),
+      t('admin.sellers.approveConfirmTitle', 'Approve seller'),
       t(
         'admin.sellers.approveConfirmMessage',
         `Bạn có chắc chắn muốn phê duyệt tài khoản người bán "${seller.name}" (${seller.email})?`,
         { name: seller.name, email: seller.email },
       ),
       [
-        { text: t('admin.common.cancel', 'Huỷ'), style: 'cancel' },
+        { text: t('admin.common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: t('admin.sellers.approve', 'Phê duyệt'),
+          text: t('admin.sellers.approve', 'Approve'),
           style: 'default',
           onPress: async () => {
             setProcessingSellerId(seller.id);
             try {
               await approveMutation.mutateAsync(seller.id);
               Alert.alert(
-                t('admin.common.success', 'Thành công'),
-                t('admin.sellers.approveSuccessMessage', `Đã phê duyệt người bán "${seller.name}".`, { name: seller.name }),
+                t('admin.common.success', 'Success'),
+                t('admin.sellers.approveSuccessMessage', `Approved seller "${seller.name}".`, { name: seller.name }),
               );
             } catch (err: unknown) {
               const apiError = toApiError(err);
               Alert.alert(
-                t('admin.sellers.approveErrorTitle', 'Không thể phê duyệt'),
+                t('admin.sellers.approveErrorTitle', 'Cannot approve'),
                 apiError.message,
               );
             } finally {
@@ -217,29 +214,29 @@ export default function AdminSellerApprovalScreen({
     }
 
     Alert.alert(
-      t('admin.sellers.suspendConfirmTitle', 'Tạm ngưng người bán'),
+      t('admin.sellers.suspendConfirmTitle', 'Suspend seller'),
       t(
         'admin.sellers.suspendConfirmMessage',
         `Bạn có chắc chắn muốn tạm ngưng tài khoản người bán "${seller.name}" (${seller.email})? Người bán này sẽ không thể thực hiện các thao tác bán hàng.`,
         { name: seller.name, email: seller.email },
       ),
       [
-        { text: t('admin.common.cancel', 'Huỷ'), style: 'cancel' },
+        { text: t('admin.common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: t('admin.sellers.suspend', 'Tạm ngưng'),
+          text: t('admin.sellers.suspend', 'Suspend'),
           style: 'destructive',
           onPress: async () => {
             setProcessingSellerId(seller.id);
             try {
               await suspendMutation.mutateAsync(seller.id);
               Alert.alert(
-                t('admin.common.success', 'Thành công'),
-                t('admin.sellers.suspendSuccessMessage', `Đã tạm ngưng người bán "${seller.name}".`, { name: seller.name }),
+                t('admin.common.success', 'Success'),
+                t('admin.sellers.suspendSuccessMessage', `Suspended seller "${seller.name}".`, { name: seller.name }),
               );
             } catch (err: unknown) {
               const apiError = toApiError(err);
               Alert.alert(
-                t('admin.sellers.suspendErrorTitle', 'Không thể tạm ngưng'),
+                t('admin.sellers.suspendErrorTitle', 'Cannot suspend'),
                 apiError.message,
               );
             } finally {
@@ -295,23 +292,23 @@ export default function AdminSellerApprovalScreen({
         <View style={styles.cardDetails}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>
-              {t('admin.sellers.phone', 'Số điện thoại:')}
+              {t('admin.sellers.phone', 'Phone number:')}
             </Text>
             <Text style={styles.detailValue}>
-              {item.phone || t('admin.sellers.notUpdated', 'Chưa cập nhật')}
+              {item.phone || t('admin.sellers.notUpdated', 'Not updated')}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>
-              {t('admin.sellers.address', 'Địa chỉ:')}
+              {t('admin.sellers.address', 'Address:')}
             </Text>
             <Text style={styles.detailValue} numberOfLines={2}>
-              {item.address || t('admin.sellers.notUpdated', 'Chưa cập nhật')}
+              {item.address || t('admin.sellers.notUpdated', 'Not updated')}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>
-              {t('admin.sellers.accountStatus', 'Trạng thái tài khoản:')}
+              {t('admin.sellers.accountStatus', 'Account status:')}
             </Text>
             <Text
               style={[
@@ -327,7 +324,7 @@ export default function AdminSellerApprovalScreen({
           {item.createdAt ? (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>
-                {t('admin.sellers.registrationDate', 'Ngày đăng ký:')}
+                {t('admin.sellers.registrationDate', 'Registered on:')}
               </Text>
               <Text style={styles.detailValue}>{formatCreatedDate(item.createdAt)}</Text>
             </View>
@@ -346,14 +343,14 @@ export default function AdminSellerApprovalScreen({
                 isAnyActionPending && styles.actionButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.sellers.approveAccessibility', `Phê duyệt người bán ${item.name}`, { name: item.name })}
+              accessibilityLabel={t('admin.sellers.approveAccessibility', `Approve seller ${item.name}`, { name: item.name })}
               testID={`approve-btn-${item.id}`}
             >
               {isProcessingThisItem ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.approveButtonText}>
-                  {t('admin.sellers.approve', 'Phê duyệt')}
+                  {t('admin.sellers.approve', 'Approve')}
                 </Text>
               )}
             </Pressable>
@@ -370,14 +367,14 @@ export default function AdminSellerApprovalScreen({
                 isAnyActionPending && styles.actionButtonDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.sellers.suspendAccessibility', `Tạm ngưng người bán ${item.name}`, { name: item.name })}
+              accessibilityLabel={t('admin.sellers.suspendAccessibility', `Suspend seller ${item.name}`, { name: item.name })}
               testID={`suspend-btn-${item.id}`}
             >
               {isProcessingThisItem ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.suspendButtonText}>
-                  {t('admin.sellers.suspend', 'Tạm ngưng')}
+                  {t('admin.sellers.suspend', 'Suspend')}
                 </Text>
               )}
             </Pressable>
@@ -394,7 +391,7 @@ export default function AdminSellerApprovalScreen({
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>
-            {t('admin.sellers.loading', 'Đang tải danh sách người bán…')}
+            {t('admin.sellers.loading', 'Loading sellers…')}
           </Text>
         </View>
       );
@@ -406,18 +403,18 @@ export default function AdminSellerApprovalScreen({
         <View style={styles.centerState}>
           <Text style={styles.stateIcon}>⚠️</Text>
           <Text style={styles.errorTitle}>
-            {t('admin.sellers.loadErrorTitle', 'Không thể tải danh sách người bán')}
+            {t('admin.sellers.loadErrorTitle', 'Could not load the seller list')}
           </Text>
           <Text style={styles.subtitle}>{apiError.message}</Text>
           <Pressable
             onPress={() => void refetch()}
             style={styles.primaryActionButton}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.sellers.retryAccessibility', 'Thử lại tải danh sách người bán')}
+            accessibilityLabel={t('admin.sellers.retryAccessibility', 'Retry loading seller list')}
             testID="retry-button"
           >
             <Text style={styles.primaryActionButtonText}>
-              {t('admin.sellers.retry', 'Thử lại')}
+              {t('admin.sellers.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -428,7 +425,7 @@ export default function AdminSellerApprovalScreen({
       <View style={styles.centerState}>
         <Text style={styles.stateIcon}>🔍</Text>
         <Text style={styles.emptyTitle}>
-          {t('admin.sellers.emptyTitle', 'Không tìm thấy người bán nào')}
+          {t('admin.sellers.emptyTitle', 'No sellers found')}
         </Text>
         <Text style={styles.subtitle}>
           {debouncedSearch
@@ -454,13 +451,13 @@ export default function AdminSellerApprovalScreen({
           <TextInput
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder={t('admin.sellers.searchPlaceholder', 'Tìm theo email hoặc tên người bán...')}
+            placeholder={t('admin.sellers.searchPlaceholder', 'Search by email or seller name...')}
             placeholderTextColor={theme.textSecondary}
             style={styles.searchInput}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
-            accessibilityLabel={t('admin.sellers.searchAccessibility', 'Tìm kiếm người bán')}
+            accessibilityLabel={t('admin.sellers.searchAccessibility', 'Search sellers')}
             testID="search-input"
           />
           {searchInput.length > 0 ? (
@@ -468,7 +465,7 @@ export default function AdminSellerApprovalScreen({
               onPress={() => setSearchInput('')}
               style={styles.clearSearchButton}
               accessibilityRole="button"
-              accessibilityLabel={t('admin.sellers.clearSearchAccessibility', 'Xoá tìm kiếm')}
+              accessibilityLabel={t('admin.sellers.clearSearchAccessibility', 'Clear search')}
               testID="clear-search-button"
             >
               <Text style={styles.clearSearchText}>✕</Text>
@@ -509,7 +506,7 @@ export default function AdminSellerApprovalScreen({
               pressed && styles.buttonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.sellers.prevPage', 'Trang trước')}
+            accessibilityLabel={t('admin.sellers.prevPage', 'Previous page')}
             testID="prev-page-button"
           >
             <Text
@@ -518,7 +515,7 @@ export default function AdminSellerApprovalScreen({
                 (page === 0 || isFetching) && styles.pageButtonTextDisabled,
               ]}
             >
-              {t('admin.sellers.prevPage', '← Trước')}
+              {t('admin.sellers.prevPage', '← Previous')}
             </Text>
           </Pressable>
 
@@ -530,7 +527,7 @@ export default function AdminSellerApprovalScreen({
               })}
             </Text>
             <Text style={styles.pageCountText}>
-              {t('admin.sellers.pageCount', `${totalElements} người bán`, {
+              {t('admin.sellers.pageCount', `${totalElements} sellers`, {
                 count: totalElements,
               })}
             </Text>

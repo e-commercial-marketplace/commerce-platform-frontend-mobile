@@ -29,7 +29,7 @@ const mockProduct: ProductSummaryDto = {
   ratingAverage: '0',
   reviewCount: 0,
   active: true,
-  category: { id: 'cat-1', name: 'Điện thoại' },
+  category: { id: 'cat-1', name: 'Phones' },
   sellerId: 'seller-1',
 };
 

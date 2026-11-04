@@ -95,13 +95,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.lockIcon}>🔒</Text>
           <Text style={[styles.unauthorizedTitle, { color: theme.text }]}>
-            {t('admin.portal.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.portal.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={[styles.unauthorizedMessage, { color: theme.textSecondary }]}>
-            {t(
-              'admin.categories.unauthorizedAdminOnly',
-              'Chỉ Quản trị viên hệ thống mới có quyền quản lý danh mục sản phẩm.',
-            )}
+            {t('admin.categories.unauthorizedAdminOnly', 'Only system administrators can manage product categories.')}
           </Text>
           <Pressable
             style={({ pressed }) => [
@@ -111,10 +108,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
             ]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.portal.backButton', 'Quay lại')}
+            accessibilityLabel={t('admin.portal.backButton', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.portal.backButton', 'Quay lại')}
+              {t('admin.portal.backButton', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -139,7 +136,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   const handleSubmitCreate = async () => {
     const trimmed = createName.trim();
     if (!trimmed) {
-      setCreateError(t('admin.categories.validation.nameRequired', 'Vui lòng nhập tên danh mục.'));
+      setCreateError(t('admin.categories.validation.nameRequired', 'Please enter the category name.'));
       return;
     }
     if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) {
@@ -157,8 +154,8 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       setCreateName('');
       setCreateError(null);
       Alert.alert(
-        t('admin.common.success', 'Thành công'),
-        t('admin.categories.createSuccess', 'Đã thêm danh mục "{{name}}".', { name: trimmed }),
+        t('admin.common.success', 'Success'),
+        t('admin.categories.createSuccess', `Added category "${trimmed}".`, { name: trimmed }),
       );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
@@ -171,16 +168,13 @@ export default function AdminCategoryScreen({ navigation }: Props) {
         apiError.code === 'VALIDATION_ERROR'
       ) {
         setCreateError(
-          t(
-            'admin.categories.validation.nameExists',
-            'Tên danh mục đã tồn tại trên hệ thống. Vui lòng chọn tên khác.',
-          ),
+          t('admin.categories.validation.nameExists', 'The category name already exists in the system. Please choose another name.'),
         );
       } else {
         setCreateError(
           rawMsg ||
             apiError.message ||
-            t('admin.categories.validation.createFailed', 'Không thể tạo danh mục. Vui lòng thử lại.'),
+            t('admin.categories.validation.createFailed', 'Could not create category. Please try again.'),
         );
       }
     }
@@ -204,7 +198,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
     if (!editingCategory) return;
     const trimmed = renameName.trim();
     if (!trimmed) {
-      setRenameError(t('admin.categories.validation.nameRequired', 'Vui lòng nhập tên danh mục.'));
+      setRenameError(t('admin.categories.validation.nameRequired', 'Please enter the category name.'));
       return;
     }
     if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) {
@@ -231,8 +225,8 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       setRenameName('');
       setRenameError(null);
       Alert.alert(
-        t('admin.common.success', 'Thành công'),
-        t('admin.categories.renameSuccess', 'Đã đổi tên danh mục thành "{{name}}".', { name: trimmed }),
+        t('admin.common.success', 'Success'),
+        t('admin.categories.renameSuccess', `Renamed category to "${trimmed}".`, { name: trimmed }),
       );
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : '';
@@ -245,16 +239,13 @@ export default function AdminCategoryScreen({ navigation }: Props) {
         apiError.code === 'VALIDATION_ERROR'
       ) {
         setRenameError(
-          t(
-            'admin.categories.validation.nameExists',
-            'Tên danh mục đã tồn tại trên hệ thống. Vui lòng chọn tên khác.',
-          ),
+          t('admin.categories.validation.nameExists', 'The category name already exists in the system. Please choose another name.'),
         );
       } else {
         setRenameError(
           rawMsg ||
             apiError.message ||
-            t('admin.categories.validation.renameFailed', 'Không thể đổi tên danh mục. Vui lòng thử lại.'),
+            t('admin.categories.validation.renameFailed', 'Could not rename category. Please try again.'),
         );
       }
     }
@@ -263,25 +254,23 @@ export default function AdminCategoryScreen({ navigation }: Props) {
   // Handle Delete
   const handleDeletePress = (category: CategorySummaryDto) => {
     Alert.alert(
-      t('admin.categories.deleteConfirmTitle', 'Xác nhận xóa danh mục'),
+      t('admin.categories.deleteConfirmTitle', 'Confirm category deletion'),
       t(
         'admin.categories.deleteConfirmMessage',
-        'Bạn có chắc chắn muốn xóa danh mục "{{name}}"? Thao tác này không thể hoàn tác.',
+        `Are you sure you want to delete the category "${category.name}"? This action cannot be undone.`,
         { name: category.name },
       ),
       [
-        { text: t('admin.common.actions.cancel', 'Hủy'), style: 'cancel' },
+        { text: t('admin.common.actions.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: t('admin.common.actions.delete', 'Xóa'),
+          text: t('admin.common.actions.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteMutation.mutateAsync(category.id);
               Alert.alert(
-                t('admin.common.success', 'Thành công'),
-                t('admin.categories.deleteSuccess', 'Đã xóa danh mục "{{name}}".', {
-                  name: category.name,
-                }),
+                t('admin.common.success', 'Success'),
+                t('admin.categories.deleteSuccess', `Deleted category "${category.name}".`, { name: category.name }),
               );
             } catch (err: unknown) {
               const rawMsg = err instanceof Error ? err.message : '';
@@ -294,20 +283,20 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 combinedMsg.includes('sản phẩm')
               ) {
                 Alert.alert(
-                  t('admin.categories.cannotDeleteTitle', 'Không thể xóa danh mục'),
+                  t('admin.categories.cannotDeleteTitle', 'Cannot delete category'),
                   t(
                     'admin.categories.cannotDeleteMessage',
-                    'Danh mục này đang có sản phẩm liên kết (kể cả sản phẩm đã ẩn). Vui lòng chuyển hoặc xóa các sản phẩm thuộc danh mục này trước.',
+                    'This category still has linked products (including hidden ones). Please move or delete the products in this category first.',
                   ),
                 );
               } else {
                 Alert.alert(
-                  t('admin.common.error', 'Lỗi'),
+                  t('admin.common.error', 'Error'),
                   rawMsg ||
                     apiError.message ||
                     t(
                       'admin.categories.validation.deleteFailed',
-                      'Không thể xóa danh mục. Vui lòng thử lại sau.',
+                      'Could not delete the category. Please try again later.',
                     ),
                 );
               }
@@ -369,14 +358,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           ]}
           onPress={() => handleOpenRenameModal(item)}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.categories.renameBtn', '✏️ Đổi tên')}
+          accessibilityLabel={t('admin.categories.renameBtn', '✏️ Rename')}
           accessibilityHint={t('admin.categories.renameModalSubtitle', 'Cập nhật tên danh mục "{{name}}"', {
             name: item.name,
           })}
           testID={`admin-category-rename-btn-${item.id}`}
         >
           <Text style={[styles.renameButtonText, { color: theme.primary }]}>
-            {t('admin.categories.renameBtn', '✏️ Đổi tên')}
+            {t('admin.categories.renameBtn', '✏️ Rename')}
           </Text>
         </Pressable>
 
@@ -391,7 +380,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           ]}
           onPress={() => handleDeletePress(item)}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.categories.deleteBtn', '🗑️ Xóa')}
+          accessibilityLabel={t('admin.categories.deleteBtn', '🗑️ Delete')}
           accessibilityHint={t(
             'admin.categories.deleteConfirmMessage',
             'Bạn có chắc chắn muốn xóa danh mục "{{name}}"?',
@@ -400,7 +389,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           testID={`admin-category-delete-btn-${item.id}`}
         >
           <Text style={[styles.deleteButtonText, { color: dynamicStyles.deleteBtnText }]}>
-            {t('admin.categories.deleteBtn', '🗑️ Xóa')}
+            {t('admin.categories.deleteBtn', '🗑️ Delete')}
           </Text>
         </Pressable>
       </View>
@@ -424,14 +413,10 @@ export default function AdminCategoryScreen({ navigation }: Props) {
       >
         <View style={styles.topTextGroup}>
           <Text style={[styles.topTitle, { color: theme.text }]}>
-            {t('admin.categories.title', 'Danh mục sản phẩm')}
+            {t('admin.categories.title', 'Product categories')}
           </Text>
           <Text style={[styles.topSubtitle, { color: theme.textSecondary }]}>
-            {t(
-              'admin.categories.subtitle',
-              '{{count}} danh mục • Hệ thống danh mục phẳng, không phân cấp',
-              { count: categories.length },
-            )}
+            {t('admin.categories.subtitle', `${categories.length} categories • Flat category system, no hierarchy`, { count: categories.length })}
           </Text>
         </View>
         <Pressable
@@ -442,11 +427,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           ]}
           onPress={handleOpenCreateModal}
           accessibilityRole="button"
-          accessibilityLabel={t('admin.categories.createBtn', '＋ Thêm mới')}
+          accessibilityLabel={t('admin.categories.createBtn', '＋ Add new')}
           testID="admin-category-create-button"
         >
           <Text style={styles.createButtonText}>
-            {t('admin.categories.createBtn', '＋ Thêm mới')}
+            {t('admin.categories.createBtn', '＋ Add new')}
           </Text>
         </Pressable>
       </View>
@@ -456,14 +441,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-category-loading">
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-            {t('admin.categories.loading', 'Đang tải danh sách danh mục...')}
+            {t('admin.categories.loading', 'Loading categories...')}
           </Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer} testID="admin-category-error">
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={[styles.errorTitle, { color: theme.text }]}>
-            {t('admin.categories.errorTitle', 'Không thể tải danh mục')}
+            {t('admin.categories.errorTitle', 'Could not load categories')}
           </Text>
           <Text style={[styles.errorMessage, { color: theme.textSecondary }]}>
             {t(
@@ -481,11 +466,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
               void refetch();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.retry', 'Thử lại')}
+            accessibilityLabel={t('admin.common.actions.retry', 'Retry')}
             testID="admin-category-retry-btn"
           >
             <Text style={styles.retryButtonText}>
-              {t('admin.common.actions.retry', 'Thử lại')}
+              {t('admin.common.actions.retry', 'Retry')}
             </Text>
           </Pressable>
         </View>
@@ -493,7 +478,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-category-empty">
           <Text style={styles.emptyIcon}>📂</Text>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
-            {t('admin.categories.emptyTitle', 'Chưa có danh mục nào')}
+            {t('admin.categories.emptyTitle', 'No categories yet')}
           </Text>
           <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
             {t(
@@ -546,14 +531,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           >
             <View style={styles.modalHeaderRow}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {t('admin.categories.createModalTitle', 'Thêm danh mục mới')}
+                {t('admin.categories.createModalTitle', 'Add new category')}
               </Text>
               <Pressable
                 onPress={handleCloseCreateModal}
                 disabled={createMutation.isPending}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.close', 'Đóng')}
+                accessibilityLabel={t('admin.common.actions.close', 'Close dialog')}
               >
                 <Text style={[styles.modalCloseButtonText, { color: theme.textSecondary }]}>✕</Text>
               </Pressable>
@@ -569,7 +554,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
             <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
                 <Text style={[styles.inputLabel, { color: theme.text }]}>
-                  {t('admin.categories.nameLabel', 'Tên danh mục *')}
+                  {t('admin.categories.nameLabel', 'Category name *')}
                 </Text>
                 <Text style={[styles.charCounter, { color: theme.textSecondary }]}>
                   {createName.trim().length}/{MAX_CATEGORY_NAME_LENGTH}
@@ -586,7 +571,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 ]}
                 placeholder={t(
                   'admin.categories.namePlaceholder',
-                  'Ví dụ: Thiết bị điện tử, Đồ gia dụng...',
+                  'e.g. Electronics, Home appliances...',
                 )}
                 placeholderTextColor={theme.textSecondary}
                 value={createName}
@@ -621,11 +606,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 onPress={handleCloseCreateModal}
                 disabled={createMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.cancel', 'Hủy')}
+                accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                 testID="admin-category-cancel-create-btn"
               >
                 <Text style={[styles.modalCancelBtnText, { color: theme.text }]}>
-                  {t('admin.common.actions.cancel', 'Hủy')}
+                  {t('admin.common.actions.cancel', 'Cancel')}
                 </Text>
               </Pressable>
               <Pressable
@@ -638,14 +623,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 onPress={handleSubmitCreate}
                 disabled={createMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.categories.createBtn', 'Tạo danh mục')}
+                accessibilityLabel={t('admin.categories.createBtn', 'Create category')}
                 testID="admin-category-submit-create-btn"
               >
                 {createMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.modalSubmitBtnText}>
-                    {t('admin.categories.createModalTitle', 'Tạo danh mục')}
+                    {t('admin.categories.createModalTitle', 'Create category')}
                   </Text>
                 )}
               </Pressable>
@@ -678,14 +663,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
           >
             <View style={styles.modalHeaderRow}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {t('admin.categories.renameModalTitle', 'Đổi tên danh mục')}
+                {t('admin.categories.renameModalTitle', 'Rename category')}
               </Text>
               <Pressable
                 onPress={handleCloseRenameModal}
                 disabled={updateMutation.isPending}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.close', 'Đóng')}
+                accessibilityLabel={t('admin.common.actions.close', 'Close dialog')}
               >
                 <Text style={[styles.modalCloseButtonText, { color: theme.textSecondary }]}>✕</Text>
               </Pressable>
@@ -717,7 +702,7 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                     color: theme.text,
                   },
                 ]}
-                placeholder={t('admin.categories.renamePlaceholder', 'Nhập tên mới...')}
+                placeholder={t('admin.categories.renamePlaceholder', 'Enter a new name...')}
                 placeholderTextColor={theme.textSecondary}
                 value={renameName}
                 onChangeText={(text) => {
@@ -751,11 +736,11 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 onPress={handleCloseRenameModal}
                 disabled={updateMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.cancel', 'Hủy')}
+                accessibilityLabel={t('admin.common.actions.cancel', 'Cancel')}
                 testID="admin-category-cancel-rename-btn"
               >
                 <Text style={[styles.modalCancelBtnText, { color: theme.text }]}>
-                  {t('admin.common.actions.cancel', 'Hủy')}
+                  {t('admin.common.actions.cancel', 'Cancel')}
                 </Text>
               </Pressable>
               <Pressable
@@ -768,14 +753,14 @@ export default function AdminCategoryScreen({ navigation }: Props) {
                 onPress={handleSubmitRename}
                 disabled={updateMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={t('admin.common.actions.save', 'Lưu thay đổi')}
+                accessibilityLabel={t('admin.common.actions.save', 'Save changes')}
                 testID="admin-category-submit-rename-btn"
               >
                 {updateMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.modalSubmitBtnText}>
-                    {t('admin.common.actions.save', 'Lưu thay đổi')}
+                    {t('admin.common.actions.save', 'Save changes')}
                   </Text>
                 )}
               </Pressable>

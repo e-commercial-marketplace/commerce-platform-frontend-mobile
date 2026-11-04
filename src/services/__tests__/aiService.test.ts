@@ -26,9 +26,9 @@ jest.mock('../../api/client', () => {
 const mockedClient = apiClient as jest.Mocked<typeof apiClient>;
 
 const mockAiResponse: AiProductSearchResponse = {
-  answer: 'Mình tìm thấy 1 mẫu tai nghe phù hợp với bạn.',
+  answer: 'I found 1 headphone model that suits you.',
   query: {
-    text: 'tai nghe',
+    text: 'headphones',
     category: 'Tai nghe & Loa',
     minPrice: null,
     maxPrice: '2000000.00',
@@ -38,7 +38,7 @@ const mockAiResponse: AiProductSearchResponse = {
   products: [
     {
       id: 'prod-uuid-1',
-      name: 'Tai nghe không dây chống ồn',
+      name: 'Noise-Cancelling Wireless Headphones',
       imageUrl: 'https://example.com/item.jpg',
       price: '1890000.00',
       stock: 15,
@@ -52,7 +52,7 @@ const mockAiResponse: AiProductSearchResponse = {
 };
 
 const mockRulesResponse: AiProductSearchResponse = {
-  answer: 'Marketplace hỗ trợ 2 hình thức thanh toán: COD và VNPAY.',
+  answer: 'The marketplace supports 2 payment methods: COD and VNPAY.',
   query: null,
   products: [],
   sessionId: 'session-uuid-123',
@@ -60,7 +60,7 @@ const mockRulesResponse: AiProductSearchResponse = {
 };
 
 const mockGuestResponse: AiProductSearchResponse = {
-  answer: 'Chào bạn! Mình có thể giúp gì cho bạn?',
+  answer: 'Hello! How can I help you?',
   query: null,
   products: [],
   sessionId: null,
@@ -85,7 +85,7 @@ const mockMessages: AiMessageResponse[] = [
     id: 'msg-1',
     sessionId: 'session-uuid-1',
     role: 'USER',
-    content: 'Tìm tai nghe dưới 2 triệu',
+    content: 'Find headphones under 2 million',
     confidence: null,
     createdAt: '2026-10-30T08:00:01Z',
   },
@@ -93,7 +93,7 @@ const mockMessages: AiMessageResponse[] = [
     id: 'msg-2',
     sessionId: 'session-uuid-1',
     role: 'ASSISTANT',
-    content: 'Mình tìm thấy 1 mẫu tai nghe...',
+    content: 'I found 1 headphone model...',
     confidence: null,
     createdAt: '2026-10-30T08:00:03Z',
   },
@@ -115,7 +115,7 @@ describe('aiService', () => {
       } as any);
 
       const request: AiAskRequest = {
-        message: 'Tìm tai nghe dưới 2 triệu',
+        message: 'Find headphones under 2 million',
         sessionId: 'session-uuid-123',
       };
 
@@ -137,7 +137,7 @@ describe('aiService', () => {
       } as any);
 
       const request: AiAskRequest = {
-        message: 'Tìm tai nghe',
+        message: 'Find headphones',
       };
 
       const result = await askAi(request);
@@ -155,7 +155,7 @@ describe('aiService', () => {
         status: 200,
       } as any);
 
-      const result = await askAi({ message: 'Tìm tai nghe' });
+      const result = await askAi({ message: 'Find headphones' });
 
       expect(typeof result.products[0].price).toBe('string');
       expect(result.products[0].price).toBe('1890000.00');
@@ -176,7 +176,7 @@ describe('aiService', () => {
         status: 200,
       } as any);
 
-      const result = await askAi({ message: 'Xin chào', sessionId: null });
+      const result = await askAi({ message: 'Hello', sessionId: null });
 
       expect(result.products).toEqual([]);
       expect(result.sessionId).toBeNull();
@@ -193,7 +193,7 @@ describe('aiService', () => {
         status: 200,
       } as any);
 
-      const result = await askAi({ message: 'Thanh toán thế nào' });
+      const result = await askAi({ message: 'How to pay' });
 
       expect(result.answeredBy).toBe('RULES');
       expect(result.answer).toContain('VNPAY');

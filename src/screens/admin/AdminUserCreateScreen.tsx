@@ -77,21 +77,21 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
     () => [
       {
         role: 'CUSTOMER',
-        label: t('admin.enums.role.customer', 'Khách hàng'),
-        desc: t('admin.users.create.roleDescCustomer', 'Mua sắm và đặt hàng trên nền tảng'),
+        label: t('admin.enums.role.customer', 'Customer'),
+        desc: t('admin.users.create.roleDescCustomer', 'Shop and place orders on the platform'),
       },
       {
         role: 'SELLER',
-        label: t('admin.enums.role.seller', 'Người bán'),
+        label: t('admin.enums.role.seller', 'Seller'),
         desc: t(
           'admin.users.create.roleDescSeller',
-          'Mở gian hàng và bán sản phẩm (Bắt đầu ở trạng thái Chờ duyệt)',
+          'Open a shop and sell products (starts in Pending status)',
         ),
       },
       {
         role: 'ADMIN',
-        label: t('admin.enums.role.admin', 'Quản trị viên'),
-        desc: t('admin.users.create.roleDescAdmin', 'Toàn quyền quản trị hệ thống'),
+        label: t('admin.enums.role.admin', 'Admin'),
+        desc: t('admin.users.create.roleDescAdmin', 'Full system administration rights'),
       },
     ],
     [t],
@@ -104,22 +104,19 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
         <View style={styles.centerContainer} testID="admin-unauthorized-guard">
           <Text style={styles.stateIcon}>🔒</Text>
           <Text style={styles.unauthorizedTitle}>
-            {t('admin.users.create.unauthorizedTitle', 'Truy cập bị từ chối')}
+            {t('admin.users.create.unauthorizedTitle', 'Access denied')}
           </Text>
           <Text style={styles.unauthorizedMessage}>
-            {t(
-              'admin.users.create.unauthorizedMessage',
-              'Chỉ Quản trị viên hệ thống mới có quyền tạo người dùng.',
-            )}
+            {t('admin.users.create.unauthorizedMessage', 'Only system administrators have permission to create users.')}
           </Text>
           <Pressable
             style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.common.actions.back', 'Quay lại')}
+            accessibilityLabel={t('admin.common.actions.back', 'Go back')}
           >
             <Text style={styles.backButtonText}>
-              {t('admin.common.actions.back', 'Quay lại')}
+              {t('admin.common.actions.back', 'Go back')}
             </Text>
           </Pressable>
         </View>
@@ -132,34 +129,34 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      errors.email = t('admin.users.create.validation.emailRequired', 'Vui lòng nhập địa chỉ email');
+      errors.email = t('admin.users.create.validation.emailRequired', 'Please enter an email address');
     } else if (!trimmedEmail.includes('@') || trimmedEmail.length > 255) {
-      errors.email = t('admin.users.create.validation.emailInvalid', 'Email không hợp lệ');
+      errors.email = t('admin.users.create.validation.emailInvalid', 'Invalid email');
     }
 
     if (!password) {
-      errors.password = t('admin.users.create.validation.passwordRequired', 'Vui lòng nhập mật khẩu');
+      errors.password = t('admin.users.create.validation.passwordRequired', 'Please enter a password');
     } else if (password.length < 8 || password.length > 72) {
-      errors.password = t('admin.users.create.validation.passwordLength', 'Mật khẩu phải từ 8 đến 72 ký tự');
+      errors.password = t('admin.users.create.validation.passwordLength', 'Password must be 8 to 72 characters');
     }
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      errors.name = t('admin.users.create.validation.nameRequired', 'Vui lòng nhập họ và tên');
+      errors.name = t('admin.users.create.validation.nameRequired', 'Please enter your full name');
     } else if (trimmedName.length > 255) {
-      errors.name = t('admin.users.create.validation.nameTooLong', 'Họ và tên tối đa 255 ký tự');
+      errors.name = t('admin.users.create.validation.nameTooLong', 'Full name must be at most 255 characters');
     }
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !VIETNAMESE_PHONE_REGEX.test(trimmedPhone)) {
       errors.phone = t(
         'admin.users.create.validation.phoneInvalid',
-        'Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678)',
+        'Invalid Vietnamese mobile phone number (e.g. 0912345678)',
       );
     }
 
     if (address.length > 500) {
-      errors.address = t('admin.users.create.validation.addressTooLong', 'Địa chỉ tối đa 500 ký tự');
+      errors.address = t('admin.users.create.validation.addressTooLong', 'Address must be at most 500 characters');
     }
 
     setFormErrors(errors);
@@ -182,8 +179,8 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
       });
 
       Alert.alert(
-        t('admin.users.create.successTitle', 'Thành công'),
-        t('admin.users.create.successMsg', 'Đã tạo tài khoản người dùng mới thành công.'),
+        t('admin.users.create.successTitle', 'Success'),
+        t('admin.users.create.successMsg', 'New user account created successfully.'),
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
     } catch (err: unknown) {
@@ -233,15 +230,15 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Password field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.passwordLabel', 'Mật khẩu ban đầu')}{' '}
+              {t('admin.users.create.passwordLabel', 'Initial password')}{' '}
               <Text style={styles.requiredStar}>
-                * {t('admin.users.create.passwordHint', '(8-72 ký tự)')}
+                * {t('admin.users.create.passwordHint', '(8-72 characters)')}
               </Text>
             </Text>
             <View style={[styles.passwordContainer, formErrors.password ? styles.inputError : null]}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder={t('admin.users.create.passwordPlaceholder', 'Nhập mật khẩu')}
+                placeholder={t('admin.users.create.passwordPlaceholder', 'Enter password')}
                 placeholderTextColor={theme.textSecondary}
                 value={password}
                 onChangeText={(text) => {
@@ -260,15 +257,15 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel={
                   showPassword
-                    ? t('admin.users.create.togglePasswordHide', 'Ẩn mật khẩu')
-                    : t('admin.users.create.togglePasswordShow', 'Hiện mật khẩu')
+                    ? t('admin.users.create.togglePasswordHide', 'Hide password')
+                    : t('admin.users.create.togglePasswordShow', 'Show password')
                 }
                 testID="toggle-password-visibility"
               >
                 <Text style={styles.eyeText}>
                   {showPassword
-                    ? t('admin.users.create.togglePasswordHide', 'Ẩn')
-                    : t('admin.users.create.togglePasswordShow', 'Hiện')}
+                    ? t('admin.users.create.togglePasswordHide', 'Hide')
+                    : t('admin.users.create.togglePasswordShow', 'Show')}
                 </Text>
               </Pressable>
             </View>
@@ -280,11 +277,11 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Full Name field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.nameLabel', 'Họ và tên')} <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.nameLabel', 'Full name')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, formErrors.name ? styles.inputError : null]}
-              placeholder={t('admin.users.create.namePlaceholder', 'Nguyễn Văn A')}
+              placeholder={t('admin.users.create.namePlaceholder', 'John Doe')}
               placeholderTextColor={theme.textSecondary}
               value={name}
               onChangeText={(text) => {
@@ -301,7 +298,7 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Role Selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.roleLabel', 'Vai trò')} <Text style={styles.requiredStar}>*</Text>
+              {t('admin.users.create.roleLabel', 'Role')} <Text style={styles.requiredStar}>*</Text>
             </Text>
             <View style={styles.roleOptionsContainer}>
               {roleOptions.map((item) => {
@@ -334,7 +331,7 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Phone field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.phoneLabel', 'Số điện thoại (tùy chọn)')}
+              {t('admin.users.create.phoneLabel', 'Phone number (optional)')}
             </Text>
             <TextInput
               style={[styles.input, formErrors.phone ? styles.inputError : null]}
@@ -356,11 +353,11 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           {/* Address field */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>
-              {t('admin.users.create.addressLabel', 'Địa chỉ (tùy chọn)')}
+              {t('admin.users.create.addressLabel', 'Address (optional)')}
             </Text>
             <TextInput
               style={[styles.input, formErrors.address ? styles.inputError : null]}
-              placeholder={t('admin.users.create.addressPlaceholder', 'Địa chỉ liên hệ')}
+              placeholder={t('admin.users.create.addressPlaceholder', 'Contact address')}
               placeholderTextColor={theme.textSecondary}
               value={address}
               onChangeText={(text) => {
@@ -379,13 +376,10 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
           <View style={styles.switchGroup}>
             <View style={styles.switchLabelContainer}>
               <Text style={styles.switchLabel}>
-                {t('admin.users.create.enabledLabel', 'Kích hoạt tài khoản ngay')}
+                {t('admin.users.create.enabledLabel', 'Activate account immediately')}
               </Text>
               <Text style={styles.switchSubtext}>
-                {t(
-                  'admin.users.create.enabledSubtext',
-                  'Tài khoản có thể đăng nhập ngay sau khi tạo',
-                )}
+                {t('admin.users.create.enabledSubtext', 'Account can log in immediately after creation')}
               </Text>
             </View>
             <Switch
@@ -407,14 +401,14 @@ export default function AdminUserCreateScreen({ navigation }: Props) {
             onPress={handleSubmit}
             disabled={createMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel={t('admin.users.create.submitBtn', 'Tạo người dùng')}
+            accessibilityLabel={t('admin.users.create.submitBtn', 'Create user')}
             testID="submit-create-user-button"
           >
             {createMutation.isPending ? (
               <ActivityIndicator size="small" color={theme.onPrimary} />
             ) : (
               <Text style={styles.submitButtonText}>
-                {t('admin.users.create.submitBtn', 'Tạo người dùng')}
+                {t('admin.users.create.submitBtn', 'Create user')}
               </Text>
             )}
           </Pressable>

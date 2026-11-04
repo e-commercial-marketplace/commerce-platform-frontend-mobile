@@ -1,10 +1,10 @@
 export const chat = {
-  loginRequiredTitle: 'Login Required',
+  loginRequiredTitle: 'Sign-in required',
   loginRequiredDescList:
-    'You need to log in with a Customer or Seller account to view messages.',
+    'You need to sign in with a Buyer or Seller account to view messages.',
   loginRequiredDescRoom:
-    'You need to log in with a Customer or Seller account to join the chat.',
-  loginButton: 'Log In',
+    'You need to sign in with a Buyer or Seller account to join the chat.',
+  loginButton: 'Sign in',
 
   loadingMessages: 'Loading messages…',
   loadFailedTitle: 'Could not load messages',
@@ -15,8 +15,8 @@ export const chat = {
 
   emptyCustomerTitle: 'No conversations yet',
   emptyCustomerDesc: 'Messages between you and shops will appear here.',
-  emptySellerTitle: 'No messages from customers',
-  emptySellerDesc: 'Customer conversations will appear here.',
+  emptySellerTitle: 'No messages from customers yet',
+  emptySellerDesc: 'Conversations from customers will appear here.',
 
   loadingShop: 'Loading...',
   fallbackShop: 'Shop #{{id}}',
@@ -37,11 +37,12 @@ export const chat = {
   loadingOlder: 'Loading older messages…',
 
   composerPlaceholder: 'Type a message...',
-  composerA11y: 'Type message',
+  composerA11y: 'Enter a message',
   sendA11y: 'Send message',
+  sendImageA11y: 'Send image',
 
-  reconnecting: 'Reconnecting real-time chat…',
-  disconnected: 'Real-time chat disconnected',
+  reconnecting: 'Reconnecting in real time…',
+  disconnected: 'Real-time connection lost',
   reconnectAction: 'Reconnect',
 
   you: 'You: ',

@@ -73,4 +73,10 @@ export const checkout = {
     'This voucher is no longer active. Please try another or continue without a voucher.',
   voucherInvalidOrder:
     'Voucher is no longer valid. Please try another or continue without a voucher.',
+  useSavedAddress: 'Use my saved address',
+  useSavedAddressLabel: 'Use my saved address: {{address}}',
+  enterDifferentAddress: 'Enter a different address',
+  viewAllVouchers: 'View all',
+  viewAllVouchersA11y: 'View all vouchers',
+  bestChoice: 'Best choice',
 };

@@ -41,19 +41,19 @@ export function getRoleBadgeConfig(
   switch (role) {
     case 'CUSTOMER':
       return {
-        label: t('admin.enums.role.customer', 'Khách hàng'),
+        label: t('admin.enums.role.customer', 'Customer'),
         backgroundColor: isDark ? 'rgba(56, 189, 248, 0.2)' : '#EFF8FF',
         textColor: isDark ? '#38BDF8' : '#175CD3',
       };
     case 'SELLER':
       return {
-        label: t('admin.enums.role.seller', 'Người bán'),
+        label: t('admin.enums.role.seller', 'Seller'),
         backgroundColor: isDark ? 'rgba(168, 85, 247, 0.2)' : '#F9F5FF',
         textColor: isDark ? '#C084FC' : '#6941C6',
       };
     case 'ADMIN':
       return {
-        label: t('admin.enums.role.admin', 'Quản trị viên'),
+        label: t('admin.enums.role.admin', 'Admin'),
         backgroundColor: isDark ? 'rgba(148, 163, 184, 0.2)' : '#F2F4F7',
         textColor: isDark ? '#E2E8F0' : '#344054',
       };
@@ -77,25 +77,25 @@ export function getSellerStatusBadgeConfig(
   switch (status) {
     case 'PENDING':
       return {
-        label: t('admin.enums.sellerStatus.pending', 'Chờ duyệt'),
+        label: t('admin.enums.sellerStatus.pending', 'Pending'),
         backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF0C7',
         textColor: isDark ? '#FBBF24' : '#B54708',
       };
     case 'APPROVED':
       return {
-        label: t('admin.enums.sellerStatus.approved', 'Đã duyệt'),
+        label: t('admin.enums.sellerStatus.approved', 'Approved'),
         backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF3',
         textColor: isDark ? '#34D399' : '#027A48',
       };
     case 'SUSPENDED':
       return {
-        label: t('admin.enums.sellerStatus.suspended', 'Tạm ngưng'),
+        label: t('admin.enums.sellerStatus.suspended', 'Suspended'),
         backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF3F2',
         textColor: isDark ? '#F87171' : '#B42318',
       };
     case 'REJECTED':
       return {
-        label: t('admin.enums.sellerStatus.rejected', 'Từ chối'),
+        label: t('admin.enums.sellerStatus.rejected', 'Rejected'),
         backgroundColor: isDark ? 'rgba(148, 163, 184, 0.2)' : '#F2F4F7',
         textColor: isDark ? '#94A3B8' : '#475467',
       };
@@ -118,12 +118,12 @@ export function getAccountStatusBadgeConfig(
 ): StatusBadgePresentation {
   return enabled
     ? {
-        label: t('admin.enums.accountStatus.active', 'Đang hoạt động'),
+        label: t('admin.enums.accountStatus.active', 'Active'),
         backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF3',
         textColor: isDark ? '#34D399' : '#027A48',
       }
     : {
-        label: t('admin.enums.accountStatus.disabled', 'Đã vô hiệu hóa'),
+        label: t('admin.enums.accountStatus.disabled', 'Disabled'),
         backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF3F2',
         textColor: isDark ? '#F87171' : '#B42318',
       };
@@ -139,12 +139,12 @@ export function getCarrierStatusBadgeConfig(
 ): StatusBadgePresentation {
   return active
     ? {
-        label: t('admin.carriers.statusActive', '🟢 Hoạt động'),
+        label: t('admin.carriers.statusActive', '🟢 Active'),
         backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FADF',
         textColor: isDark ? '#34D399' : '#027A48',
       }
     : {
-        label: t('admin.carriers.statusInactive', '⏹️ Tạm ngừng'),
+        label: t('admin.carriers.statusInactive', '⏹️ Suspended'),
         backgroundColor: isDark ? 'rgba(148, 163, 184, 0.2)' : '#F2F4F7',
         textColor: isDark ? '#94A3B8' : '#475467',
       };
@@ -161,28 +161,28 @@ export function getVoucherStatusBadgeConfig(
   switch (status) {
     case 'ACTIVE':
       return {
-        label: t('admin.enums.voucherStatus.active', 'Đang hoạt động'),
+        label: t('admin.enums.voucherStatus.active', 'Active'),
         backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FADF',
         textColor: isDark ? '#34D399' : '#027A48',
         icon: '🟢',
       };
     case 'NOT_YET_VALID':
       return {
-        label: t('admin.enums.voucherStatus.notYetValid', 'Chưa bắt đầu'),
+        label: t('admin.enums.voucherStatus.notYetValid', 'Not yet valid'),
         backgroundColor: isDark ? 'rgba(56, 189, 248, 0.2)' : '#EFF8FF',
         textColor: isDark ? '#38BDF8' : '#175CD3',
         icon: '⏳',
       };
     case 'EXPIRED':
       return {
-        label: t('admin.enums.voucherStatus.expired', 'Đã hết hạn'),
+        label: t('admin.enums.voucherStatus.expired', 'Expired'),
         backgroundColor: isDark ? 'rgba(148, 163, 184, 0.2)' : '#F2F4F7',
         textColor: isDark ? '#E2E8F0' : '#344054',
         icon: '⏹️',
       };
     case 'USAGE_LIMIT_REACHED':
       return {
-        label: t('admin.enums.voucherStatus.usageLimitReached', 'Hết lượt dùng'),
+        label: t('admin.enums.voucherStatus.usageLimitReached', 'Usage limit reached'),
         backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF0C7',
         textColor: isDark ? '#FBBF24' : '#B54708',
         icon: '⚠️',

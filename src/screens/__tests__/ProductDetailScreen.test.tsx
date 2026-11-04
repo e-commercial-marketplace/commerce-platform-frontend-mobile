@@ -100,6 +100,7 @@ function renderScreen(
     register: jest.fn(async () => {}),
     logout: jest.fn(async () => {}),
     changePassword: jest.fn(async () => {}),
+    updateUserName: jest.fn(),
     ...authOverride,
   });
   mockedUseCart.mockReturnValue({ addItem } as never);
@@ -180,9 +181,9 @@ describe('ProductDetailScreen', () => {
   });
 
   describe('Customer Start Conversation with Seller (Phase 5A)', () => {
-    it('renders "Nhắn tin với shop" button for authenticated Customer', () => {
+    it('renders "Message the shop" button for authenticated Customer', () => {
       const { getByText } = renderScreen();
-      expect(getByText('Nhắn tin với shop')).toBeTruthy();
+      expect(getByText('Message the shop')).toBeTruthy();
     });
 
     it('calls openConversation with actual sellerId and productId without customerId', async () => {
@@ -199,7 +200,7 @@ describe('ProductDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(jest.fn(), mockNav);
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       await waitFor(() => {
         expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
@@ -232,7 +233,7 @@ describe('ProductDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(jest.fn(), mockNav);
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       await waitFor(() => {
         expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
@@ -254,7 +255,7 @@ describe('ProductDetailScreen', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByRole } = renderScreen(jest.fn(), mockNav);
 
-      const chatButton = getByRole('button', { name: 'Nhắn tin với shop' });
+      const chatButton = getByRole('button', { name: 'Message the shop' });
       fireEvent.press(chatButton);
 
       expect(mockOpenConversationMutateAsync).not.toHaveBeenCalled();
@@ -263,49 +264,49 @@ describe('ProductDetailScreen', () => {
 
     it('displays error and does not navigate when openConversation fails', async () => {
       mockOpenConversationMutateAsync.mockRejectedValueOnce(
-        new ApiError('Không thể kết nối máy chủ', 'NETWORK_ERROR', null),
+        new ApiError('Could not connect to the server', 'NETWORK_ERROR', null),
       );
 
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(jest.fn(), mockNav);
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       await waitFor(() => {
         expect(mockOpenConversationMutateAsync).toHaveBeenCalledTimes(1);
       });
 
       expect(mockNav.navigate).not.toHaveBeenCalled();
-      expect(getByText('Không thể kết nối máy chủ')).toBeTruthy();
+      expect(getByText('Could not connect to the server')).toBeTruthy();
     });
 
-    it('navigates guest to Login when "Nhắn tin với shop" is pressed', () => {
+    it('navigates guest to Login when "Message the shop" is pressed', () => {
       const mockNav = { navigate: jest.fn() } as unknown as Navigation;
       const { getByText } = renderScreen(jest.fn(), mockNav, {
         user: null,
         isAuthenticated: false,
       });
 
-      fireEvent.press(getByText('Nhắn tin với shop'));
+      fireEvent.press(getByText('Message the shop'));
 
       expect(mockNav.navigate).toHaveBeenCalledWith('Login');
       expect(mockOpenConversationMutateAsync).not.toHaveBeenCalled();
     });
 
-    it('hides "Nhắn tin với shop" button for SELLER role', () => {
+    it('hides "Message the shop" button for SELLER role', () => {
       const { queryByText } = renderScreen(jest.fn(), undefined, {
         user: { ...CUSTOMER, role: 'SELLER' },
         isAuthenticated: true,
       });
-      expect(queryByText('Nhắn tin với shop')).toBeNull();
+      expect(queryByText('Message the shop')).toBeNull();
     });
 
-    it('hides "Nhắn tin với shop" button for ADMIN role', () => {
+    it('hides "Message the shop" button for ADMIN role', () => {
       const { queryByText } = renderScreen(jest.fn(), undefined, {
         user: { ...CUSTOMER, role: 'ADMIN' },
         isAuthenticated: true,
       });
-      expect(queryByText('Nhắn tin với shop')).toBeNull();
+      expect(queryByText('Message the shop')).toBeNull();
     });
   });
 

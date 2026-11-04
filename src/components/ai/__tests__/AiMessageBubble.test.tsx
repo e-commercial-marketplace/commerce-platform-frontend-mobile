@@ -24,14 +24,14 @@ describe('AiMessageBubble', () => {
     const userMessage: ChatUiMessage = {
       id: 'msg-user-1',
       role: 'USER',
-      content: 'Chào trợ lý',
+      content: 'Hello assistant',
     };
 
     const { getByText, queryByText } = render(<AiMessageBubble message={userMessage} />);
 
-    expect(getByText('Chào trợ lý')).toBeTruthy();
+    expect(getByText('Hello assistant')).toBeTruthy();
     expect(queryByText('AI')).toBeNull();
-    expect(queryByText('Trả lời nhanh')).toBeNull();
+    expect(queryByText('Quick reply')).toBeNull();
   });
 
   it('renders failed state with retry button when isFailed is true', () => {
@@ -39,7 +39,7 @@ describe('AiMessageBubble', () => {
     const failedUserMessage: ChatUiMessage = {
       id: 'msg-user-failed',
       role: 'USER',
-      content: 'Câu hỏi bị lỗi mạng',
+      content: 'Question that hit a network error',
       isFailed: true,
     };
 
@@ -47,9 +47,9 @@ describe('AiMessageBubble', () => {
       <AiMessageBubble message={failedUserMessage} onRetry={onRetry} />,
     );
 
-    expect(getByText('Câu hỏi bị lỗi mạng')).toBeTruthy();
-    expect(getByText('Gửi không thành công')).toBeTruthy();
-    const retryButton = getByRole('button', { name: 'Thử lại gửi câu hỏi' });
+    expect(getByText('Question that hit a network error')).toBeTruthy();
+    expect(getByText('Failed to send')).toBeTruthy();
+    const retryButton = getByRole('button', { name: 'Retry sending question' });
     expect(retryButton).toBeTruthy();
 
     fireEvent.press(retryButton);
@@ -60,7 +60,7 @@ describe('AiMessageBubble', () => {
     const userMessageWithProducts: ChatUiMessage = {
       id: 'msg-user-2',
       role: 'USER',
-      content: 'Tìm tai nghe',
+      content: 'Find headphones',
       products: [sampleProduct],
     };
 
@@ -73,57 +73,57 @@ describe('AiMessageBubble', () => {
     const aiMessage: ChatUiMessage = {
       id: 'msg-ai-1',
       role: 'ASSISTANT',
-      content: 'Đây là câu trả lời từ AI.',
+      content: 'This is an answer from the AI.',
       answeredBy: 'AI',
     };
 
     const { getByText } = render(<AiMessageBubble message={aiMessage} />);
 
-    expect(getByText('Đây là câu trả lời từ AI.')).toBeTruthy();
+    expect(getByText('This is an answer from the AI.')).toBeTruthy();
     expect(getByText('AI')).toBeTruthy();
   });
 
-  it('renders assistant message with "Trả lời nhanh" indicator for RULES responses', () => {
+  it('renders assistant message with "Quick reply" indicator for RULES responses', () => {
     const rulesMessage: ChatUiMessage = {
       id: 'msg-rules-1',
       role: 'ASSISTANT',
-      content: 'Chính sách đổi trả trong 7 ngày.',
+      content: '7-day return policy.',
       answeredBy: 'RULES',
     };
 
     const { getByText } = render(<AiMessageBubble message={rulesMessage} />);
 
-    expect(getByText('Chính sách đổi trả trong 7 ngày.')).toBeTruthy();
-    expect(getByText('Trả lời nhanh')).toBeTruthy();
+    expect(getByText('7-day return policy.')).toBeTruthy();
+    expect(getByText('Quick reply')).toBeTruthy();
   });
 
   it('renders historical assistant message without any source tag when answeredBy is undefined', () => {
     const historicalMessage: ChatUiMessage = {
       id: 'msg-ai-hist',
       role: 'ASSISTANT',
-      content: 'Câu trả lời lịch sử trong quá khứ.',
+      content: 'A historical answer from the past.',
     };
 
     const { getByText, queryByText } = render(
       <AiMessageBubble message={historicalMessage} />,
     );
 
-    expect(getByText('Câu trả lời lịch sử trong quá khứ.')).toBeTruthy();
+    expect(getByText('A historical answer from the past.')).toBeTruthy();
     expect(queryByText('AI')).toBeNull();
-    expect(queryByText('Trả lời nhanh')).toBeNull();
+    expect(queryByText('Quick reply')).toBeNull();
   });
 
   it('renders long multi-paragraph assistant text cleanly', () => {
     const longMessage: ChatUiMessage = {
       id: 'msg-ai-long',
       role: 'ASSISTANT',
-      content: 'Đoạn 1: Giới thiệu sản phẩm.\n\nĐoạn 2: Tính năng nổi bật.\n\nĐoạn 3: Kết luận.',
+      content: 'Paragraph 1: Product introduction.\n\nParagraph 2: Key features.\n\nParagraph 3: Conclusion.',
       answeredBy: 'AI',
     };
 
     const { getByText } = render(<AiMessageBubble message={longMessage} />);
-    expect(getByText(/Đoạn 1: Giới thiệu sản phẩm/)).toBeTruthy();
-    expect(getByText(/Đoạn 3: Kết luận/)).toBeTruthy();
+    expect(getByText(/Paragraph 1: Product introduction/)).toBeTruthy();
+    expect(getByText(/Paragraph 3: Conclusion/)).toBeTruthy();
   });
 
   it('renders product cards in horizontal scroll row when assistant message has products', () => {
@@ -131,7 +131,7 @@ describe('AiMessageBubble', () => {
     const assistantWithProducts: ChatUiMessage = {
       id: 'msg-ai-prods',
       role: 'ASSISTANT',
-      content: 'Gợi ý cho bạn:',
+      content: 'Suggestions for you:',
       answeredBy: 'AI',
       products: [sampleProduct],
     };
@@ -142,7 +142,7 @@ describe('AiMessageBubble', () => {
 
     expect(getByText('Tai nghe Bluetooth Pro')).toBeTruthy();
     expect(getByText('1.500.000 ₫')).toBeTruthy();
-    expect(getByText('Chỉ còn 4')).toBeTruthy();
+    expect(getByText('4 left')).toBeTruthy();
 
     fireEvent.press(getByText('Tai nghe Bluetooth Pro'));
     expect(handleProductPress).toHaveBeenCalledWith(sampleProduct);
@@ -152,7 +152,7 @@ describe('AiMessageBubble', () => {
     const assistantEmptyProds: ChatUiMessage = {
       id: 'msg-ai-empty-prods',
       role: 'ASSISTANT',
-      content: 'Không có sản phẩm nào phù hợp.',
+      content: 'No matching products.',
       answeredBy: 'AI',
       products: [],
     };

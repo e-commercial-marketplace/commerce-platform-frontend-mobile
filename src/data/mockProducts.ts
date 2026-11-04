@@ -25,9 +25,9 @@ export const MOCK_PRODUCTS: Product[] = [
     image: require('../assets/products/iphone-15-pro.jpg'),
     rating: 4.8,
     reviewCount: 245,
-    category: 'Điện thoại',
+    category: 'Phones',
     description:
-      'Flagship của Apple với chip A17 Pro, camera 48MP và khung titan sang trọng. Hỗ trợ Action Button và USB-C tốc độ cao.',
+      'Apple flagship with the A17 Pro chip, a 48MP camera and a premium titanium frame. Supports the Action Button and high-speed USB-C.',
   },
   {
     id: 'samsung-galaxy-s24',
@@ -37,9 +37,9 @@ export const MOCK_PRODUCTS: Product[] = [
     image: require('../assets/products/samsung-galaxy-s24.png'),
     rating: 4.6,
     reviewCount: 182,
-    category: 'Điện thoại',
+    category: 'Phones',
     description:
-      'Màn hình AMOLED 120Hz, chip Exynos mạnh mẽ và hệ thống camera AI hỗ trợ chỉnh sửa ảnh chuyên nghiệp.',
+      'AMOLED 120Hz display, a powerful Exynos chip and an AI camera system that supports professional photo editing.',
   },
   {
     id: 'xiaomi-redmi-note-13',
@@ -48,9 +48,9 @@ export const MOCK_PRODUCTS: Product[] = [
     image: require('../assets/products/xiaomi-redmi-note-13.jpg'),
     rating: 4.5,
     reviewCount: 512,
-    category: 'Điện thoại',
+    category: 'Phones',
     description:
-      'Màn hình AMOLED 6.67 inch, sạc nhanh 33W và camera 108MP — lựa chọn tầm trang được ưa chuộng nhất.',
+      'A 6.67-inch AMOLED display, 33W fast charging and a 108MP camera - the most popular mid-range choice.',
   },
   {
     id: 'macbook-air-m3',
@@ -62,7 +62,7 @@ export const MOCK_PRODUCTS: Product[] = [
     reviewCount: 130,
     category: 'Laptop',
     description:
-      'Laptop mỏng nhẹ với chip Apple M3, màn hình Liquid Retina và thời lượng pin lên đến 18 giờ làm việc.',
+      'Thin and light laptop with the Apple M3 chip, a Liquid Retina display and up to 18 hours of battery life.',
   },
   {
     id: 'dell-xps-13',
@@ -73,7 +73,7 @@ export const MOCK_PRODUCTS: Product[] = [
     reviewCount: 89,
     category: 'Laptop',
     description:
-      'Ultrabook cao cấp với màn hình InfinityEdge, bàn phím thoải mái và hiệu năng mạnh cho công việc nặng.',
+      'Premium ultrabook with an InfinityEdge display, a comfortable keyboard and strong performance for heavy workloads.',
   },
   {
     id: 'asus-zenbook-14',
@@ -85,7 +85,7 @@ export const MOCK_PRODUCTS: Product[] = [
     reviewCount: 76,
     category: 'Laptop',
     description:
-      'Máy tính xách tay OLED mỏng nhẹ, cân bằng giữa hiệu năng và tính di động cho nhu cầu làm việc mọi lúc mọi nơi.',
+      'Thin and light OLED laptop that balances performance and portability for working anytime, anywhere.',
   },
   {
     id: 'sony-wh1000xm5',
@@ -97,7 +97,7 @@ export const MOCK_PRODUCTS: Product[] = [
     reviewCount: 340,
     category: 'Tai nghe',
     description:
-      'Tai nghe over-ear chống ồn chủ động hàng đầu, chất âm chi tiết và thời lượng pin lên tới 30 giờ.',
+      'Top-tier over-ear active noise-cancelling headphones with detailed sound and up to 30 hours of battery life.',
   },
   {
     id: 'airpods-pro-2',
@@ -108,7 +108,7 @@ export const MOCK_PRODUCTS: Product[] = [
     reviewCount: 410,
     category: 'Tai nghe',
     description:
-      'Tai nghe không dây chống ồn chủ động, hỗ trợ Spatial Audio và hộp sạc MagSafe có định vị Find My.',
+      'Wireless active noise-cancelling headphones with Spatial Audio support and a MagSafe charging case with Find My.',
   },
   {
     id: 'jbl-tune-770nc',
@@ -120,42 +120,42 @@ export const MOCK_PRODUCTS: Product[] = [
     reviewCount: 158,
     category: 'Tai nghe',
     description:
-      'Tai nghe không dây giá tốt với chống ồn thích ứng và thời lượng pin lên đến 70 giờ nghe nhạc.',
+      'Affordable wireless headphones with adaptive noise cancelling and up to 70 hours of music playback.',
   },
   {
     id: 'anker-65w-charger',
-    name: 'Sạc Anker 65W GaN',
+    name: 'Anker 65W GaN Charger',
     price: 990000,
     originalPrice: 1290000,
     image: require('../assets/products/anker-65w-charger.jpg'),
     rating: 4.7,
     reviewCount: 920,
-    category: 'Phụ kiện',
+    category: 'Accessories',
     description:
-      'Củ sạc GaN nhỏ gọn công suất 65W, sạc nhanh đồng thời laptop, điện thoại và máy tính bảng.',
+      'Compact 65W GaN charger that fast-charges a laptop, phone and tablet at the same time.',
   },
   {
     id: 'iphone-15-case',
-    name: 'Ốp lưng trong suốt iPhone 15',
+    name: 'iPhone 15 Clear Case',
     price: 290000,
     image: require('../assets/products/iphone-15-case.jpg'),
     rating: 4.3,
     reviewCount: 65,
-    category: 'Phụ kiện',
+    category: 'Accessories',
     description:
-      'Ốp lưng trong suốt chống sốc, ôm sát máy và hạn chế ố vàng sau thời gian dài sử dụng.',
+      'Shock-resistant clear case that fits snugly and resists yellowing after long use.',
   },
   {
     id: 'keychron-k8',
-    name: 'Bàn phím cơ Keychron K8',
+    name: 'Keychron K8 Mechanical Keyboard',
     price: 1890000,
     originalPrice: 2199000,
     image: require('../assets/products/keychron-k8.jpg'),
     rating: 4.6,
     reviewCount: 145,
-    category: 'Phụ kiện',
+    category: 'Accessories',
     description:
-      'Bàn phím cơ không dây layout TKL, hỗ trợ hot-swap switch và đèn RGB tùy chỉnh theo phong cách của bạn.',
+      'Wireless TKL-layout mechanical keyboard with hot-swap switches and RGB lighting you can customize to your style.',
   },
 ];
 

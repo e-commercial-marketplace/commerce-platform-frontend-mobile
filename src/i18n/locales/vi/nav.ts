@@ -21,6 +21,8 @@ export const nav = {
   forgotPassword: 'Quên mật khẩu',
   resetPassword: 'Đặt lại mật khẩu',
   changePassword: 'Đổi mật khẩu',
+  editProfile: 'Chỉnh sửa hồ sơ',
+  vouchers: 'Mã giảm giá',
   aiAssistant: 'Trợ lý AI',
   messages: 'Tin nhắn',
   chat: 'Trò chuyện',

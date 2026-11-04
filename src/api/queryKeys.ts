@@ -174,6 +174,7 @@ export const queryKeys = {
    */
   vouchers: {
     all: ['vouchers'] as const,
+    usable: () => ['vouchers', 'usable'] as const,
   },
   /**
    * Admin portal queries and mutations.

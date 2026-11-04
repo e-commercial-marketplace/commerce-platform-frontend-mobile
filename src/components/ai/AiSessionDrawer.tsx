@@ -6,7 +6,7 @@
  *
  * Contract:
  * - GET /api/v1/ai/sessions returns: { id, userId, createdAt }[]
- * - Deterministic date-based label: "Cuộc trò chuyện 30/10/2026, 08:30"
+ * - Deterministic date-based label: "Conversation 30/10/2026, 08:30"
  * - Does not display raw UUID prominently.
  * - Supports loading, error with retry, and empty states.
  */
@@ -87,7 +87,7 @@ export default function AiSessionDrawer({
           style={styles.backdropDismiss}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel={t('ai.drawerCloseA11y', 'Đóng lịch sử trò chuyện')}
+          accessibilityLabel={t('ai.drawerCloseA11y', 'Close conversation history')}
         />
 
         <SafeAreaView
@@ -98,7 +98,7 @@ export default function AiSessionDrawer({
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View style={styles.headerTitleWrap}>
               <Text style={[styles.headerTitle, { color: theme.text }]}>
-                {t('ai.drawerTitle', 'Lịch sử trò chuyện')}
+                {t('ai.drawerTitle', 'Conversation history')}
               </Text>
             </View>
 
@@ -113,10 +113,10 @@ export default function AiSessionDrawer({
                 ]}
                 onPress={onNewChat}
                 accessibilityRole="button"
-                accessibilityLabel={t('ai.newChatA11y', 'Đoạn chat mới')}
+                accessibilityLabel={t('ai.newChatA11y', 'New chat')}
               >
                 <Text style={[styles.newChatHeaderBtnText, { color: theme.primary }]}>
-                  {t('ai.newChatDrawerBtn', '＋ Đoạn chat mới')}
+                  {t('ai.newChatDrawerBtn', '＋ New chat')}
                 </Text>
               </Pressable>
 
@@ -127,7 +127,7 @@ export default function AiSessionDrawer({
                 ]}
                 onPress={onClose}
                 accessibilityRole="button"
-                accessibilityLabel="Đóng lịch sử"
+                accessibilityLabel="Close history"
               >
                 <Text style={[styles.closeBtnText, { color: theme.textSecondary }]}>✕</Text>
               </Pressable>
@@ -156,23 +156,23 @@ export default function AiSessionDrawer({
             <View style={styles.stateContainer}>
               <ActivityIndicator size="large" color={theme.primary} />
               <Text style={[styles.stateText, { color: theme.textSecondary }]}>
-                {t('ai.loadingHistory', 'Đang tải lịch sử...')}
+                {t('ai.loadingHistory', 'Loading history...')}
               </Text>
             </View>
           ) : isError ? (
             <View style={styles.stateContainer}>
               <Text style={styles.errorIcon}>⚠️</Text>
               <Text style={[styles.errorText, { color: theme.text }]}>
-                {t('ai.loadHistoryFailed', 'Không thể tải danh sách phiên trò chuyện.')}
+                {t('ai.loadHistoryFailed', 'Could not load the conversation sessions.')}
               </Text>
               <Pressable
                 style={[styles.retryBtn, { backgroundColor: theme.primary }]}
                 onPress={() => refetch()}
                 accessibilityRole="button"
-                accessibilityLabel={t('ai.retry', 'Thử lại')}
+                accessibilityLabel={t('ai.retry', 'Retry')}
               >
                 <Text style={[styles.retryBtnText, { color: theme.onPrimary }]}>
-                  {t('ai.retry', 'Thử lại')}
+                  {t('ai.retry', 'Retry')}
                 </Text>
               </Pressable>
             </View>
@@ -180,12 +180,12 @@ export default function AiSessionDrawer({
             <View style={styles.stateContainer}>
               <Text style={styles.emptyIcon}>💬</Text>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                {t('ai.emptyHistoryTitle', 'Chưa có cuộc trò chuyện nào.')}
+                {t('ai.emptyHistoryTitle', 'No conversations yet.')}
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
                 {t(
                   'ai.emptyHistorySubtitle',
-                  'Các cuộc trò chuyện của bạn sẽ được lưu tại đây.',
+                  'Your conversations will be saved here.',
                 )}
               </Text>
             </View>
@@ -198,7 +198,7 @@ export default function AiSessionDrawer({
                 const isActive = item.id === activeSessionId;
                 const isRestoring = item.id === restoringSessionId;
                 const dateLabel = formatSessionDate(item.createdAt);
-                const displayTitle = t('ai.sessionDatePrefix', `Cuộc trò chuyện ${dateLabel}`, {
+                const displayTitle = t('ai.sessionDatePrefix', `Conversation ${dateLabel}`, {
                   date: dateLabel,
                 });
 
@@ -263,7 +263,7 @@ export default function AiSessionDrawer({
                           ]}
                         >
                           <Text style={[styles.activeBadgeText, { color: theme.primary }]}>
-                            {t('ai.activeSession', 'Đang mở')}
+                            {t('ai.activeSession', 'Open')}
                           </Text>
                         </View>
                       ) : null}
