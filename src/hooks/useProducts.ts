@@ -60,3 +60,42 @@ export function useCategories() {
     queryFn: getCategories,
   });
 }
+
+
+/**
+ * Products from the same shop/seller, excluding the current product.
+ * Fetches up to 10 products from the seller to return up to 8 active products.
+ * Disabled when sellerId or currentProductId is missing.
+ */
+export function useSameShopProducts(sellerId?: string, currentProductId?: string) {
+  const hasValidSeller = Boolean(sellerId && sellerId.length > 0);
+  const hasValidProduct = Boolean(currentProductId && currentProductId.length > 0);
+
+  return useQuery({
+    queryKey: queryKeys.products.sameShop(sellerId ?? '', currentProductId ?? ''),
+    queryFn: async () => {
+      if (!sellerId) {
+        return [];
+      }
+      const data = await getProducts({ sellerId, page: 0, size: 10 });
+      const seen = new Set<string>();
+      return data.content
+        .map(mapProductSummaryToProduct)
+        .filter((item) => {
+          if (!item.id || item.id === currentProductId) {
+            return false;
+          }
+          if (item.active === false) {
+            return false;
+          }
+          if (seen.has(item.id)) {
+            return false;
+          }
+          seen.add(item.id);
+          return true;
+        })
+        .slice(0, 8);
+    },
+    enabled: hasValidSeller && hasValidProduct,
+  });
+}

@@ -25,4 +25,5 @@ export const product = {
   notFoundInCart: 'The product could not be found in your cart. Please try again.',
   sellerInfoNotFound: 'Seller information not found.',
   cannotOpenChat: 'Could not open conversation. Please try again.',
+  moreFromShop: 'More from this shop',
 };

@@ -71,6 +71,9 @@ export const queryKeys = {
     list: (filters: ProductListFilters = {}) => ['products', 'list', filters] as const,
     /** One product detail. */
     detail: (productId: string) => ['products', 'detail', productId] as const,
+    /** Products from the same shop/seller, scoped to sellerId and current product. */
+    sameShop: (sellerId: string, currentProductId: string) =>
+      ['products', 'sameShop', sellerId, currentProductId] as const,
   },
 
   /**

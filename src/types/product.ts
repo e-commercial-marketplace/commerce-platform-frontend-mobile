@@ -45,4 +45,6 @@ export type Product = {
   sellerId?: string;
   /** Available stock count when provided by the backend. */
   stock?: number;
+  /** Whether the product is actively listed for sale. */
+  active?: boolean;
 };
