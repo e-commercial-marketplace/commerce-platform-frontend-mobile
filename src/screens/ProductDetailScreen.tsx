@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toApiError } from '../api/errors';
 import Button from '../components/Button';
 import PriceDisplay from '../components/PriceDisplay';
-import ProductCard from '../components/ProductCard';
+import SameShopProductCard from '../components/SameShopProductCard';
 import ProductImage from '../components/ProductImage';
 import ProductReviews from '../components/ProductReviews';
 import Rating from '../components/Rating';
@@ -91,12 +91,12 @@ export default function ProductDetailScreen({
     return sameShopProducts.filter((p) => p.id !== productId && p.active !== false).slice(0, 8);
   }, [sameShopProducts, isSameShopError, productId]);
 
-  const productRows = useMemo(() => {
-    const rows: Product[][] = [];
-    for (let i = 0; i < displayedProducts.length; i += 2) {
-      rows.push(displayedProducts.slice(i, i + 2));
-    }
-    return rows;
+  const leftColumnProducts = useMemo(() => {
+    return displayedProducts.filter((_, index) => index % 2 === 0);
+  }, [displayedProducts]);
+
+  const rightColumnProducts = useMemo(() => {
+    return displayedProducts.filter((_, index) => index % 2 === 1);
   }, [displayedProducts]);
 
   useEffect(
@@ -574,19 +574,24 @@ export default function ProductDetailScreen({
                 {t('product.moreFromShop', 'More from this shop')}
               </Text>
               <View style={styles.sameShopGrid}>
-                {productRows.map((row, rowIndex) => (
-                  <View key={`same-shop-row-${rowIndex}`} style={styles.sameShopRow}>
-                    {row.map((item) => (
-                      <ProductCard
-                        key={item.id}
-                        product={item}
-                        viewMode="grid"
-                        onPress={handleSameShopProductPress}
-                      />
-                    ))}
-                    {row.length === 1 && <View style={styles.gridCardSpacer} />}
-                  </View>
-                ))}
+                <View style={styles.sameShopColumn} testID="same-shop-column-left">
+                  {leftColumnProducts.map((item) => (
+                    <SameShopProductCard
+                      key={item.id}
+                      product={item}
+                      onPress={handleSameShopProductPress}
+                    />
+                  ))}
+                </View>
+                <View style={styles.sameShopColumn} testID="same-shop-column-right">
+                  {rightColumnProducts.map((item) => (
+                    <SameShopProductCard
+                      key={item.id}
+                      product={item}
+                      onPress={handleSameShopProductPress}
+                    />
+                  ))}
+                </View>
               </View>
             </View>
           ) : null
@@ -883,14 +888,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   sameShopGrid: {
-    gap: spacing.sm,
-  },
-  sameShopRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+    alignItems: 'flex-start',
   },
-  gridCardSpacer: {
+  sameShopColumn: {
     flex: 1,
-    maxWidth: '50%',
+    gap: spacing.sm,
   },
 });

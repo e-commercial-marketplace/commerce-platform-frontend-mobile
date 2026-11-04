@@ -300,6 +300,129 @@ describe('ProductDetailScreen - More Products From Same Shop', () => {
     expect(mockNavigate).toHaveBeenCalledWith('ProductDetail', { productId: 'prod-rec-2' });
   });
 
+  describe('Grid Layout & Product Count Handling', () => {
+    it('handles 1 product correctly without empty placeholder cards', () => {
+      mockedUseSameShopProducts.mockReturnValue({
+        data: [RECOMMENDATIONS[0]],
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      const leftCol = getByTestId('same-shop-column-left');
+      const rightCol = getByTestId('same-shop-column-right');
+
+      expect(getByTestId('same-shop-card-prod-rec-1')).toBeTruthy();
+      expect(queryByTestId('same-shop-card-prod-rec-2')).toBeNull();
+
+      // Exactly 1 card rendered across columns
+      expect(leftCol.props.children).toHaveLength(1);
+      expect(rightCol.props.children).toHaveLength(0);
+    });
+
+    it('handles 2 products correctly in a 2-column layout', () => {
+      mockedUseSameShopProducts.mockReturnValue({
+        data: [RECOMMENDATIONS[0], RECOMMENDATIONS[1]],
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      const { getByTestId } = renderScreen();
+
+      const leftCol = getByTestId('same-shop-column-left');
+      const rightCol = getByTestId('same-shop-column-right');
+
+      expect(getByTestId('same-shop-card-prod-rec-1')).toBeTruthy();
+      expect(getByTestId('same-shop-card-prod-rec-2')).toBeTruthy();
+
+      expect(leftCol.props.children).toHaveLength(1);
+      expect(rightCol.props.children).toHaveLength(1);
+    });
+
+    it('handles 3 products (odd count) correctly without placeholder cards', () => {
+      mockedUseSameShopProducts.mockReturnValue({
+        data: [RECOMMENDATIONS[0], RECOMMENDATIONS[1], RECOMMENDATIONS[2]],
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      const { getByTestId } = renderScreen();
+
+      const leftCol = getByTestId('same-shop-column-left');
+      const rightCol = getByTestId('same-shop-column-right');
+
+      expect(getByTestId('same-shop-card-prod-rec-1')).toBeTruthy();
+      expect(getByTestId('same-shop-card-prod-rec-2')).toBeTruthy();
+      expect(getByTestId('same-shop-card-prod-rec-3')).toBeTruthy();
+
+      // Left column has 2 items (indices 0, 2), right has 1 item (index 1)
+      expect(leftCol.props.children).toHaveLength(2);
+      expect(rightCol.props.children).toHaveLength(1);
+    });
+
+    it('handles 8 products (max count) distributed evenly across 2 columns', () => {
+      const eightProducts: Product[] = Array.from({ length: 8 }, (_, i) => ({
+        id: `prod-rec-${i + 1}`,
+        name: `Product ${i + 1}`,
+        description: `Desc ${i + 1}`,
+        price: 100000 * (i + 1),
+        rating: 4.5,
+        reviewCount: 10,
+        category: 'Accessories',
+        image: 1,
+        sellerId: 'seller-abc',
+        stock: 10,
+        active: true,
+      }));
+
+      mockedUseSameShopProducts.mockReturnValue({
+        data: eightProducts,
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      const { getByTestId } = renderScreen();
+
+      const leftCol = getByTestId('same-shop-column-left');
+      const rightCol = getByTestId('same-shop-column-right');
+
+      // 4 in left column, 4 in right column
+      expect(leftCol.props.children).toHaveLength(4);
+      expect(rightCol.props.children).toHaveLength(4);
+
+      for (let i = 1; i <= 8; i++) {
+        expect(getByTestId(`same-shop-card-prod-rec-${i}`)).toBeTruthy();
+      }
+    });
+
+    it('never renders an empty placeholder card or spacer element', () => {
+      mockedUseSameShopProducts.mockReturnValue({
+        data: [RECOMMENDATIONS[0], RECOMMENDATIONS[1], RECOMMENDATIONS[2]],
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(queryByTestId('grid-card-spacer')).toBeNull();
+      expect(queryByTestId('same-shop-spacer')).toBeNull();
+      expect(queryByTestId('same-shop-placeholder')).toBeNull();
+
+      const leftCol = getByTestId('same-shop-column-left');
+      const rightCol = getByTestId('same-shop-column-right');
+
+      React.Children.forEach(leftCol.props.children, (child) => {
+        expect(child.props.product).toBeDefined();
+        expect(child.props.product.id).toBeDefined();
+      });
+      React.Children.forEach(rightCol.props.children, (child) => {
+        expect(child.props.product).toBeDefined();
+        expect(child.props.product.id).toBeDefined();
+      });
+    });
+  });
+
   describe('React Hook Order Stability (Regression Test)', () => {
     it('renders without hook-order errors across loading, loaded, and navigating to another product', () => {
       // 1. Initial render: Product is loading
