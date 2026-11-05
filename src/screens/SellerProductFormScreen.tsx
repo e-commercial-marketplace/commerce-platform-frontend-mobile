@@ -1,0 +1,1245 @@
+/**
+ * Seller Product Form Screen (Phase 4).
+ *
+ * Supports:
+ * - Create Mode: route.params.mode === 'create'
+ *   - Fields: Name, Description, Product Image, Price, Initial Stock, Category, Listed switch
+ *   - Submits via POST /api/v1/seller/products (useCreateSellerProduct)
+ * - Edit Mode: route.params.mode === 'edit' & route.params.productId
+ *   - Loads existing product via useSellerProduct(productId)
+ *   - Prefills: Name, Description, Product Image, Price, Category, Listed switch
+ *   - CRITICAL: Does NOT include editable stock (stock is managed separately from list)
+ *   - Submits via PATCH /api/v1/seller/products/{id} (useUpdateSellerProduct)
+ * - Category Selector via useCategories()
+ * - Validation matching backend invariants (image URL required when active=true, price > 0 max 2 dec, stock >= 0 integer)
+ * - Comprehensive states: Loading detail, 403 authorization blocked, 404 not found, generic error retry
+ */
+
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { toApiError } from '../api/errors';
+import ProductImage from '../components/ProductImage';
+import { colors, radii, spacing, typography } from '../constants/theme';
+import { useAppTheme } from '../theme';
+import { useAppLanguage } from '../i18n';
+import { useImageUpload } from '../hooks/useImageUpload';
+import { useCategories } from '../hooks/useProducts';
+import {
+  useCreateSellerProduct,
+  useSellerProduct,
+  useUpdateSellerProduct,
+} from '../hooks/useSellerProducts';
+import type { AppNavigatorScreenProps } from '../navigation/types';
+import type {
+  ProductCreateRequest,
+  ProductUpdateRequest,
+} from '../types/sellerProductApi';
+import { pickImage } from '../utils/imagePicker';
+
+type FormErrors = {
+  name?: string;
+  categoryId?: string;
+  price?: string;
+  stock?: string;
+  imageUrl?: string;
+};
+
+export default function SellerProductFormScreen({
+  route,
+  navigation,
+}: AppNavigatorScreenProps<'SellerProductForm'>) {
+  const { theme } = useAppTheme();
+  const { t } = useAppLanguage();
+  const isEdit = route.params.mode === 'edit';
+  const productId = isEdit ? route.params.productId : undefined;
+
+  // Category query
+  const {
+    data: categories = [],
+    isLoading: isLoadingCategories,
+    isError: isErrorCategories,
+    refetch: refetchCategories,
+  } = useCategories();
+
+  // Product detail query (edit mode only)
+  const {
+    data: productDetail,
+    isLoading: isLoadingDetail,
+    isError: isErrorDetail,
+    error: detailError,
+    refetch: refetchDetail,
+  } = useSellerProduct(productId, isEdit);
+
+  // Mutations
+  const createMutation = useCreateSellerProduct();
+  const updateMutation = useUpdateSellerProduct();
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const imageUpload = useImageUpload('PRODUCT');
+
+  // Form State
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  // Keep a stable object so ProductImage remembers which image failed to load.
+  const imageSource = useMemo(() => ({ uri: imageUrl }), [imageUrl]);
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [active, setActive] = useState(true);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Prefill form in edit mode once productDetail is loaded
+  useEffect(() => {
+    if (isEdit && productDetail && !hasInitialized) {
+      setName(productDetail.name ?? '');
+      setDescription(productDetail.description ?? '');
+      setImageUrl(productDetail.imageUrl ?? '');
+      setPrice(productDetail.price != null ? String(productDetail.price) : '');
+      setCategoryId(productDetail.category?.id ?? '');
+      setActive(productDetail.active ?? true);
+      setHasInitialized(true);
+    }
+  }, [isEdit, productDetail, hasInitialized]);
+
+  // Keyboard awareness & auto-scroll state
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
+  const fieldOffsets = useRef<Record<string, number>>({});
+  const activeFieldRef = useRef<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const handleFieldFocus = (fieldKey: string) => {
+    activeFieldRef.current = fieldKey;
+    const yOffset = fieldOffsets.current[fieldKey];
+    if (typeof yOffset === 'number' && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        y: Math.max(0, yOffset - spacing.md),
+        animated: true,
+      });
+    }
+  };
+
+  const handleFieldLayout = (fieldKey: string, y: number) => {
+    fieldOffsets.current[fieldKey] = y;
+  };
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const height = e.endCoordinates?.height ?? 0;
+      setKeyboardHeight(height);
+
+      // Re-scroll to the currently active field once keyboard is fully shown on Android
+      const currentField = activeFieldRef.current;
+      if (currentField) {
+        const yOffset = fieldOffsets.current[currentField];
+        if (typeof yOffset === 'number' && scrollViewRef.current) {
+          scrollViewRef.current.scrollTo({
+            y: Math.max(0, yOffset - spacing.md),
+            animated: true,
+          });
+        }
+      }
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+      activeFieldRef.current = null;
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Validation function
+  const validate = (): { isValid: boolean; validationErrors: FormErrors } => {
+    const validationErrors: FormErrors = {};
+
+    // 1. Name validation
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      validationErrors.name = t('seller.val_nameRequired', 'Product name is required');
+    } else if (trimmedName.length > 255) {
+      validationErrors.name = t(
+        'seller.val_nameMaxLength',
+        'Product name must not exceed 255 characters',
+      );
+    }
+
+    // 2. Category validation
+    if (!categoryId || categoryId.trim().length === 0) {
+      validationErrors.categoryId = t('seller.val_categoryRequired', 'Category is required');
+    }
+
+    // 3. Price validation
+    const trimmedPrice = price.trim();
+    if (trimmedPrice.length === 0) {
+      validationErrors.price = t('seller.val_priceRequired', 'Price is required');
+    } else {
+      const priceRegex = /^\d+(\.\d{1,2})?$/;
+      const numPrice = Number(trimmedPrice);
+      if (isNaN(numPrice) || !priceRegex.test(trimmedPrice)) {
+        if (!isNaN(numPrice) && numPrice <= 0) {
+          validationErrors.price = t('seller.val_pricePositive', 'Price must be greater than 0');
+        } else {
+          validationErrors.price = t(
+            'seller.val_priceFormat',
+            'Price must be a valid number with at most 2 decimal places',
+          );
+        }
+      } else if (numPrice <= 0) {
+        validationErrors.price = t('seller.val_pricePositive', 'Price must be greater than 0');
+      }
+    }
+
+    // 4. Stock validation (Create mode only)
+    if (!isEdit) {
+      const trimmedStock = stock.trim();
+      if (trimmedStock.length === 0) {
+        validationErrors.stock = t('seller.val_stockRequired', 'Initial stock is required');
+      } else {
+        const stockRegex = /^\d+$/;
+        const numStock = Number(trimmedStock);
+        if (!stockRegex.test(trimmedStock) || isNaN(numStock) || numStock < 0) {
+          validationErrors.stock = t(
+            'seller.val_stockNonNegative',
+            'Stock must be a non-negative integer (0 or greater)',
+          );
+        }
+      }
+    }
+
+    // 5. Product image validation
+    if (active && imageUrl.trim().length === 0) {
+      validationErrors.imageUrl = t(
+        'seller.val_productImageRequired',
+        'Product image is required when listing product as active',
+      );
+    }
+
+    return {
+      isValid: Object.keys(validationErrors).length === 0,
+      validationErrors,
+    };
+  };
+
+  // Pick an image and upload right away; imageUrl only changes when the upload succeeds, so an error never loses the old image.
+  const handlePickImage = async () => {
+    if (imageUpload.isPending || isSubmitting) {
+      return;
+    }
+    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
+    try {
+      const picked = await pickImage();
+      if (picked != null) {
+        setImageUrl(await imageUpload.mutateAsync(picked));
+      }
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, imageUrl: toApiError(error).message }));
+    }
+  };
+
+  // Submit handler
+  const handleSubmit = async () => {
+    if (isSubmitting || imageUpload.isPending) {
+      return;
+    }
+
+    const { isValid, validationErrors } = validate();
+    if (!isValid) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setErrors({});
+    const trimmedName = name.trim();
+    const trimmedDesc = description.trim();
+    const trimmedImg = imageUrl.trim();
+    const normalizedPrice = price.trim();
+
+    try {
+      if (isEdit) {
+        if (!productId) {
+          Alert.alert(t('seller.productIdMissingTitle', 'Error'), t('seller.productIdMissingMsg', 'Product ID is missing.'));
+          return;
+        }
+
+        const updatePayload: ProductUpdateRequest = {
+          name: trimmedName,
+          description: trimmedDesc.length > 0 ? trimmedDesc : undefined,
+          imageUrl: trimmedImg.length > 0 ? trimmedImg : undefined,
+          price: normalizedPrice,
+          categoryId,
+          active,
+        };
+
+        await updateMutation.mutateAsync({
+          id: productId,
+          payload: updatePayload,
+        });
+
+        Alert.alert(
+          t('seller.productUpdatedTitle', 'Product Updated'),
+          t('seller.productUpdatedMsg', `"${trimmedName}" has been updated successfully.`, {
+            name: trimmedName,
+          }),
+        );
+        navigation.goBack();
+      } else {
+        const createPayload: ProductCreateRequest = {
+          name: trimmedName,
+          description: trimmedDesc.length > 0 ? trimmedDesc : undefined,
+          imageUrl: trimmedImg.length > 0 ? trimmedImg : undefined,
+          price: normalizedPrice,
+          stock: parseInt(stock.trim(), 10),
+          categoryId,
+          active,
+        };
+
+        await createMutation.mutateAsync(createPayload);
+
+        Alert.alert(
+          t('seller.productCreatedTitle', 'Product Created'),
+          t('seller.productCreatedMsg', `"${trimmedName}" has been created successfully.`, {
+            name: trimmedName,
+          }),
+        );
+        navigation.goBack();
+      }
+    } catch (err) {
+      const apiError = toApiError(err);
+      Alert.alert(
+        isEdit ? t('seller.updateFailed', 'Update Failed') : t('seller.createFailed', 'Create Failed'),
+        apiError.message,
+      );
+    }
+  };
+
+  // ==========================================
+  // EDIT MODE: LOADING & ERROR STATES
+  // ==========================================
+  if (isEdit && isLoadingDetail) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="seller-product-form-loading"
+      >
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('seller.editProductTitle', 'Edit Product')}
+          </Text>
+        </View>
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t('seller.loadingProducts', 'Loading product details…')}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isEdit && isErrorDetail) {
+    const apiError = toApiError(detailError);
+
+    // 403 Forbidden / Not Approved
+    if (apiError.status === 403) {
+      return (
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: theme.background }]}
+          edges={['top']}
+          testID="seller-product-form-403"
+        >
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: theme.surface, borderBottomColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('seller.editProductTitle', 'Edit Product')}
+            </Text>
+          </View>
+          <View style={styles.centerState}>
+            <Text style={[styles.errorTitle, { color: theme.danger }]}>
+              {t('seller.accessRestrictedTitle', 'Access Denied')}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {t(
+                'seller.accessRestrictedSubtitle',
+                'You are not authorized to edit this product, or your seller account is not approved.',
+              )}
+            </Text>
+            <View style={styles.buttonRow}>
+              <Pressable
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
+                onPress={() => void refetchDetail()}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading product"
+                testID="detail-retry-button"
+              >
+                <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                  {t('seller.retry', 'Retry')}
+                </Text>
+              </Pressable>
+              {navigation.canGoBack?.() ? (
+                <Pressable
+                  style={[
+                    styles.retryButton,
+                    styles.secondaryButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
+                  onPress={() => navigation.goBack()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                  testID="detail-back-button"
+                >
+                  <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                    {t('orders.cancel', 'Go Back')}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    // 404 Not Found
+    if (apiError.status === 404) {
+      return (
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: theme.background }]}
+          edges={['top']}
+          testID="seller-product-form-404"
+        >
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: theme.surface, borderBottomColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('seller.editProductTitle', 'Edit Product')}
+            </Text>
+          </View>
+          <View style={styles.centerState}>
+            <Text style={[styles.errorTitle, { color: theme.danger }]}>
+              {t('seller.noProductsTitle', 'Product Not Found')}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {t(
+                'seller.noProductsSubtitle',
+                'The product you are trying to edit could not be found.',
+              )}
+            </Text>
+            {navigation.canGoBack?.() ? (
+              <Pressable
+                style={[styles.retryButton, { backgroundColor: theme.primary }]}
+                onPress={() => navigation.goBack()}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                testID="detail-back-button"
+              >
+                <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                  {t('orders.cancel', 'Go Back')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    // Generic error
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="seller-product-form-error"
+      >
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {t('seller.editProductTitle', 'Edit Product')}
+          </Text>
+        </View>
+        <View style={styles.centerState}>
+          <Text style={[styles.errorTitle, { color: theme.danger }]}>
+            {t('seller.loadProductsFailed', "Couldn't load product")}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{apiError.message}</Text>
+          <View style={styles.buttonRow}>
+            <Pressable
+              style={[styles.retryButton, { backgroundColor: theme.primary }]}
+              onPress={() => void refetchDetail()}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading product"
+              testID="detail-retry-button"
+            >
+              <Text style={[styles.retryButtonText, { color: theme.onPrimary }]}>
+                {t('seller.retry', 'Retry')}
+              </Text>
+            </Pressable>
+            {navigation.canGoBack?.() ? (
+              <Pressable
+                style={[
+                  styles.retryButton,
+                  styles.secondaryButton,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
+                onPress={() => navigation.goBack()}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                testID="detail-back-button"
+              >
+                <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                  {t('orders.cancel', 'Go Back')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={[styles.keyboardAvoidingView, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+        testID="seller-product-form-screen"
+      >
+        {/* Header Bar */}
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.title, { color: theme.text }]}>
+            {isEdit
+              ? t('seller.editProductTitle', 'Edit Product')
+              : t('seller.createProductTitle', 'New Product')}
+          </Text>
+          {navigation.canGoBack?.() ? (
+            <Pressable
+              onPress={() => navigation.goBack()}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              style={styles.cancelHeaderButton}
+              testID="header-cancel-button"
+            >
+              <Text style={[styles.cancelHeaderText, { color: theme.textSecondary }]}>
+                {t('seller.cancel', 'Cancel')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingBottom: Math.max(spacing.xxl, keyboardHeight + spacing.xl),
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={true}
+        >
+          {/* Product Name */}
+          <View
+            style={styles.field}
+            onLayout={(e) => handleFieldLayout('name', e.nativeEvent.layout.y)}
+          >
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.productNameLabel', 'Product Name *')}
+            </Text>
+            <View
+              style={[
+                styles.inputShell,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                errors.name != null && [styles.inputShellError, { borderColor: theme.danger }],
+              ]}
+            >
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                value={name}
+                onFocus={() => handleFieldFocus('name')}
+                onChangeText={(val) => {
+                  setName(val);
+                  if (errors.name) {
+                    setErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
+                placeholder={t('seller.productNamePlaceholder', 'e.g. Mechanical Gaming Keyboard')}
+                placeholderTextColor={theme.textSecondary}
+                accessibilityLabel="Product Name"
+                testID="name-input"
+              />
+            </View>
+            {errors.name ? (
+              <Text style={[styles.errorText, { color: theme.danger }]} testID="name-error-text">
+                {errors.name}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Category Selector */}
+          <View
+            style={styles.field}
+            onLayout={(e) => handleFieldLayout('category', e.nativeEvent.layout.y)}
+          >
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.categoryLabel', 'Category *')}
+            </Text>
+            {isLoadingCategories ? (
+              <View style={styles.categoryLoading} testID="categories-loading">
+                <ActivityIndicator size="small" color={theme.primary} />
+                <Text style={[styles.categorySubtext, { color: theme.textSecondary }]}>
+                  {t('seller.categoryPlaceholder', 'Loading categories…')}
+                </Text>
+              </View>
+            ) : isErrorCategories ? (
+              <View style={styles.categoryError} testID="categories-error">
+                <Text style={[styles.errorText, { color: theme.danger }]}>
+                  {t('seller.val_categoryRequired', 'Failed to load categories')}
+                </Text>
+                <Pressable
+                  onPress={() => void refetchCategories()}
+                  style={[
+                    styles.categoryRetryButton,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading categories"
+                  testID="categories-retry-button"
+                >
+                  <Text style={[styles.categoryRetryText, { color: theme.primary }]}>
+                    {t('seller.retry', 'Retry')}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.categoryChipsContainer} testID="categories-container">
+                {categories.map((cat) => {
+                  const isSelected = categoryId === cat.id;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => {
+                        setCategoryId(cat.id);
+                        if (errors.categoryId) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            categoryId: undefined,
+                          }));
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select category ${cat.name}`}
+                      accessibilityState={{ selected: isSelected }}
+                      testID={`category-option-${cat.id}`}
+                      style={[
+                        styles.categoryChip,
+                        { backgroundColor: theme.surface, borderColor: theme.border },
+                        isSelected && [
+                          styles.categoryChipSelected,
+                          { backgroundColor: theme.primary, borderColor: theme.primary },
+                        ],
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          { color: theme.text },
+                          isSelected && [
+                            styles.categoryChipTextSelected,
+                            { color: theme.onPrimary },
+                          ],
+                        ]}
+                      >
+                        {cat.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+            {errors.categoryId ? (
+              <Text
+                style={[styles.errorText, { color: theme.danger }]}
+                testID="category-error-text"
+              >
+                {errors.categoryId}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Price */}
+          <View
+            style={styles.field}
+            onLayout={(e) => handleFieldLayout('price', e.nativeEvent.layout.y)}
+          >
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.priceLabel', 'Price (VND) *')}
+            </Text>
+            <View
+              style={[
+                styles.inputShell,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                errors.price != null && [styles.inputShellError, { borderColor: theme.danger }],
+              ]}
+            >
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                value={price}
+                onFocus={() => handleFieldFocus('price')}
+                onChangeText={(val) => {
+                  setPrice(val);
+                  if (errors.price) {
+                    setErrors((prev) => ({ ...prev, price: undefined }));
+                  }
+                }}
+                placeholder={t('seller.pricePlaceholder', 'e.g. 250000')}
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                accessibilityLabel="Price"
+                testID="price-input"
+              />
+            </View>
+            {errors.price ? (
+              <Text style={[styles.errorText, { color: theme.danger }]} testID="price-error-text">
+                {errors.price}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Stock — Create Mode Only */}
+          {!isEdit ? (
+            <View
+              style={styles.field}
+              onLayout={(e) => handleFieldLayout('stock', e.nativeEvent.layout.y)}
+            >
+              <Text style={[styles.label, { color: theme.text }]}>
+                {t('seller.initialStockLabel', 'Initial Stock *')}
+              </Text>
+              <View
+                style={[
+                  styles.inputShell,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  errors.stock != null && [styles.inputShellError, { borderColor: theme.danger }],
+                ]}
+              >
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  value={stock}
+                  onFocus={() => handleFieldFocus('stock')}
+                  onChangeText={(val) => {
+                    setStock(val);
+                    if (errors.stock) {
+                      setErrors((prev) => ({ ...prev, stock: undefined }));
+                    }
+                  }}
+                  placeholder={t('seller.initialStockPlaceholder', 'e.g. 10')}
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="number-pad"
+                  accessibilityLabel="Initial Stock"
+                  testID="stock-input"
+                />
+              </View>
+              {errors.stock ? (
+                <Text
+                  style={[styles.errorText, { color: theme.danger }]}
+                  testID="stock-error-text"
+                >
+                  {errors.stock}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.stockNoticeBox,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+              onLayout={(e) => handleFieldLayout('stock', e.nativeEvent.layout.y)}
+              testID="stock-notice-box"
+            >
+              <Text style={[styles.stockNoticeTitle, { color: theme.text }]}>
+                {t('seller.stockCount', `Current Stock: ${productDetail?.stock ?? 0}`, {
+                  count: productDetail?.stock ?? 0,
+                })}
+              </Text>
+              <Text style={[styles.stockNoticeText, { color: theme.textSecondary }]}>
+                {t('seller.stockEditNote', 'Stock is managed separately from My Products.')}
+              </Text>
+            </View>
+          )}
+
+          {/* Product image */}
+          <View
+            style={styles.field}
+            onLayout={(e) => handleFieldLayout('imageUrl', e.nativeEvent.layout.y)}
+          >
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.productImageLabel', 'Product Image')} {active ? '*' : '(Optional)'}
+            </Text>
+            {imageUrl.length > 0 ? (
+              <ProductImage source={imageSource} style={styles.imagePreview} testID="image-preview" />
+            ) : null}
+            <Pressable
+              style={[
+                styles.imageButton,
+                { borderColor: theme.primary },
+                errors.imageUrl != null && [styles.inputShellError, { borderColor: theme.danger }],
+                imageUpload.isPending && styles.submitButtonDisabled,
+              ]}
+              onPress={() => {
+                void handlePickImage();
+              }}
+              disabled={imageUpload.isPending || isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel={
+                imageUrl.length > 0
+                  ? t('seller.changeImage', 'Change image')
+                  : t('seller.chooseImage', 'Choose image')
+              }
+              accessibilityState={{ busy: imageUpload.isPending }}
+              testID="pick-image-button"
+            >
+              {imageUpload.isPending ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Text style={[styles.imageButtonText, { color: theme.primary }]}>
+                  {imageUrl.length > 0
+                    ? t('seller.changeImage', 'Change image')
+                    : t('seller.chooseImage', 'Choose image')}
+                </Text>
+              )}
+            </Pressable>
+            {errors.imageUrl ? (
+              <Text
+                style={[styles.errorText, { color: theme.danger }]}
+                testID="image-url-error-text"
+              >
+                {errors.imageUrl}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Description */}
+          <View
+            style={styles.field}
+            onLayout={(e) => handleFieldLayout('description', e.nativeEvent.layout.y)}
+          >
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t('seller.descriptionLabel', 'Description (Optional)')}
+            </Text>
+            <View
+              style={[
+                styles.inputShell,
+                styles.multilineShell,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
+              <TextInput
+                style={[styles.input, styles.multilineInput, { color: theme.text }]}
+                value={description}
+                onFocus={() => handleFieldFocus('description')}
+                onChangeText={setDescription}
+                placeholder={t(
+                  'seller.descriptionPlaceholder',
+                  'Enter detailed description of your product...',
+                )}
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                accessibilityLabel="Description"
+                testID="description-input"
+              />
+            </View>
+          </View>
+
+          {/* Active / Listed Switch */}
+          <View
+            style={[
+              styles.switchRow,
+              { borderTopColor: theme.border, borderBottomColor: theme.border },
+            ]}
+            onLayout={(e) => handleFieldLayout('active', e.nativeEvent.layout.y)}
+          >
+            <View style={styles.switchInfo}>
+              <Text style={[styles.label, { color: theme.text }]}>
+                {t('seller.statusLabel', 'Product Visibility')}
+              </Text>
+              <Text style={[styles.switchSubtext, { color: theme.textSecondary }]}>
+                {active
+                  ? t('seller.statusActive', 'Listed: visible on marketplace')
+                  : t('seller.statusInactive', 'Unlisted: hidden from buyers')}
+              </Text>
+            </View>
+            <Switch
+              value={active}
+              onValueChange={(val) => {
+                setActive(val);
+                if (errors.imageUrl) {
+                  setErrors((prev) => ({ ...prev, imageUrl: undefined }));
+                }
+              }}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={theme.onPrimary}
+              accessibilityLabel="Toggle product visibility"
+              testID="active-switch"
+            />
+          </View>
+
+          {/* Submit Button */}
+          <View
+            style={styles.submitContainer}
+            onLayout={(e) => handleFieldLayout('submit', e.nativeEvent.layout.y)}
+          >
+            <Pressable
+              style={[
+                styles.submitButton,
+                { backgroundColor: theme.primary },
+                (isSubmitting || imageUpload.isPending) && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={isSubmitting || imageUpload.isPending}
+              accessibilityRole="button"
+              accessibilityLabel={isEdit ? 'Save Changes' : 'Create Product'}
+              testID="submit-button"
+            >
+              {isSubmitting ? (
+                <View style={styles.submitButtonRow}>
+                  <ActivityIndicator size="small" color={theme.onPrimary} />
+                  <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+                    {isEdit
+                      ? t('seller.saving', 'Saving…')
+                      : t('seller.saving', 'Creating…')}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.submitButtonText, { color: theme.onPrimary }]}>
+                  {isEdit
+                    ? t('seller.saveChanges', 'Save Changes')
+                    : t('seller.publishProduct', 'Create Product')}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  title: {
+    fontSize: typography.xxl,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  cancelHeaderButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  cancelHeaderText: {
+    fontSize: typography.md,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  scrollContent: {
+    padding: spacing.md,
+    gap: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  field: {
+    gap: spacing.xs,
+  },
+  label: {
+    fontSize: typography.md,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  inputShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    minHeight: 48,
+  },
+  inputShellError: {
+    borderColor: colors.danger,
+  },
+  input: {
+    flex: 1,
+    fontSize: typography.base,
+    color: colors.text,
+    paddingVertical: spacing.sm,
+  },
+  multilineShell: {
+    minHeight: 100,
+    alignItems: 'flex-start',
+    paddingVertical: spacing.sm,
+  },
+  multilineInput: {
+    minHeight: 84,
+  },
+  errorText: {
+    fontSize: typography.sm,
+    color: colors.danger,
+    marginTop: 2,
+  },
+  categoryLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  categorySubtext: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+  },
+  categoryError: {
+    paddingVertical: spacing.xs,
+    gap: spacing.xs,
+  },
+  categoryRetryButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryRetryText: {
+    fontSize: typography.sm,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  categoryChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  categoryChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    fontSize: typography.md,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  categoryChipTextSelected: {
+    color: colors.onPrimary,
+    fontWeight: '600',
+  },
+  stockNoticeBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: 4,
+  },
+  stockNoticeTitle: {
+    fontSize: typography.base,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  stockNoticeText: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginVertical: spacing.xs,
+  },
+  switchInfo: {
+    flex: 1,
+    gap: 2,
+    marginRight: spacing.md,
+  },
+  switchSubtext: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+  },
+  submitContainer: {
+    marginTop: spacing.sm,
+  },
+  submitButton: {
+    minHeight: 50,
+    backgroundColor: colors.primary,
+    borderRadius: radii.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  imagePreview: {
+    width: 120,
+    height: 120,
+    borderRadius: radii.md,
+    marginBottom: spacing.sm,
+  },
+  imageButton: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonText: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  submitButtonText: {
+    color: colors.onPrimary,
+    fontSize: typography.base,
+    fontWeight: '700',
+  },
+  centerState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    minHeight: 280,
+  },
+  loadingText: {
+    marginTop: spacing.sm,
+    fontSize: typography.base,
+    color: colors.textSecondary,
+  },
+  errorTitle: {
+    fontSize: typography.lg,
+    fontWeight: '700',
+    color: colors.danger,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: typography.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radii.sm,
+  },
+  retryButtonText: {
+    color: colors.onPrimary,
+    fontSize: typography.base,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secondaryButtonText: {
+    color: colors.text,
+    fontSize: typography.base,
+    fontWeight: '600',
+  },
+});

@@ -1,29 +1,52 @@
 {
   "expo": {
-    "name": "E-Commerce Marketplace",
+    "name": "Adora",
     "slug": "ecommerce-marketplace",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "scheme": "ecommercemarketplace",
+    "icon": "./assets/logo.png",
+    "scheme": [
+      "ecommercemarketplace",
+      "marketplace"
+    ],
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.ecommercialmarketplace.app",
+      "versionCode": 2,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#02BCCC",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-secure-store"]
+    "plugins": [
+      "expo-secure-store",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập ảnh để bạn chọn ảnh sản phẩm và gửi ảnh trong chat.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a8a37a0b-3972-4213-a2c8-f68a4b029ba9"
+      }
+    },
+    "owner": "nhutdoan-codes-team"
   }
 }

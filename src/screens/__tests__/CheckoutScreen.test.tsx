@@ -1,0 +1,1150 @@
+/**
+ * Tests for the COD Checkout screen.
+ *
+ * Real TanStack Query + AuthContext are used; only the Cart HTTP service and
+ * the order checkout service are mocked. This keeps assertions on the public
+ * flow: live cart resolution, address validation, exact request body, success
+ * state and stale-cart recovery.
+ */
+
+import React, { type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+
+import { ApiError } from '../../api/errors';
+import { AuthContext, type AuthContextValue } from '../../context/AuthContext';
+import type { AppNavigatorScreenProps } from '../../navigation/types';
+import type { User } from '../../types/auth';
+import type { CartDto, CartItemDto } from '../../types/cartApi';
+import type { OrderResponse } from '../../types/orderApi';
+import type { VoucherResponse } from '../../types/voucherApi';
+import { getCurrentUser } from '../../services/authService';
+import { getCart } from '../../services/cartService';
+import { createOrder } from '../../services/orderService';
+import { getUsableVouchers, validateVoucher } from '../../services/voucherService';
+import * as WebBrowser from 'expo-web-browser';
+
+import { queryKeys } from '../../api/queryKeys';
+import { createVnpayPayment } from '../../services/paymentService';
+import CheckoutScreen from '../CheckoutScreen';
+
+jest.mock('../../services/authService', () => ({
+  ...jest.requireActual('../../services/authService'),
+  getCurrentUser: jest.fn(),
+}));
+
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(),
+}));
+
+jest.mock('../../services/paymentService', () => ({
+  createVnpayPayment: jest.fn(),
+}));
+
+const mockedOpenAuthSessionAsync = WebBrowser.openAuthSessionAsync as jest.MockedFunction<
+  typeof WebBrowser.openAuthSessionAsync
+>;
+const mockedCreateVnpayPayment = createVnpayPayment as jest.MockedFunction<
+  typeof createVnpayPayment
+>;
+
+jest.mock('../../services/cartService', () => ({
+  getCart: jest.fn(),
+  addCartItem: jest.fn(),
+  updateCartItem: jest.fn(),
+  deleteCartItem: jest.fn(),
+}));
+
+jest.mock('../../services/orderService', () => ({
+  createOrder: jest.fn(),
+}));
+
+jest.mock('../../services/voucherService', () => ({
+  validateVoucher: jest.fn(),
+  getUsableVouchers: jest.fn(),
+}));
+
+const mockedGetCart = getCart as jest.MockedFunction<typeof getCart>;
+const mockedGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
+const mockedCreateOrder = createOrder as jest.MockedFunction<typeof createOrder>;
+const mockedValidateVoucher = validateVoucher as jest.MockedFunction<typeof validateVoucher>;
+const mockedGetUsableVouchers = getUsableVouchers as jest.MockedFunction<typeof getUsableVouchers>;
+
+const usablePage = (percents: number[]) => ({
+  content: percents.map((discountPercent) => ({
+    code: `SALE${discountPercent}`,
+    description: `${discountPercent}% off`,
+    discountPercent,
+    validTo: '2030-01-01T00:00:00Z',
+  })),
+  page: 0,
+  size: 20,
+  totalElements: percents.length,
+  totalPages: 1,
+});
+
+type Navigation = AppNavigatorScreenProps<'Checkout'>['navigation'];
+
+const CUSTOMER: User = {
+  id: 'u-1',
+  email: 'customer@example.com',
+  name: 'Customer',
+  role: 'CUSTOMER',
+};
+
+function makeUser(role: User['role']): User {
+  return { ...CUSTOMER, id: `u-${role}`, role };
+}
+
+function makeAuth(user: User | null): AuthContextValue {
+  return {
+    user,
+    isAuthenticated: user != null,
+    isRestoring: false,
+    login: jest.fn(async () => {}),
+    register: jest.fn(async () => {}),
+    logout: jest.fn(async () => {}),
+    changePassword: jest.fn(async () => {}),
+    updateUserName: jest.fn(),
+  };
+}
+
+function makeLine(id: string, overrides: Partial<CartItemDto> = {}): CartItemDto {
+  return {
+    id,
+    productId: `p-${id}`,
+    name: `Product ${id}`,
+    imageUrl: null,
+    unitPrice: '100000.00',
+    quantity: 1,
+    lineTotal: '100000.00',
+    availableStock: 5,
+    active: true,
+    sellerId: 's-1',
+    createdAt: '2026-10-01T10:00:00Z',
+    ...overrides,
+  };
+}
+
+function makeCart(items: CartItemDto[], subtotal = '0.00'): CartDto {
+  return { items, subtotal };
+}
+
+const ORDER: OrderResponse = {
+  id: 'order-123',
+  status: 'PENDING',
+  paymentStatus: 'PENDING',
+  paymentMethod: 'COD',
+  paymentUrl: null,
+  createdAt: '2026-10-23T10:00:00Z',
+  shippingAddress: '12 Main Street',
+  shippingFee: '0.00',
+  discountAmount: '0.00',
+  totalAmount: '123456.00',
+  voucherCode: null,
+  shipments: [],
+  items: [
+    {
+      id: 'order-item-1',
+      orderId: 'order-123',
+      productId: 'p-a',
+      productName: 'Product a',
+      unitPrice: '100000.00',
+      quantity: 1,
+      status: 'PENDING',
+      sellerId: 's-1',
+    },
+  ],
+};
+
+const VNPAY_ORDER: OrderResponse = {
+  ...ORDER,
+  paymentMethod: 'VNPAY',
+  paymentUrl: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Token=abc',
+};
+
+const VOUCHER_10: VoucherResponse = {
+  code: 'WELCOME10',
+  description: '10% discount on entire order',
+  discountPercent: 10,
+  validFrom: '2026-01-01T00:00:00Z',
+  validTo: '2027-01-01T00:00:00Z',
+  usageLimit: 1000,
+  timesUsed: 0,
+};
+
+const ORDER_WITH_VOUCHER: OrderResponse = {
+  ...ORDER,
+  discountAmount: '15000.00',
+  totalAmount: '135000.00',
+  voucherCode: 'WELCOME10',
+};
+
+function makeClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false, gcTime: Infinity },
+    },
+  });
+}
+
+function makeNavigation(): Navigation {
+  return { navigate: jest.fn() } as unknown as Navigation;
+}
+
+function renderScreen(
+  user: User | null,
+  cartItemIds: string[] = ['a'],
+  navigation: Navigation = makeNavigation(),
+) {
+  const client = makeClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>
+      <AuthContext.Provider value={makeAuth(user)}>{children}</AuthContext.Provider>
+    </QueryClientProvider>
+  );
+
+  const Wrapper = wrapper;
+  const result = render(
+    <Wrapper>
+      <CheckoutScreen
+        navigation={navigation}
+        route={
+          {
+            key: 'Checkout',
+            name: 'Checkout',
+            params: { cartItemIds },
+          } as never
+        }
+      />
+    </Wrapper>,
+  );
+
+  return { client, navigation, ...result };
+}
+
+async function renderReady(
+  cartItemIds: string[] = ['a'],
+  user: User | null = CUSTOMER,
+  navigation: Navigation = makeNavigation(),
+) {
+  const view = renderScreen(user, cartItemIds, navigation);
+  await view.findByText('Selected items');
+  return view;
+}
+
+async function fillAddress(view: ReturnType<typeof renderScreen>, value: string) {
+  fireEvent.changeText(await view.findByLabelText('Shipping address'), value);
+}
+
+async function enterVoucher(view: ReturnType<typeof renderScreen>, value: string) {
+  fireEvent.changeText(await view.findByLabelText('Voucher code input'), value);
+}
+
+describe('CheckoutScreen', () => {
+  beforeEach(() => {
+    mockedGetCart.mockReset();
+    mockedGetCurrentUser.mockReset();
+    mockedGetCurrentUser.mockResolvedValue({ ...CUSTOMER, phone: null, address: null });
+    mockedCreateOrder.mockReset();
+    mockedValidateVoucher.mockReset();
+    mockedGetUsableVouchers.mockReset();
+    mockedGetUsableVouchers.mockResolvedValue(usablePage([]));
+    mockedOpenAuthSessionAsync.mockReset();
+    mockedCreateVnpayPayment.mockReset();
+    mockedGetCart.mockResolvedValue(
+      makeCart([
+        makeLine('a', { name: 'Phone', lineTotal: '100000.00' }),
+        makeLine('b', { name: 'Case', lineTotal: '50000.00' }),
+      ]),
+    );
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  });
+
+  it('renders selected items, COD, shipping fee/discount and the preview total', async () => {
+    const view = await renderReady(['a', 'b']);
+
+    expect(view.getByText('Phone')).toBeTruthy();
+    expect(view.getByText('Case')).toBeTruthy();
+    expect(view.getByText('Cash on Delivery (COD)')).toBeTruthy();
+    expect(view.getAllByText('150.000 ₫').length).toBeGreaterThanOrEqual(1);
+    expect(view.getAllByText('0 ₫')).toHaveLength(2);
+    expect(view.getByText('VNPay')).toBeTruthy();
+    expect(view.queryByText('Voucher')).toBeNull();
+  });
+
+  it('requires a non-blank shipping address', async () => {
+    const view = await renderReady();
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(await view.findByText('Shipping address is required.')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects a whitespace-only shipping address', async () => {
+    const view = await renderReady();
+    await fillAddress(view, '   \n  ');
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(await view.findByText('Shipping address is required.')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects meaningless punctuation addresses without letters', async () => {
+    for (const value of ['', '!!!', '---', '...']) {
+      const local = renderScreen(CUSTOMER, ['a']);
+      await local.findByText('Selected items');
+      await fillAddress(local, value);
+      fireEvent.press(local.getByLabelText('Place Order'));
+      if (value.trim().length === 0) {
+        expect(await local.findByText('Shipping address is required.')).toBeTruthy();
+      } else {
+        expect(
+          await local.findByText(
+            value.trim().length < 5
+              ? 'Shipping address must be at least 5 characters.'
+              : 'Shipping address must contain letters.',
+          ),
+        ).toBeTruthy();
+      }
+      expect(mockedCreateOrder).not.toHaveBeenCalled();
+      mockedCreateOrder.mockReset();
+    }
+  });
+
+  it('rejects addresses with fewer than 5 trimmed characters or without letters', async () => {
+    const view = await renderReady();
+
+    await fillAddress(view, '1234');
+    fireEvent.press(view.getByLabelText('Place Order'));
+    expect(await view.findByText('Shipping address must be at least 5 characters.')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+
+    await fillAddress(view, '12345');
+    fireEvent.press(view.getByLabelText('Place Order'));
+    expect(await view.findByText('Shipping address must contain letters.')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+
+    const view2 = renderScreen(CUSTOMER, ['a']);
+    await view2.findByText('Selected items');
+    await fillAddress(view2, '12/3');
+    fireEvent.press(view2.getByLabelText('Place Order'));
+    expect(await view2.findByText('Shipping address must be at least 5 characters.')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('accepts valid Vietnamese addresses with numbers, punctuation and trimming', async () => {
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view = await renderReady();
+
+    await fillAddress(view, '  District 1  ');
+    fireEvent.press(view.getByLabelText('Place Order'));
+    await waitFor(() =>
+      expect(mockedCreateOrder).toHaveBeenCalledWith({
+        cartItemIds: ['a'],
+        shippingAddress: 'District 1',
+        paymentMethod: 'COD',
+      }),
+    );
+
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view2 = renderScreen(CUSTOMER, ['a']);
+    await view2.findByText('Selected items');
+    await fillAddress(view2, '12 Main Street');
+    fireEvent.press(view2.getByLabelText('Place Order'));
+    await waitFor(() =>
+      expect(mockedCreateOrder).toHaveBeenLastCalledWith({
+        cartItemIds: ['a'],
+        shippingAddress: '12 Main Street',
+        paymentMethod: 'COD',
+      }),
+    );
+
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view3 = renderScreen(CUSTOMER, ['a']);
+    await view3.findByText('Selected items');
+    await fillAddress(view3, '12/5 Main Street, District 1');
+    fireEvent.press(view3.getByLabelText('Place Order'));
+    await waitFor(() =>
+      expect(mockedCreateOrder).toHaveBeenLastCalledWith({
+        cartItemIds: ['a'],
+        shippingAddress: '12/5 Main Street, District 1',
+        paymentMethod: 'COD',
+      }),
+    );
+
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view4 = renderScreen(CUSTOMER, ['a']);
+    await view4.findByText('Selected items');
+    await fillAddress(view4, 'University Dormitory');
+    fireEvent.press(view4.getByLabelText('Place Order'));
+    await waitFor(() =>
+      expect(mockedCreateOrder).toHaveBeenLastCalledWith({
+        cartItemIds: ['a'],
+        shippingAddress: 'University Dormitory',
+        paymentMethod: 'COD',
+      }),
+    );
+  });
+
+  it('rejects an address longer than 1000 characters', async () => {
+    const view = await renderReady();
+    await fillAddress(view, 'x'.repeat(1001));
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(
+      await view.findByText('Shipping address must not exceed 1000 characters.'),
+    ).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('submits exactly the selected ids, trimmed address and COD', async () => {
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view = await renderReady(['a', 'b']);
+    await fillAddress(view, '  12 Main Street  ');
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    await waitFor(() =>
+      expect(mockedCreateOrder).toHaveBeenCalledWith({
+        cartItemIds: ['a', 'b'],
+        shippingAddress: '12 Main Street',
+        paymentMethod: 'COD',
+      }),
+    );
+  });
+
+  it('disables Place Order while pending and prevents duplicate submission', async () => {
+    let resolveOrder: (order: OrderResponse) => void = () => {};
+    mockedCreateOrder.mockReturnValue(
+      new Promise<OrderResponse>((resolve) => {
+        resolveOrder = resolve;
+      }),
+    );
+    const view = await renderReady();
+    await fillAddress(view, '12 Main Street');
+
+    const button = view.getByLabelText('Place Order');
+    fireEvent.press(button);
+    fireEvent.press(button);
+
+    expect((await view.findByLabelText('Place Order')).props.accessibilityState).toMatchObject({
+      busy: true,
+      disabled: true,
+    });
+    expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveOrder(ORDER);
+    });
+    expect(await view.findByText('Order placed successfully')).toBeTruthy();
+  });
+
+  it('shows the backend total and PENDING statuses after success', async () => {
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view = await renderReady();
+    await fillAddress(view, '12 Main Street');
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(await view.findByText('Order placed successfully')).toBeTruthy();
+    expect(view.getByText('order-123')).toBeTruthy();
+    expect(view.getByText('Cash on delivery (COD)')).toBeTruthy();
+    expect(view.getAllByText('Pending')).toHaveLength(2);
+    expect(view.getByText('123.456 ₫')).toBeTruthy();
+    expect(view.queryByText('PAID')).toBeNull();
+    expect(view.queryByText('Paid')).toBeNull();
+    expect(view.queryByText('Completed')).toBeNull();
+    expect(view.queryByText('Delivered')).toBeNull();
+    expect(view.getByText('12 Main Street')).toBeTruthy();
+  });
+
+  it('continues shopping to Home after success', async () => {
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const navigation = makeNavigation();
+    const view = await renderReady(['a'], CUSTOMER, navigation);
+    await fillAddress(view, '12 Main Street');
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    fireEvent.press(await view.findByLabelText('Continue Shopping'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('Main', { screen: 'Home' });
+  });
+
+  it('shows backend shippingAddress field errors without parsing the message', async () => {
+    mockedCreateOrder.mockRejectedValue(
+      new ApiError('Validation failed', 'VALIDATION_ERROR', 400, {
+        shippingAddress: 'Address is too long from server',
+      }),
+    );
+    const view = await renderReady();
+    await fillAddress(view, '12 Main Street');
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(await view.findByText('Validation failed')).toBeTruthy();
+    expect(view.getByText('Address is too long from server')).toBeTruthy();
+  });
+
+  it.each([
+    ['CART_ITEM_NOT_FOUND', 'Cart item not found'],
+    ['PRODUCT_INACTIVE', 'Product is no longer available'],
+    ['INSUFFICIENT_STOCK', 'Not enough stock'],
+  ])('recovers from a stale cart on %s and refetches Cart', async (code, message) => {
+    mockedCreateOrder.mockRejectedValue(new ApiError(message, code, code === 'INSUFFICIENT_STOCK' ? 409 : 400));
+    const view = await renderReady();
+    await fillAddress(view, '12 Main Street');
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(await view.findByText('Your cart changed')).toBeTruthy();
+    expect(view.getByText(message)).toBeTruthy();
+    expect(view.getByLabelText('Back to Cart')).toBeTruthy();
+    await waitFor(() => expect(mockedGetCart).toHaveBeenCalledTimes(2));
+    expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to submit when a route id no longer resolves to an available line', async () => {
+    const view = renderScreen(CUSTOMER, ['missing']);
+
+    expect(await view.findByText('Your cart changed')).toBeTruthy();
+    expect(view.queryByLabelText('Place Order')).toBeNull();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('refuses to submit a selected line that became unavailable', async () => {
+    mockedGetCart.mockResolvedValue(
+      makeCart([makeLine('a', { name: 'Phone', active: false })]),
+    );
+    const view = renderScreen(CUSTOMER, ['a']);
+
+    expect(await view.findByText('Your cart changed')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('invalidates/refetches Cart after a successful order', async () => {
+    mockedGetCart
+      .mockResolvedValueOnce(makeCart([makeLine('a', { name: 'Phone' })]))
+      .mockResolvedValue(makeCart([]));
+    mockedCreateOrder.mockResolvedValue(ORDER);
+    const view = await renderReady(['a']);
+    await fillAddress(view, '12 Main Street');
+
+    fireEvent.press(view.getByLabelText('Place Order'));
+
+    expect(await view.findByText('Order placed successfully')).toBeTruthy();
+    await waitFor(() => expect(mockedGetCart).toHaveBeenCalledTimes(2));
+  });
+
+  it('prompts guests to sign in and never calls checkout', async () => {
+    const view = renderScreen(null);
+    expect(await view.findByText('Sign in to checkout')).toBeTruthy();
+    expect(mockedCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it.each(['SELLER', 'ADMIN'] as const)(
+    'blocks %s accounts from checkout',
+    async (role) => {
+      const view = renderScreen(makeUser(role));
+      expect(await view.findByText('Customer accounts only')).toBeTruthy();
+      expect(mockedCreateOrder).not.toHaveBeenCalled();
+    },
+  );
+
+  describe('Checkout voucher validation & application', () => {
+    it('renders voucher input field, Apply button, and platform voucher title', async () => {
+      const view = await renderReady(['a', 'b']);
+
+      expect(view.getByText('Platform voucher')).toBeTruthy();
+      expect(view.getByLabelText('Voucher code input')).toBeTruthy();
+      expect(view.getByLabelText('Apply voucher')).toBeTruthy();
+    });
+
+    it('shows error when Apply is pressed with empty or whitespace-only code without network call', async () => {
+      const view = await renderReady(['a', 'b']);
+
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Please enter a voucher code.')).toBeTruthy();
+      expect(mockedValidateVoucher).not.toHaveBeenCalled();
+
+      await enterVoucher(view, '   ');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Please enter a voucher code.')).toBeTruthy();
+      expect(mockedValidateVoucher).not.toHaveBeenCalled();
+    });
+
+    it('validates voucher with trimmed code and updates discount and total preview', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady(['a', 'b']); // Subtotal = 150.000 ₫
+
+      await enterVoucher(view, '  welcome10  ');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+
+      await waitFor(() => {
+        expect(mockedValidateVoucher).toHaveBeenCalledWith('welcome10');
+      });
+
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+      expect(view.getByText('-10%')).toBeTruthy();
+      expect(view.getByText('10% discount on entire order')).toBeTruthy();
+      expect(view.getByLabelText('Remove voucher')).toBeTruthy();
+
+      // Order summary discount preview: 150000 * 10% = 15000 ₫
+      // Estimated total: 150000 - 15000 = 135000 ₫
+      expect(view.getByText('-15.000 ₫')).toBeTruthy();
+      expect(view.getByText('135.000 ₫')).toBeTruthy();
+    });
+
+    it('removes applied voucher when Remove is pressed and restores summary', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+
+      fireEvent.press(view.getByLabelText('Remove voucher'));
+
+      expect(await view.findByLabelText('Voucher code input')).toBeTruthy();
+      expect(view.queryByText('WELCOME10')).toBeNull();
+
+      expect(view.getAllByText('150.000 ₫').length).toBeGreaterThanOrEqual(1);
+      expect(view.getAllByText('0 ₫')).toHaveLength(2);
+      expect(mockedValidateVoucher).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['RESOURCE_NOT_FOUND', 404, 'Voucher code not found. Please check and try again.'],
+      ['VOUCHER_EXPIRED', 409, 'This voucher is not active at this time.'],
+      ['VOUCHER_EXHAUSTED', 409, 'This voucher has reached its usage limit.'],
+    ])('displays friendly error message for %s error', async (code, status, expectedMessage) => {
+      mockedValidateVoucher.mockRejectedValue(new ApiError(expectedMessage, code, status));
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'TESTCODE');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+
+      expect(await view.findByText(expectedMessage)).toBeTruthy();
+      expect(view.queryByText('TESTCODE')).toBeNull();
+      expect(view.getAllByText('150.000 ₫').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('handles 401 and 403 errors when validating voucher', async () => {
+      mockedValidateVoucher.mockRejectedValue(new ApiError('Unauthorized', 'UNAUTHORIZED', 401));
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'TESTCODE');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Please sign in to apply vouchers.')).toBeTruthy();
+
+      mockedValidateVoucher.mockRejectedValue(new ApiError('Forbidden', 'FORBIDDEN', 403));
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('Vouchers are available for customer accounts only.')).toBeTruthy();
+    });
+
+    it('submits checkout request with canonical voucherCode when voucher is applied', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      mockedCreateOrder.mockResolvedValue(ORDER_WITH_VOUCHER);
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'welcome10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      await waitFor(() =>
+        expect(mockedCreateOrder).toHaveBeenCalledWith({
+          cartItemIds: ['a', 'b'],
+          shippingAddress: '12 Main Street',
+          paymentMethod: 'COD',
+          voucherCode: 'WELCOME10',
+        }),
+      );
+    });
+
+    it('submits checkout request with voucherCode undefined when no voucher applied', async () => {
+      mockedCreateOrder.mockResolvedValue(ORDER);
+      const view = await renderReady(['a']);
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      await waitFor(() =>
+        expect(mockedCreateOrder).toHaveBeenCalledWith({
+          cartItemIds: ['a'],
+          shippingAddress: '12 Main Street',
+          paymentMethod: 'COD',
+          voucherCode: undefined,
+        }),
+      );
+    });
+
+    it('displays authoritative voucher code, discount amount and total in order confirmation', async () => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      mockedCreateOrder.mockResolvedValue(ORDER_WITH_VOUCHER);
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      expect(await view.findByText('Order placed successfully')).toBeTruthy();
+      expect(view.getByText('order-123')).toBeTruthy();
+      expect(view.getByText('Voucher')).toBeTruthy();
+      expect(view.getByText('WELCOME10')).toBeTruthy();
+      expect(view.getByText('-15.000 ₫')).toBeTruthy();
+      expect(view.getByText('135.000 ₫')).toBeTruthy();
+    });
+
+    it.each([
+      ['VOUCHER_EXHAUSTED', 'This voucher has reached its usage limit. Please try another or continue without a voucher.'],
+      ['VOUCHER_EXPIRED', 'This voucher is no longer active. Please try another or continue without a voucher.'],
+    ])('clears voucher and shows error without automatic retry on checkout error %s', async (code, message) => {
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      mockedCreateOrder.mockRejectedValue(new ApiError(message, code, 409));
+      const view = await renderReady(['a', 'b']);
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+      expect(await view.findByText('WELCOME10')).toBeTruthy();
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      expect(await view.findByText(message)).toBeTruthy();
+      expect(view.queryByText('WELCOME10')).toBeNull();
+      expect(view.getByLabelText('Voucher code input')).toBeTruthy();
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+      expect(view.getByLabelText('Place Order')).toBeTruthy();
+    });
+  });
+  describe('VNPay payment integration', () => {
+    it('defaults to COD with radio selected and Place Order button', async () => {
+      const view = await renderReady(['a']);
+
+      const codRadio = view.getByLabelText('Cash on Delivery (COD)');
+      const vnpayRadio = view.getByLabelText('VNPay');
+
+      expect(codRadio.props.accessibilityState.checked).toBe(true);
+      expect(vnpayRadio.props.accessibilityState.checked).toBe(false);
+      expect(view.getByLabelText('Place Order')).toBeTruthy();
+      expect(view.getByText('Pay when you receive your order.')).toBeTruthy();
+      expect(view.getByText('Pay securely online through VNPay.')).toBeTruthy();
+    });
+
+    it('switches payment method when VNPay radio is selected and updates submit button', async () => {
+      const view = await renderReady(['a']);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+
+      const codRadio = view.getByLabelText('Cash on Delivery (COD)');
+      const vnpayRadio = view.getByLabelText('VNPay');
+
+      expect(codRadio.props.accessibilityState.checked).toBe(false);
+      expect(vnpayRadio.props.accessibilityState.checked).toBe(true);
+      expect(view.getByLabelText('Proceed to VNPay')).toBeTruthy();
+      expect(view.queryByLabelText('Place Order')).toBeNull();
+
+      fireEvent.press(view.getByLabelText('Cash on Delivery (COD)'));
+      expect(codRadio.props.accessibilityState.checked).toBe(true);
+      expect(vnpayRadio.props.accessibilityState.checked).toBe(false);
+      expect(view.getByLabelText('Place Order')).toBeTruthy();
+    });
+
+    it('submits checkout with paymentMethod: VNPAY and launches WebBrowser with returned paymentUrl and marketplace:// scheme', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123&status=COMPLETED',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(mockedCreateOrder).toHaveBeenCalledWith({
+          cartItemIds: ['a'],
+          shippingAddress: '12 Main Street',
+          paymentMethod: 'VNPAY',
+          voucherCode: undefined,
+        });
+      });
+
+      expect(mockedCreateVnpayPayment).not.toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(mockedOpenAuthSessionAsync).toHaveBeenCalledWith(
+          VNPAY_ORDER.paymentUrl,
+          'marketplace://payment-result',
+        );
+      });
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'COMPLETED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with FAILED hint when redirect url has status=FAILED', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123&status=FAILED',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with INVALID hint when redirect url has status=INVALID', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123&status=INVALID',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'INVALID',
+        });
+      });
+    });
+
+    it('defaults paymentHint to COMPLETED if redirect url has no status param', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'marketplace://payment-result?orderId=order-123',
+      });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'COMPLETED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with CANCELLED hint when user cancels browser session', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'cancel' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'CANCELLED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with CANCELLED hint when browser session is dismissed', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'dismiss' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'CANCELLED',
+        });
+      });
+    });
+
+    it('navigates to OrderDetail with FAILED hint when WebBrowser.openAuthSessionAsync rejects', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockRejectedValue(new Error('Browser not supported'));
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles missing paymentUrl without calling browser or placing duplicate order', async () => {
+      mockedCreateOrder.mockResolvedValue({ ...VNPAY_ORDER, paymentUrl: null });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+
+      expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles whitespace-only paymentUrl without calling browser or placing duplicate order', async () => {
+      mockedCreateOrder.mockResolvedValue({ ...VNPAY_ORDER, paymentUrl: '    ' });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(navigation.navigate).toHaveBeenCalledWith('OrderDetail', {
+          orderId: 'order-123',
+          paymentHint: 'FAILED',
+        });
+      });
+
+      expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it('invalidates order detail and order lists queries during VNPay checkout flow', async () => {
+      mockedCreateOrder.mockResolvedValue(VNPAY_ORDER);
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'cancel' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+      const invalidateSpy = jest.spyOn(view.client, 'invalidateQueries');
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Proceed to VNPay'));
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: queryKeys.orders.detail('order-123'),
+        });
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: queryKeys.orders.lists,
+        });
+      });
+    });
+
+    it('prevents duplicate submission on rapid double tap for VNPay', async () => {
+      let resolveOrder!: (value: OrderResponse) => void;
+      mockedCreateOrder.mockReturnValue(
+        new Promise((resolve) => {
+          resolveOrder = resolve;
+        }),
+      );
+      mockedOpenAuthSessionAsync.mockResolvedValue({ type: 'cancel' as any });
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(view.getByLabelText('VNPay'));
+      await fillAddress(view, '12 Main Street');
+
+      const submitBtn = view.getByLabelText('Proceed to VNPay');
+      fireEvent.press(submitBtn);
+      fireEvent.press(submitBtn);
+
+      expect((await view.findByLabelText('Proceed to VNPay')).props.accessibilityState).toMatchObject({
+        busy: true,
+        disabled: true,
+      });
+      expect(mockedCreateOrder).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveOrder(VNPAY_ORDER);
+      });
+
+      await waitFor(() => {
+        expect(mockedOpenAuthSessionAsync).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('COD checkout never launches WebBrowser and uses inline success screen', async () => {
+      mockedCreateOrder.mockResolvedValue(ORDER);
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      await fillAddress(view, '12 Main Street');
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      expect(await view.findByText('Order placed successfully')).toBeTruthy();
+      expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+      expect(navigation.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('voucher suggestions', () => {
+    it('keeps the highest percent first and marks only the first as the best choice', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30, 20, 10, 5]));
+      const view = await renderReady();
+
+      const first = await view.findByLabelText('Best choice. Apply voucher SALE30');
+      expect(first).toBeTruthy();
+      expect(view.getByLabelText('Apply voucher SALE20')).toBeTruthy();
+      expect(view.getByLabelText('Apply voucher SALE10')).toBeTruthy();
+      expect(view.queryByLabelText('Apply voucher SALE5')).toBeNull();
+      expect(view.getAllByText('Best choice')).toHaveLength(1);
+      expect(mockedValidateVoucher).not.toHaveBeenCalled();
+    });
+
+    it('applies a suggestion through the normal validation', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30]));
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady();
+
+      fireEvent.press(await view.findByLabelText('Best choice. Apply voucher SALE30'));
+
+      await waitFor(() => expect(mockedValidateVoucher).toHaveBeenCalledWith('SALE30'));
+    });
+
+    it('shows the usual error when a suggested code has just run out', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30]));
+      mockedValidateVoucher.mockRejectedValue(new ApiError('used up', 'VOUCHER_EXHAUSTED', 409));
+      const view = await renderReady();
+
+      fireEvent.press(await view.findByLabelText('Best choice. Apply voucher SALE30'));
+
+      expect(await view.findByText('This voucher has reached its usage limit.')).toBeTruthy();
+    });
+
+    it('opens the full list', async () => {
+      mockedGetUsableVouchers.mockResolvedValue(usablePage([30]));
+      const navigation = makeNavigation();
+      const view = await renderReady(['a'], CUSTOMER, navigation);
+
+      fireEvent.press(await view.findByLabelText('View all vouchers'));
+
+      expect(navigation.navigate).toHaveBeenCalledWith('Vouchers');
+    });
+
+    it('hides suggestions when the list fails and manual entry still works', async () => {
+      mockedGetUsableVouchers.mockRejectedValue(new Error('offline'));
+      mockedValidateVoucher.mockResolvedValue(VOUCHER_10);
+      const view = await renderReady();
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(view.queryByLabelText('View all vouchers')).toBeNull();
+
+      await enterVoucher(view, 'WELCOME10');
+      fireEvent.press(view.getByLabelText('Apply voucher'));
+
+      await waitFor(() => expect(mockedValidateVoucher).toHaveBeenCalledWith('WELCOME10'));
+    });
+  });
+
+  describe('saved address option', () => {
+    const SAVED = '12 Main Street, District 1, Metropolis';
+    const saved = () => mockedGetCurrentUser.mockResolvedValue({ ...CUSTOMER, phone: null, address: SAVED });
+
+    it('shows the full saved address but does not select it by default', async () => {
+      saved();
+      const view = await renderReady();
+
+      const option = await view.findByLabelText(`Use my saved address: ${SAVED}`);
+      expect(view.getByText(SAVED)).toBeTruthy();
+      expect(option.props.accessibilityState.checked).toBe(false);
+      expect(view.getByLabelText('Enter a different address').props.accessibilityState.checked).toBe(true);
+      expect(view.getByLabelText('Shipping address')).toBeTruthy();
+    });
+
+    it('orders to the saved address once chosen', async () => {
+      saved();
+      mockedCreateOrder.mockResolvedValue(ORDER);
+      const view = await renderReady();
+
+      fireEvent.press(await view.findByLabelText(`Use my saved address: ${SAVED}`));
+      expect(view.queryByLabelText('Shipping address')).toBeNull();
+      fireEvent.press(view.getByLabelText('Place Order'));
+
+      await waitFor(() =>
+        expect(mockedCreateOrder).toHaveBeenCalledWith(expect.objectContaining({ shippingAddress: SAVED })),
+      );
+    });
+
+    it('keeps the typed address when switching back and forth', async () => {
+      saved();
+      const view = await renderReady();
+
+      await fillAddress(view, '99 Park Avenue, Springfield');
+      fireEvent.press(await view.findByLabelText(`Use my saved address: ${SAVED}`));
+      fireEvent.press(view.getByLabelText('Enter a different address'));
+
+      expect(view.getByDisplayValue('99 Park Avenue, Springfield')).toBeTruthy();
+    });
+
+    it('has no option without a saved address', async () => {
+      const view = await renderReady();
+      await waitFor(() => expect(mockedGetCurrentUser).toHaveBeenCalled());
+
+      expect(view.queryByLabelText('Enter a different address')).toBeNull();
+      expect(view.getByLabelText('Shipping address')).toBeTruthy();
+    });
+
+    it('still allows manual entry when the profile fails to load', async () => {
+      mockedGetCurrentUser.mockRejectedValue(new Error('offline'));
+      const view = await renderReady();
+      await waitFor(() => expect(mockedGetCurrentUser).toHaveBeenCalled());
+
+      expect(view.queryByLabelText('Enter a different address')).toBeNull();
+      expect(view.getByLabelText('Shipping address')).toBeTruthy();
+    });
+  });
+});

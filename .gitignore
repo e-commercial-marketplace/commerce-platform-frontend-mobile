@@ -2,6 +2,7 @@ node_modules/
 .expo/
 dist/
 web-build/
+coverage/
 
 .env
 .env.*
@@ -11,3 +12,5 @@ web-build/
 .vscode/
 .DS_Store
 Thumbs.db
+
+android/

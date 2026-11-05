@@ -1,0 +1,103 @@
+/**
+ * Authentication domain types, matching the backend DTOs exactly
+ * (RegisterRequest, LoginRequest, RefreshTokenRequest, AuthResponse and
+ * UserSummaryResponse). Field names are kept identical to the wire format so
+ * no mapping layer is needed; the password never becomes part of User.
+ */
+
+/** Roles defined by the backend Role enum. */
+export type Role = 'CUSTOMER' | 'SELLER' | 'ADMIN';
+
+/** UserSummaryResponse returned by auth endpoints and GET /users/me. */
+export type User = {
+  /** UUID string assigned by the backend. */
+  id: string;
+  email: string;
+  /** Display name; the backend field is named `name`. */
+  name: string;
+  role: Role;
+};
+
+/** UserProfileResponse of GET and PATCH /users/me: adds contact info compared with User. */
+export type UserProfile = User & {
+  /** Phone number; null when not set. */
+  phone: string | null;
+  /** Address; null when not set. */
+  address: string | null;
+};
+
+/** Body of PATCH /users/me. A field that is not sent stays unchanged; an empty string clears phone or address. */
+export type UpdateProfileRequest = {
+  name?: string;
+  phone?: string;
+  address?: string;
+};
+
+/** Body of POST /auth/login. */
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+/**
+ * Registration input collected by the app. Confirm-password is a UI-only
+ * check and is never sent; role defaults to CUSTOMER if not specified.
+ */
+export type RegisterInput = {
+  name: string;
+  email: string;
+  password: string;
+  role?: Role;
+};
+
+/** Body of POST /auth/register (role is always CUSTOMER for this app). */
+export type RegisterRequest = {
+  email: string;
+  password: string;
+  name: string;
+  role: Role;
+};
+
+/** Body of POST /auth/refresh and POST /auth/logout. */
+export type RefreshRequest = {
+  refreshToken: string;
+};
+
+/** Token pair persisted in SecureStore. */
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+/** AuthResponse data returned by register/login/refresh. */
+export type AuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  /** Access token lifetime in seconds (backend: 900 by default). */
+  expiresIn: number;
+  user: User;
+};
+
+/** Body of POST /auth/password/forgot. */
+export type ForgotPasswordRequest = {
+  email: string;
+};
+
+/**
+ * Body of POST /auth/password/reset.
+ * confirmPassword is validated in the UI and never sent to the backend.
+ */
+export type ResetPasswordRequest = {
+  email: string;
+  code: string;
+  newPassword: string;
+};
+
+/**
+ * Body of PATCH /users/me/password.
+ * confirmPassword is validated in the UI and never sent to the backend.
+ */
+export type ChangePasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
+};
