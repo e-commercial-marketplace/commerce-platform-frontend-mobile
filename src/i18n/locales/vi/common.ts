@@ -30,4 +30,5 @@ export const common = {
   clear: 'Xóa',
   noDataDescription: 'Không tìm thấy kết quả nào phù hợp.',
   retryAction: 'Thử lại ngay',
+  signIn: 'Đăng nhập',
 };

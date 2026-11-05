@@ -105,17 +105,9 @@ export function AppI18nProvider({
 
   const t = useCallback(
     (key: string, defaultValue?: string, options?: Record<string, unknown>): string => {
-      const translated = options ? i18nTranslate(key, options) : i18nTranslate(key);
-      if (translated && translated !== key) {
-        return translated;
-      }
-      let fallback = defaultValue ?? key;
-      if (options) {
-        for (const [k, v] of Object.entries(options)) {
-          fallback = fallback.replace(new RegExp(`{{${k}}}`, 'g'), String(v));
-        }
-      }
-      return fallback;
+      // Missing keys come back without their namespace, so comparing the result with `key` cannot detect
+      // them. Handing the fallback to i18next also interpolates it.
+      return String(i18nTranslate(key, { ...options, defaultValue: defaultValue ?? key }));
     },
     [i18nTranslate],
   );

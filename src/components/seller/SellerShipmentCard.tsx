@@ -267,16 +267,22 @@ export default function SellerShipmentCard({
       >
         <View style={styles.itemsHeader}>
           <Text style={[styles.itemsCountText, { color: theme.textSecondary }]}>
-            Bundled Items ({shipment.items?.length ?? 0} line{shipment.items?.length === 1 ? '' : 's'}, {totalQuantity} pcs)
+            {t(
+              'seller.bundledItemsSummary',
+              `Bundled Items (${shipment.items?.length ?? 0} line${shipment.items?.length === 1 ? '' : 's'}, ${totalQuantity} pcs)`,
+              { lines: shipment.items?.length ?? 0, pieces: totalQuantity },
+            )}
           </Text>
         </View>
 
         {(shipment.items ?? []).map((item) => (
           <View key={item.orderItemId} style={styles.itemRow}>
             <Text style={[styles.itemRef, { color: theme.text }]}>
-              Item #{item.orderItemId.slice(0, 8)}
+              {t('seller.itemReference', `Item #${item.orderItemId.slice(0, 8)}`, { id: item.orderItemId.slice(0, 8) })}
             </Text>
-            <Text style={[styles.itemQty, { color: theme.textSecondary }]}>Qty: {item.quantity}</Text>
+            <Text style={[styles.itemQty, { color: theme.textSecondary }]}>
+              {t('seller.itemQuantity', `Qty: ${item.quantity}`, { quantity: item.quantity })}
+            </Text>
           </View>
         ))}
       </View>
@@ -286,6 +292,8 @@ export default function SellerShipmentCard({
         <View style={[styles.actionsFooter, { borderTopColor: theme.border }]}>
           {allowedNext.map((target) => {
             const config = ACTION_CONFIGS[target] ?? { label: target };
+            const actionLabel = t(`seller.shipmentAction_${target}`, config.label);
+            const shipmentRef = shipment.id.slice(0, 8);
             return (
               <Pressable
                 key={target}
@@ -306,7 +314,10 @@ export default function SellerShipmentCard({
                   disabled && styles.btnDisabled,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`${config.label} for Shipment #${shipment.id.slice(0, 8)}`}
+                accessibilityLabel={t('seller.shipmentActionAccessibility', `${actionLabel} for Shipment #${shipmentRef}`, {
+                  action: actionLabel,
+                  id: shipmentRef,
+                })}
               >
                 <Text
                   style={[
@@ -316,7 +327,7 @@ export default function SellerShipmentCard({
                     config.isDanger && [styles.actionBtnTextDanger, { color: theme.danger }],
                   ]}
                 >
-                  {config.label}
+                  {actionLabel}
                 </Text>
               </Pressable>
             );

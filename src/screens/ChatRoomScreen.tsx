@@ -248,7 +248,7 @@ export default function ChatRoomScreen({
         await handleSendMessage('', undefined, uploadedUrl);
       }
     } catch (error) {
-      Alert.alert('Could not send the image', toApiError(error).message);
+      Alert.alert(t('chat.imageSendFailedTitle', 'Could not send the image'), toApiError(error).message);
     }
   }, [imageUpload, handleSendMessage]);
 

@@ -474,15 +474,24 @@ export default function OrderDetailScreen({ route, navigation }: AppNavigatorScr
               onError: (err) => {
                 if (err instanceof ApiError) {
                   if (err.status === 404) {
-                    Alert.alert('Not found', 'Order not found or not accessible.');
+                    Alert.alert(
+                      t('orders.confirmNotFoundTitle', 'Not found'),
+                      t('orders.confirmNotFoundMsg', 'Order not found or not accessible.'),
+                    );
                   } else if (err.status === 400) {
-                    Alert.alert('Cannot confirm', err.message || 'This order cannot be confirmed.');
+                    Alert.alert(
+                      t('orders.confirmBlockedTitle', 'Cannot confirm'),
+                      err.message || t('orders.confirmBlockedMsg', 'This order cannot be confirmed.'),
+                    );
                     void refetch();
                   } else {
-                    Alert.alert('Error', err.message || 'Failed to confirm received.');
+                    Alert.alert(
+                      t('orders.confirmErrorTitle', 'Error'),
+                      err.message || t('orders.confirmErrorMsg', 'Failed to confirm received.'),
+                    );
                   }
                 } else {
-                  Alert.alert('Error', 'Failed to confirm received.');
+                  Alert.alert(t('orders.confirmErrorTitle', 'Error'), t('orders.confirmErrorMsg', 'Failed to confirm received.'));
                 }
               },
             });

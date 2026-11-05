@@ -92,4 +92,13 @@ export const orders = {
   vnpay_browser_failed: 'Không thể mở trình duyệt thanh toán. Vui lòng thử lại.',
   vnpay_order_not_payable: 'Đơn hàng này không còn có thể thanh toán.',
   vnpay_retry_failed: 'Thanh toán lại thất bại. Vui lòng thử lại.',
+  status_PAID: 'Đã thanh toán',
+  status_FAILED: 'Giao thất bại',
+  status_RETURNED: 'Đã hoàn hàng',
+  confirmNotFoundTitle: 'Không tìm thấy',
+  confirmNotFoundMsg: 'Không tìm thấy đơn hàng hoặc bạn không có quyền xem.',
+  confirmBlockedTitle: 'Không thể xác nhận',
+  confirmBlockedMsg: 'Không thể xác nhận đơn hàng này.',
+  confirmErrorTitle: 'Lỗi',
+  confirmErrorMsg: 'Không thể xác nhận đã nhận hàng.',
 };

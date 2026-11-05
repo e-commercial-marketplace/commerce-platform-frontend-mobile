@@ -131,7 +131,7 @@ export default function ShipmentOrderGroup({
       {/* Footer order total */}
       <View style={styles.groupFooter}>
         <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>
-          {t('seller.orderGroupHeader', 'Order Bundle Total:')}
+          {t('seller.orderBundleTotal', 'Order Bundle Total:')}
         </Text>
         <Text style={[styles.footerTotal, { color: theme.text }]}>{formatVND(totalAmount)}</Text>
       </View>

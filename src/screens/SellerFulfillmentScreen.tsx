@@ -235,7 +235,10 @@ export default function SellerFulfillmentScreen({
       if (confirmMutation?.mutateAsync) {
         await confirmMutation.mutateAsync(item.id);
       }
-      Alert.alert('Item Confirmed', `"${item.productName}" has been confirmed for fulfillment.`);
+      Alert.alert(
+        t('seller.itemConfirmedTitle', 'Item Confirmed'),
+        t('seller.itemConfirmedMsg', `"${item.productName}" has been confirmed for fulfillment.`, { name: item.productName }),
+      );
     } catch (err) {
       const apiError = toApiError(err);
       let userFriendlyMessage = apiError.message;
@@ -246,7 +249,7 @@ export default function SellerFulfillmentScreen({
         userFriendlyMessage = 'You do not have permission to confirm this order item.';
       }
 
-      Alert.alert('Cannot Confirm Item', userFriendlyMessage);
+      Alert.alert(t('seller.itemConfirmFailedTitle', 'Cannot Confirm Item'), userFriendlyMessage);
     } finally {
       setConfirmingId(null);
     }
@@ -276,7 +279,10 @@ export default function SellerFulfillmentScreen({
       }
 
       setCancellingItem(null);
-      Alert.alert('Item Cancelled', `"${item.productName}" has been cancelled.`);
+      Alert.alert(
+        t('seller.itemCancelledTitle', 'Item Cancelled'),
+        t('seller.itemCancelledMsg', `"${item.productName}" has been cancelled.`, { name: item.productName }),
+      );
     } catch (err) {
       const apiError = toApiError(err);
       let message = apiError.message;
@@ -338,7 +344,11 @@ export default function SellerFulfillmentScreen({
 
       setUpdatingShipment(null);
       setTargetShipmentStatus(null);
-      Alert.alert('Status Updated', `Shipment status updated to ${targetStatus}.`);
+      const statusLabel = t(`seller.shipmentStatus_${targetStatus}`, targetStatus);
+      Alert.alert(
+        t('seller.statusUpdatedTitle', 'Status Updated'),
+        t('seller.statusUpdatedMsg', `Shipment status updated to ${statusLabel}.`, { status: statusLabel }),
+      );
     } catch (err) {
       const apiError = toApiError(err);
       let message = apiError.message;

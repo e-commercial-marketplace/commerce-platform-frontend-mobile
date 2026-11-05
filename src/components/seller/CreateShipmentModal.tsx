@@ -194,7 +194,10 @@ export default function CreateShipmentModal({
                 {t('seller.createShipment', 'Create Shipment')}
               </Text>
               <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                Order #{orderId.slice(0, 8)} • {items.length} item{items.length === 1 ? '' : 's'}
+                {t('seller.createShipmentSubtitle', `Order #${orderId.slice(0, 8)} • ${items.length} items`, {
+                  id: orderId.slice(0, 8),
+                  count: items.length,
+                })}
               </Text>
             </View>
             <Pressable
@@ -314,7 +317,7 @@ export default function CreateShipmentModal({
                       {t('seller.deliveryMethod_PLATFORM_DELIVERY', 'Platform Delivery')}
                     </Text>
                     <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>
-                      Ship via integrated carrier
+                      {t('seller.methodDesc_PLATFORM_DELIVERY', 'Ship via integrated carrier')}
                     </Text>
                   </View>
                 </Pressable>
@@ -356,7 +359,7 @@ export default function CreateShipmentModal({
                       {t('seller.deliveryMethod_SELF_DELIVERY', 'Self Delivery')}
                     </Text>
                     <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>
-                      Delivered directly by shop
+                      {t('seller.methodDesc_SELF_DELIVERY', 'Delivered directly by shop')}
                     </Text>
                   </View>
                 </Pressable>
@@ -479,11 +482,13 @@ export default function CreateShipmentModal({
                 testID="self-delivery-notice"
               >
                 <Text style={[styles.selfDeliveryTitle, { color: isDark ? '#FBBF24' : '#92400E' }]}>
-                  Direct Shop Fulfillment
+                  {t('seller.selfDeliveryTitle', 'Direct Shop Fulfillment')}
                 </Text>
                 <Text style={[styles.selfDeliveryText, { color: theme.textSecondary }]}>
-                  Your shop is directly responsible for delivering these items to the
-                  customer. No third-party carrier will be assigned.
+                  {t(
+                    'seller.selfDeliveryDesc',
+                    'Your shop is directly responsible for delivering these items to the customer. No third-party carrier will be assigned.',
+                  )}
                 </Text>
                 <Text style={[styles.selfDeliverySubtext, { color: theme.textSecondary }]}>
                   Ensure your fulfillment team coordinates delivery according to your shop's schedule.
