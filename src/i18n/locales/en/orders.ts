@@ -92,4 +92,13 @@ export const orders = {
   vnpay_browser_failed: 'Failed to open payment browser. Please try again.',
   vnpay_order_not_payable: 'This order can no longer be paid.',
   vnpay_retry_failed: 'Payment retry failed. Please try again.',
+  status_PAID: 'Paid',
+  status_FAILED: 'Delivery failed',
+  status_RETURNED: 'Returned',
+  confirmNotFoundTitle: 'Not found',
+  confirmNotFoundMsg: 'Order not found or not accessible.',
+  confirmBlockedTitle: 'Cannot confirm',
+  confirmBlockedMsg: 'This order cannot be confirmed.',
+  confirmErrorTitle: 'Error',
+  confirmErrorMsg: 'Failed to confirm received.',
 };

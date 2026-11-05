@@ -52,4 +52,5 @@ export const chat = {
   seen: 'Đã xem',
   sendFailed: 'Lỗi gửi',
   retryBubbleA11y: 'Thử lại gửi tin nhắn',
+  imageSendFailedTitle: 'Không thể gửi ảnh',
 };

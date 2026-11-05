@@ -280,7 +280,7 @@ export default function SellerProductFormScreen({
     try {
       if (isEdit) {
         if (!productId) {
-          Alert.alert('Error', 'Product ID is missing.');
+          Alert.alert(t('seller.productIdMissingTitle', 'Error'), t('seller.productIdMissingMsg', 'Product ID is missing.'));
           return;
         }
 

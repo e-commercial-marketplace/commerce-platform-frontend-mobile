@@ -44,6 +44,30 @@ describe('I18nContext', () => {
       expect(mockedPreferenceStorage.setStoredLanguagePreference).toHaveBeenCalledWith('en');
     });
 
+    it('falls back to the default text when a namespaced key is missing', () => {
+      const { result } = renderHook(() => useAppLanguage(), { wrapper });
+
+      expect(result.current.t('admin.sellers.notInLocale', 'Phone number:')).toBe('Phone number:');
+    });
+
+    it('interpolates options into the default text of a missing key', () => {
+      const { result } = renderHook(() => useAppLanguage(), { wrapper });
+
+      expect(result.current.t('admin.sellers.notInLocale', 'Seller {{name}}', { name: 'An' })).toBe('Seller An');
+    });
+
+    it('returns the key when a missing key has no default text', () => {
+      const { result } = renderHook(() => useAppLanguage(), { wrapper });
+
+      expect(result.current.t('admin.sellers.notInLocale')).toBe('admin.sellers.notInLocale');
+    });
+
+    it('prefers the translation over the default text', () => {
+      const { result } = renderHook(() => useAppLanguage(), { wrapper });
+
+      expect(result.current.t('admin.sellers.approve', 'Approve')).toBe('Phê duyệt');
+    });
+
     it('translates common keys into active language', async () => {
       const { result } = renderHook(() => useAppLanguage(), { wrapper });
 

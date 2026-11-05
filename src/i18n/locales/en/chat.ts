@@ -52,4 +52,5 @@ export const chat = {
   seen: 'Seen',
   sendFailed: 'Send failed',
   retryBubbleA11y: 'Retry sending message',
+  imageSendFailedTitle: 'Could not send the image',
 };

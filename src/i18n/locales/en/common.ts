@@ -30,4 +30,5 @@ export const common = {
   clear: 'Clear',
   noDataDescription: 'No matching records found.',
   retryAction: 'Try again',
+  signIn: 'Sign in',
 };

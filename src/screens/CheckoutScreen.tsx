@@ -528,7 +528,7 @@ export default function CheckoutScreen({
                 {t('checkout.orderStatus', 'Order status')}
               </Text>
               <Text style={[styles.rowValue, { color: theme.text }]}>
-                {humanizeStatus(order.status)}
+                {t(`orders.status_${order.status}`, humanizeStatus(order.status))}
               </Text>
             </View>
             <View style={styles.row}>
@@ -536,7 +536,7 @@ export default function CheckoutScreen({
                 {t('checkout.paymentStatus', 'Payment status')}
               </Text>
               <Text style={[styles.rowValue, { color: theme.text }]}>
-                {humanizeStatus(order.paymentStatus)}
+                {t(`orders.paymentStatus_${order.paymentStatus}`, humanizeStatus(order.paymentStatus))}
               </Text>
             </View>
             <View style={styles.row}>

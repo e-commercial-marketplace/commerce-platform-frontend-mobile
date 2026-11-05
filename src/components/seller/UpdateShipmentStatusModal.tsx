@@ -177,8 +177,10 @@ export default function UpdateShipmentStatusModal({
               )}
             </Text>
             <Text style={[styles.helperText, { color: theme.textSecondary }]}>
-              Backend will record COD payment completion and mark the customer order DELIVERED
-              once all shop shipments for this order are complete.
+              {t(
+                'seller.deliveredHelper',
+                'Backend will record COD payment completion and mark the customer order DELIVERED once all shop shipments for this order are complete.',
+              )}
             </Text>
           </View>
         );
@@ -219,7 +221,7 @@ export default function UpdateShipmentStatusModal({
               )}
             </Text>
             <Text style={[styles.helperText, { color: theme.textSecondary }]}>
-              Backend will automatically restore inventory stock for all items in this shipment.
+              {t('seller.returnedHelper', 'Backend will automatically restore inventory stock for all items in this shipment.')}
             </Text>
           </View>
         );
@@ -231,8 +233,10 @@ export default function UpdateShipmentStatusModal({
               {t('seller.startPreparing', 'Start Preparing')}
             </Text>
             <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
-              Move this shipment to the PREPARING stage to signal that your team is packing the
-              items for dispatch.
+              {t(
+                'seller.startPreparingDesc',
+                'Move this shipment to the PREPARING stage to signal that your team is packing the items for dispatch.',
+              )}
             </Text>
           </View>
         );
